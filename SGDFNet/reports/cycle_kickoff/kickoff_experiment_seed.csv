@@ -1,2 +1,0 @@
-experiment_id,stage,branch,hypothesis,changed_factor,baseline_artifact,planned_config_name,expected_outputs
-kickoff_001,J1_or_new_model_line,point_signal_redesign,"stronger point-signal redesign for 9_16 raw error","feature/task redesign","outputs/RT916_SpikeMarketLab/experiments/SGDFNet_ProtocolB_A0_J2_ValSegmentBias_20260605_143230","kickoff_feature_redesign_v1.yaml","predictions.csv;monthly_summary.csv;leakage_audit.md"
