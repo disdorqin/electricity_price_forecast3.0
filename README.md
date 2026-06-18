@@ -1,12 +1,13 @@
 # electricity_forecast_model2.0
 
-本仓库聚合了多个电力负荷/电价时序预测模型的实现。包含三块内容:
+本仓库聚合了多个电力负荷/电价时序预测模型的实现。包含四块内容:
 
 - [`RT916_SpikeFusionNet/`](./RT916_SpikeFusionNet/) — RT916 脉冲融合网络(年度切片 + 双通道脉冲残差 + 域自适应)
 - [`SGDFNet/`](./SGDFNet/) — SGDFNet(分段门控 + 误差/方向门控融合 + 区间与概率校准)
 - [`TimeMixer/`](./TimeMixer/) — TimeMixer 日前/实时电价预测 pipeline(PyTorch 单文件实现,合作者 [Jonathan-ysy](https://github.com/Jonathan-ysy) 贡献,commit `e76bd45`)
+- [`TimesFM/`](./TimesFM/) — TimesFM 时间序列基础模型(本地可编辑安装,依赖 `epf` 项目下的 `TF` 包)
 
-> 三个模型独立运行、互相独立,共享相同的输入字段约定(参见 [`docs/metrics_calculation.md`](./docs/metrics_calculation.md))。
+> 四个模型独立运行、互相独立,共享相同的输入字段约定(参见 [`docs/metrics_calculation.md`](./docs/metrics_calculation.md))。
 
 ## 目录结构
 
@@ -37,6 +38,11 @@
 ├── TimeMixer/               ← 模型 3:TimeMixer(合作者贡献)
 │   └── pipeline_timemixer.py
 │
+├── TimesFM/                 ← 模型 4:TimesFM(本地可编辑安装)
+│   ├── pipeline.py
+│   ├── infer.py
+│   └── requirements.txt
+│
 └── docs/                    ← 跨模型共享文档
     ├── metrics_calculation.md                  ← 指标计算口径约定
     ├── 实验运行约定.md                              ← 实验运行流程约定
@@ -52,7 +58,16 @@ pip install -r requirements.txt
 ```
 
 依赖包括:`numpy` / `pandas` / `scikit-learn` / `torch` / `pyyaml` / `joblib` /
-`python-dotenv` / `openpyxl` / `chinese-calendar` / `borax`。
+`python-dotenv` / `openpyxl` / `chinese-calendar` / `borax` / `huggingface_hub[cli]` /
+`safetensors`。
+
+若需使用 TimesFM,还需在对应环境中本地安装 `epf` 项目下的 `TF` 包:
+
+```bash
+pip install -e <epf_project_path>/TF[xreg]
+```
+
+其中 `<epf_project_path>` 为 `epf` 项目主目录(例如 `D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\epf`),`[xreg]` 为 `scikit-learn` 等额外依赖。
 
 ### 2. 准备数据
 
@@ -76,6 +91,9 @@ cd SGDFNet && python scripts/run_protocol_b.py
 
 # TimeMixer
 python TimeMixer/pipeline_timemixer.py --help
+
+# TimesFM
+python TimesFM/pipeline.py --help
 ```
 
 详细使用方式见各子项目 README:

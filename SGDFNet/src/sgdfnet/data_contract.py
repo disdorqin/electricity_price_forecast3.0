@@ -118,6 +118,22 @@ def add_business_time_columns(frame: pd.DataFrame, timestamp_col: str = "timesta
     return out
 
 
+def _safe_delta_history(delta: pd.Series, lag_hours: int = 24) -> pd.Series:
+    """
+    Use previous-day aligned delta history so D-day post-cutoff RT truth never
+    backflows into D+1 features through adjacent-hour shifts.
+    """
+    return pd.to_numeric(delta, errors="coerce").shift(lag_hours)
+
+
+def _safe_hourly_history(values: pd.Series, lag_hours: int = 24) -> pd.Series:
+    """
+    Generic cutoff-safe hourly history aligned to the previous day.
+    Use this for any actual- or residual-derived intraday feature family.
+    """
+    return pd.to_numeric(values, errors="coerce").shift(lag_hours)
+
+
 def preprocess_dataframe(
     df: pd.DataFrame,
     feature_config: FeatureConfig,
@@ -211,12 +227,13 @@ def preprocess_dataframe(
 
     if feature_config.include_delta_history_features:
         delta = out["_delta_history_source"]
-        out["delta_lag_1"] = delta.shift(1)
+        safe_delta = _safe_delta_history(delta)
+        out["delta_lag_1"] = safe_delta
         out["delta_lag_24"] = delta.shift(24)
-        out["delta_roll_mean_6"] = delta.shift(1).rolling(6, min_periods=1).mean()
-        out["delta_roll_mean_24"] = delta.shift(1).rolling(24, min_periods=1).mean()
-        out["delta_roll_std_24"] = delta.shift(1).rolling(24, min_periods=2).std()
-        out["delta_abs_roll_mean_24"] = delta.abs().shift(1).rolling(24, min_periods=1).mean()
+        out["delta_roll_mean_6"] = safe_delta.rolling(6, min_periods=1).mean()
+        out["delta_roll_mean_24"] = safe_delta.rolling(24, min_periods=1).mean()
+        out["delta_roll_std_24"] = safe_delta.rolling(24, min_periods=2).std()
+        out["delta_abs_roll_mean_24"] = safe_delta.abs().rolling(24, min_periods=1).mean()
         feature_cols.extend(
             [
                 "delta_lag_1",
@@ -229,7 +246,7 @@ def preprocess_dataframe(
         )
 
     if feature_config.include_tf_moving_average_features:
-        lagged_delta = out["_delta_history_source"].shift(1)
+        lagged_delta = _safe_delta_history(out["_delta_history_source"])
         out["tf_delta_lowfreq_mean_12"] = lagged_delta.rolling(12, min_periods=4).mean()
         out["tf_delta_lowfreq_mean_24"] = lagged_delta.rolling(24, min_periods=8).mean()
         out["tf_delta_highfreq_resid_12"] = lagged_delta - out["tf_delta_lowfreq_mean_12"]
@@ -282,7 +299,7 @@ def preprocess_dataframe(
     if feature_config.include_weekly_history_features:
         delta = out["_delta_history_source"]
         out["delta_lag_168"] = delta.shift(168)
-        out["delta_roll_mean_168"] = delta.shift(1).rolling(168, min_periods=24).mean()
+        out["delta_roll_mean_168"] = _safe_delta_history(delta).rolling(168, min_periods=24).mean()
         out["da_lag_24"] = out["da_anchor"].shift(24)
         out["da_lag_168"] = out["da_anchor"].shift(168)
         out["rt_lag_168"] = out["_rt_history_source"].shift(168)
@@ -308,8 +325,8 @@ def preprocess_dataframe(
         out["hist_renewable_resid_lag24"] = renewable_resid.shift(24)
         out["hist_space_resid_lag24"] = space_resid.shift(24)
         out["hist_netload_resid_lag24"] = netload_resid.shift(24)
-        out["hist_load_resid_roll_mean_24"] = load_resid.shift(1).rolling(24, min_periods=6).mean()
-        out["hist_netload_resid_roll_mean_24"] = netload_resid.shift(1).rolling(24, min_periods=6).mean()
+        out["hist_load_resid_roll_mean_24"] = _safe_hourly_history(load_resid).rolling(24, min_periods=6).mean()
+        out["hist_netload_resid_roll_mean_24"] = _safe_hourly_history(netload_resid).rolling(24, min_periods=6).mean()
         feature_cols.extend(
             [
                 "hist_load_resid_lag24",
@@ -325,7 +342,7 @@ def preprocess_dataframe(
         space_resid = pd.Series(np.nan, index=out.index, dtype=float)
 
     if feature_config.include_segment_local_stats:
-        out["delta_same_hour_lag_1d"] = out.groupby("hour")["_delta_history_source"].shift(1)
+        safe_same_hour_delta = out.groupby("hour")["_delta_history_source"].shift(1)
         out["delta_same_hour_roll_mean_7d"] = out.groupby("hour")["_delta_history_source"].transform(
             lambda s: s.shift(1).rolling(7, min_periods=2).mean()
         )
@@ -335,6 +352,7 @@ def preprocess_dataframe(
         out["delta_same_hour_abs_roll_mean_7d"] = out.groupby("hour")["_delta_history_source"].transform(
             lambda s: s.abs().shift(1).rolling(7, min_periods=2).mean()
         )
+        out["delta_same_hour_lag_1d"] = safe_same_hour_delta
         if feature_config.include_forecast_residual_history_features:
             out["netload_resid_same_hour_roll_mean_7d"] = netload_resid.groupby(out["hour"]).transform(
                 lambda s: s.shift(1).rolling(7, min_periods=2).mean()

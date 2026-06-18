@@ -2,6 +2,8 @@
 numpy>=1.23
 pandas>=1.5
 scikit-learn>=1.2
+xgboost>=2.0
+catboost>=1.2
 
 # Deep learning (RT916_SpikeFusionNet uses torch.nn / torch.utils.data)
 torch>=2.0
@@ -10,6 +12,12 @@ torch>=2.0
 pyyaml>=6.0
 joblib>=1.2
 python-dotenv>=1.0
+pymysql>=1.1
 openpyxl>=3.0           # required by pandas.read_excel
 chinese-calendar>=1.10
 borax>=1.4
+
+# TimesFM dependencies
+huggingface_hub[cli]>=0.23.0
+safetensors>=0.5.3
+# timesfm[xreg] is installed locally via: pip install -e <epf_project>/TF[xreg]

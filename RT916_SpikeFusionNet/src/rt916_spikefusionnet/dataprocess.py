@@ -5,6 +5,29 @@ import datetime
 import numpy as np
 
 
+HISTORY_FORECAST_MAP = {
+    "地方电厂总加实际值": "地方电厂总加预测值",
+    "联络线受电负荷实际值": "联络线受电负荷预测值",
+    "风电总加实际值": "风电总加预测值",
+    "光伏总加实际值": "光伏总加预测值",
+    "核电总加实际值": "核电总加预测值",
+    "自备机组总加实际值": "自备机组总加预测值",
+    "试验机组总加实际值": "试验机组总加预测值",
+    "直调负荷实际值": "直调负荷预测值",
+    "竞价空间实际值": "竞价空间预测值",
+    "新能源总加实际值": "新能源总加预测值",
+    "其他负荷总加": "其他负荷总加预测值",
+    "总用电量": "总用电量预测值",
+    "净负荷": "净负荷预测值",
+    "新能源渗透率": "新能源渗透率预测值",
+    "空间_新能源比": "空间_新能源比预测值",
+}
+
+
+def get_history_feature_name(feature_name):
+    return HISTORY_FORECAST_MAP.get(feature_name, feature_name)
+
+
 def split_excel_by_hours(df):
     df = df.copy()
     if "时刻" not in df.columns:
@@ -166,13 +189,11 @@ def enrich_selected_features(df, target_col="实时电价"):
     out["lag_168h"] = out["lag_168h"].ffill().fillna(0.0)
     out["target_lag"] = pd.Series(out["target_lag"], index=out.index).ffill().fillna(0.0)
 
-    load_actual = pd.to_numeric(out.get("直调负荷实际值"), errors="coerce")
-    solar_actual = pd.to_numeric(out.get("新能源总加实际值"), errors="coerce")
     load_pred = pd.to_numeric(out.get("直调负荷预测值"), errors="coerce")
     solar_pred = pd.to_numeric(out.get("新能源总加预测值"), errors="coerce")
 
-    out["ramp_load"] = load_actual.diff().fillna(0.0)
-    out["ramp_solar"] = solar_actual.diff().fillna(0.0)
+    out["ramp_load"] = load_pred.diff().fillna(0.0)
+    out["ramp_solar"] = solar_pred.diff().fillna(0.0)
     out["ramp_load_pred"] = load_pred.diff().fillna(0.0)
     out["ramp_solar_pred"] = solar_pred.diff().fillna(0.0)
 
@@ -188,10 +209,10 @@ def enrich_selected_features(df, target_col="实时电价"):
     out["prevday_mean_target"] = y.shift(24).rolling(24, min_periods=1).mean().ffill().fillna(0.0)
     out["prevday_std_target"] = y.shift(24).rolling(24, min_periods=1).std().fillna(0.0)
 
-    out["load_gap_prevday"] = (load_actual - load_pred.shift(24)).ffill().fillna(0.0)
-    out["solar_gap_prevday"] = (solar_actual - solar_pred.shift(24)).ffill().fillna(0.0)
+    out["load_gap_prevday"] = (load_pred - load_pred.shift(24)).ffill().fillna(0.0)
+    out["solar_gap_prevday"] = (solar_pred - solar_pred.shift(24)).ffill().fillna(0.0)
     out["net_load_gap_prevday"] = (
-        pd.to_numeric(out.get("净负荷"), errors="coerce")
+        pd.to_numeric(out.get("净负荷预测值"), errors="coerce")
         - pd.to_numeric(out.get("净负荷预测值"), errors="coerce").shift(24)
     ).ffill().fillna(0.0)
 

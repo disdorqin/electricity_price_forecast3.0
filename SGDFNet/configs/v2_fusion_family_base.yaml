@@ -1,5 +1,0 @@
-experiment_name: SGDFNet_FusionFamily_Base
-output_root: outputs/RT916_SpikeMarketLab/experiments
-point_artifact: C:\Users\37813\.codex\worktrees\ce61\elec\outputs\RT916_SpikeMarketLab\experiments\SGDFNet_SignedTailCalibration_TFPressure_V1_20260605_194106
-interval_artifact: outputs/RT916_SpikeMarketLab/experiments/SGDFNet_V2_B4_P1_QuantileInterval_20260605_173936
-include_tail_flag: false

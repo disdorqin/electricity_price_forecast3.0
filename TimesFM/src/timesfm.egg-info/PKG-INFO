@@ -1,0 +1,45 @@
+Metadata-Version: 2.4
+Name: timesfm
+Version: 2.0.0
+Summary: A time series foundation model.
+Author-email: Rajat Sen <senrajat@google.com>, Yichen Zhou <yichenzhou@google.com>, Abhimanyu Das <abhidas@google.com>, Petros Mol <pmol@google.com>, Michael Chertushkin <chertushkinmichael@gmail.com>
+License: Apache-2.0
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.26.4
+Requires-Dist: huggingface_hub[cli]>=0.23.0
+Requires-Dist: safetensors>=0.5.3
+Provides-Extra: torch
+Requires-Dist: torch>=2.0.0; extra == "torch"
+Provides-Extra: flax
+Requires-Dist: flax; extra == "flax"
+Requires-Dist: optax; extra == "flax"
+Requires-Dist: einshape; extra == "flax"
+Requires-Dist: orbax-checkpoint; extra == "flax"
+Requires-Dist: jaxtyping; extra == "flax"
+Provides-Extra: xreg
+Requires-Dist: scikit-learn; extra == "xreg"
+
+# Times-FM
+
+- 默认分3个时间段分别预测后拼接预测结果--segment-count 3
+
+### 实时电价
+
+- 回测（评估）
+
+python price_forecast_copy_分时段预测.py --target 实时 --dump-csv --date-range 2026/01/06-2026/01/25
+
+- 预测未来一天（不评估）
+
+python price_forecast_copy_分时段预测.py --target 实时 --mode forecast  --dump-csv --forecast-date 2026/02/07
+
+### 日前电价
+
+- 回测（评估）
+
+python price_forecast_copy_分时段预测.py --target 日前 --dump-csv --date-range 2026/01/06-2026/01/25
+
+- 预测未来一天（不评估）
+
+python price_forecast_copy_分时段预测.py --target 日前 --mode forecast  --dump-csv --forecast-date 2026/02/07

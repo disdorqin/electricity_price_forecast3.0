@@ -1,0 +1,6 @@
+adapter,source,task
+lightgbm,D:\path\to\lightgbm_realtime.csv,realtime
+timesfm,D:\path\to\timesfm_realtime_backtest.csv,realtime
+timemixer,D:\path\to\predictions_realtime_last_month.csv,realtime
+sgdfnet,D:\path\to\sgdfnet_predictions.csv,
+rt916,D:\path\to\预测结果_RT_DA注入.csv,realtime
