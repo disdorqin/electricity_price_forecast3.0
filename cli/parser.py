@@ -46,5 +46,5 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--use-classifier", action="store_true", default=False)
     parser.add_argument("--clf-data", default=None)
     parser.add_argument("--daily-run-root", default="daily_runs")
-    parser.add_argument("--validation-days", type=int, default=7)
+    parser.add_argument("--validation-days", type=int, default=30, help="Number of days for the validation window (default: 30). Used by model_stage for weight fitting.")
     return parser

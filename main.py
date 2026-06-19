@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 from cli.parser import build_parser
 from pipelines.evaluate_pipeline import run_evaluate_pipeline
 from pipelines.fusion_pipeline import run_fusion_pipeline

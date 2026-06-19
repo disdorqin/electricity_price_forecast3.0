@@ -53,6 +53,12 @@ class ModelPipeline(BaseModelPipeline):
                 retrain_daily=False,
             )
         prediction_col = "预测日前电价" if target == "dayahead" else "预测实时电价"
+        if result is None or (isinstance(result, pd.DataFrame) and result.empty):
+            raise ValueError(
+                f"RT916 produced no predictions for target={target} "
+                f"[{start_end[0]} to {start_end[1]}]. "
+                f"Possible causes: insufficient training data, core returned empty DataFrame."
+            )
         normalized = ensure_prediction_frame(result, prediction_col)
         output_root = ensure_runtime_dirs(Path(kwargs.get("output_root", "outputs/unified_runs")) / self.model_name / target)
         output_path = output_root / "predictions.csv"

@@ -86,7 +86,15 @@ def run_extreme_price_classifier(
         temp_copy = clf_input_path
         target_copy = project_root / "ExtremPriceClf" / "data" / "融合模型预测电价数据.xlsx"
         shutil.copyfile(temp_copy, target_copy)
-    subprocess.run(cmd, check=True, cwd=script_path.parent.parent)
+    try:
+        subprocess.run(cmd, check=True, cwd=script_path.parent.parent, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        stderr_snippet = (exc.stderr or "")[:500]
+        raise RuntimeError(
+            f"Extreme price classifier failed (exit code {exc.returncode}). "
+            f"Command: {' '.join(cmd)}. "
+            f"Stderr: {stderr_snippet}"
+        ) from exc
     result_path = output_dir / f"{start_date}_{end_date}_clf.xlsx"
     if not result_path.exists():
         raise FileNotFoundError(f"Classifier result not found: {result_path}")
@@ -97,6 +105,11 @@ def merge_clf_results(fused_csv_path: Path, clf_result_path: Path, output_path: 
     fused = pd.read_csv(fused_csv_path)
     clf = pd.read_excel(clf_result_path, engine="openpyxl")
     clf = clf.rename(columns={"时刻": "ds"})
+    if "final_pred" not in clf.columns:
+        raise ValueError(
+            f"Classifier result {clf_result_path} is missing 'final_pred' column. "
+            f"Available columns: {list(clf.columns)}"
+        )
     clf["ds"] = pd.to_datetime(clf["ds"], errors="coerce")
     fused["ds"] = pd.to_datetime(fused["ds"], errors="coerce")
     merged = fused.merge(clf[["ds", "final_pred"]], on="ds", how="left")

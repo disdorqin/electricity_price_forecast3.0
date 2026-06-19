@@ -24,6 +24,14 @@ from TimeMixer.backbones import build_backbone
 
 MODEL_NAME = "TimeMixer"
 
+# === 无侵入加速:TF32 + cudnn benchmark(依据 docs/项目提高速度.md)===
+import os as _os
+if _os.getenv("OPTIM_TF32", "1") == "1" and torch.cuda.is_available():
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+if _os.getenv("OPTIM_CUDNN_BENCHMARK", "1") == "1" and torch.cuda.is_available():
+    torch.backends.cudnn.benchmark = True
+
 
 @dataclass
 class RunConfig:
@@ -378,11 +386,17 @@ def make_sample(
     cutoff_hour: int,
     da_values: np.ndarray | None = None,
     target_mode: str = "residual_blend",
+    inference_mode: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     cutoff = compute_cutoff(target_day, cutoff_hour)
     past = make_past_features(df, cutoff, target_col, seq_len)
     baseline = compute_blend_baseline(df, target_day, target_col)
     future = make_future_features(df, target_day, da_values=da_values, baseline_values=baseline)
+    if inference_mode:
+        # 预测/推断时目标日真实标签可能尚未产生（如实时电价），构造占位 y 即可。
+        # 上游调用者（test 阶段）通常丢弃该返回值，因此不影响预测结果。
+        y_model = np.zeros(24, dtype=float)
+        return past, future, y_model, baseline
     cur = df[(df["ds"] >= target_day) & (df["ds"] < target_day + pd.Timedelta(days=1))]
     y = cur[target_col].to_numpy(float)
     if len(y) != 24 or np.isnan(y).any():
@@ -411,6 +425,7 @@ def build_arrays(
     cutoff_hour: int,
     pred_da_map: dict[pd.Timestamp, float] | None = None,
     target_mode: str = "residual_blend",
+    inference_mode: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     past_list = []
     future_list = []
@@ -438,6 +453,7 @@ def build_arrays(
                 cutoff_hour=cutoff_hour,
                 da_values=da_vals,
                 target_mode=target_mode,
+                inference_mode=inference_mode,
             )
             past_list.append(past)
             future_list.append(future)
@@ -465,6 +481,7 @@ def build_segment_arrays(
     segment_end: int,
     pred_da_map: dict[pd.Timestamp, float] | None = None,
     target_mode: str = "residual_blend",
+    inference_mode: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     past_list = []
     future_list = []
@@ -492,6 +509,7 @@ def build_segment_arrays(
                 cutoff_hour=cutoff_hour,
                 da_values=da_vals,
                 target_mode=target_mode,
+                inference_mode=inference_mode,
             )
             future_seg, y_seg = slice_segment(future, y, segment_start, segment_end)
             baseline_seg = baseline[segment_start:segment_end]
@@ -519,6 +537,7 @@ def filter_available_days(
     cutoff_hour_rt: int,
     da_target_mode: str,
     rt_target_mode: str,
+    inference_mode: bool = False,
 ) -> list[pd.Timestamp]:
     available_days: list[pd.Timestamp] = []
     for day in days:
@@ -530,15 +549,17 @@ def filter_available_days(
                 seq_len=seq_len,
                 cutoff_hour=cutoff_hour_da,
                 target_mode=da_target_mode,
+                inference_mode=inference_mode,
             )
-            make_sample(
-                df,
-                day,
-                target_col="realtime_price",
-                seq_len=seq_len,
-                cutoff_hour=cutoff_hour_rt,
-                target_mode=rt_target_mode,
-            )
+            if not inference_mode:
+                make_sample(
+                    df,
+                    day,
+                    target_col="realtime_price",
+                    seq_len=seq_len,
+                    cutoff_hour=cutoff_hour_rt,
+                    target_mode=rt_target_mode,
+                )
             available_days.append(day)
         except Exception:
             continue
@@ -1295,8 +1316,18 @@ def train_model(
     train_shuffle = True
     if task == "rt" and cfg.rt_loss_mode == "risk_peak_weighted":
         train_shuffle = False
-    train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=train_shuffle)
-    valid_loader = DataLoader(valid_ds, batch_size=cfg.batch_size, shuffle=False)
+    # === DataLoader 优化(依据 docs/项目提高速度.md)===
+    _use_cuda = torch.cuda.is_available()
+    _num_workers = int(_os.getenv("OPTIM_NUM_WORKERS", "4"))
+    _num_workers = max(0, _num_workers)
+    _pin_memory = _use_cuda and _os.getenv("OPTIM_PIN_MEMORY", "1") == "1"
+    _persistent = _num_workers > 0
+    _prefetch = int(_os.getenv("OPTIM_PREFETCH", "2"))
+    _dl_kwargs = dict(num_workers=_num_workers, pin_memory=_pin_memory, persistent_workers=_persistent)
+    if _num_workers > 0:
+        _dl_kwargs["prefetch_factor"] = _prefetch
+    train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=train_shuffle, **_dl_kwargs)
+    valid_loader = DataLoader(valid_ds, batch_size=cfg.batch_size, shuffle=False, **_dl_kwargs)
 
     segment_head_mode = "none"
     backbone_name = cfg.backbone
@@ -1410,13 +1441,20 @@ def train_model(
             return (per_step * asym_weight).mean()
         return torch.abs(pred - target).mean()
 
+    # === AMP 混合精度(依据 docs/项目提高速度.md)===
+    _use_amp = _use_cuda and _os.getenv("OPTIM_AMP", "1") == "1"
+    _amp_dtype = torch.bfloat16 if _os.getenv("OPTIM_AMP_DTYPE", "bf16").lower() == "bf16" else torch.float16
+    _scaler = torch.amp.GradScaler("cuda") if (_use_amp and _amp_dtype == torch.float16) else None
+    _non_blocking = _use_cuda and _os.getenv("OPTIM_NON_BLOCKING", "1") == "1"
+
     for epoch in range(1, cfg.epochs + 1):
         model.train()
         train_loss = 0.0
         for batch_i, (xb, fb, yb) in enumerate(train_loader):
-            xb, fb, yb = xb.to(device), fb.to(device), yb.to(device)
-            optimizer.zero_grad()
-            pred = model(xb, fb)
+            xb = xb.to(device, non_blocking=_non_blocking)
+            fb = fb.to(device, non_blocking=_non_blocking)
+            yb = yb.to(device, non_blocking=_non_blocking)
+            optimizer.zero_grad(set_to_none=True)
             batch_peak = None
             batch_normal_focus = None
             if peak_weight_train is not None:
@@ -1427,10 +1465,19 @@ def train_model(
                 start = batch_i * cfg.batch_size
                 end = start + len(yb)
                 batch_normal_focus = normal_focus_weight_train[start:end]
-            loss = loss_fn(pred, yb, batch_peak, batch_normal_focus)
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+            with torch.autocast(device_type="cuda", dtype=_amp_dtype, enabled=_use_amp):
+                pred = model(xb, fb)
+                loss = loss_fn(pred, yb, batch_peak, batch_normal_focus)
+            if _scaler is not None:
+                _scaler.scale(loss).backward()
+                _scaler.unscale_(optimizer)
+                nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                _scaler.step(optimizer)
+                _scaler.update()
+            else:
+                loss.backward()
+                nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
             train_loss += loss.item() * len(yb)
         train_loss /= len(train_ds)
 
@@ -1438,8 +1485,9 @@ def train_model(
         valid_loss = 0.0
         with torch.no_grad():
             for batch_i, (xb, fb, yb) in enumerate(valid_loader):
-                xb, fb, yb = xb.to(device), fb.to(device), yb.to(device)
-                pred = model(xb, fb)
+                xb = xb.to(device, non_blocking=_non_blocking)
+                fb = fb.to(device, non_blocking=_non_blocking)
+                yb = yb.to(device, non_blocking=_non_blocking)
                 batch_peak = None
                 batch_normal_focus = None
                 if peak_weight_valid is not None:
@@ -1450,7 +1498,10 @@ def train_model(
                     start = batch_i * cfg.batch_size
                     end = start + len(yb)
                     batch_normal_focus = normal_focus_weight_valid[start:end]
-                valid_loss += loss_fn(pred, yb, batch_peak, batch_normal_focus).item() * len(yb)
+                with torch.autocast(device_type="cuda", dtype=_amp_dtype, enabled=_use_amp):
+                    pred = model(xb, fb)
+                    v_loss = loss_fn(pred, yb, batch_peak, batch_normal_focus)
+                valid_loss += v_loss.item() * len(yb)
         valid_loss /= len(valid_ds)
         history.append(
             {
@@ -1715,6 +1766,7 @@ def run_monthly_reproduction(cfg: RunConfig) -> dict[str, Any]:
         cutoff_hour_rt=cfg.cutoff_hour_rt,
         da_target_mode=da_target_mode,
         rt_target_mode=rt_target_mode,
+        inference_mode=True,
     )
 
     if cfg.segment_training:
@@ -1775,6 +1827,7 @@ def run_monthly_reproduction(cfg: RunConfig) -> dict[str, Any]:
                 start_idx,
                 end_idx,
                 target_mode=da_target_mode,
+                inference_mode=True,
             )
             da_pred_model = predict_model(
                 da_bundle,
@@ -1840,6 +1893,7 @@ def run_monthly_reproduction(cfg: RunConfig) -> dict[str, Any]:
             cfg.seq_len,
             cfg.cutoff_hour_da,
             target_mode=da_target_mode,
+            inference_mode=True,
         )
         da_pred_model = predict_model(da_bundle, da_test_past, da_test_future, device, cfg.batch_size)
         da_preds = restore_target_from_mode(da_pred_model, da_test_baseline, da_target_mode)
@@ -1972,6 +2026,7 @@ def run_monthly_reproduction(cfg: RunConfig) -> dict[str, Any]:
                 end_idx,
                 pred_da_map=pred_da_map,
                 target_mode=rt_target_mode,
+                inference_mode=True,
             )
             rt_pred_model = predict_model(
                 rt_bundle,
@@ -2148,6 +2203,7 @@ def run_monthly_reproduction(cfg: RunConfig) -> dict[str, Any]:
             cfg.cutoff_hour_rt,
             pred_da_map=pred_da_map,
             target_mode=rt_target_mode,
+            inference_mode=True,
         )
         rt_pred_model = predict_model(rt_bundle, rt_test_past, rt_test_future, device, cfg.batch_size)
         rt_preds = restore_target_from_mode(rt_pred_model, rt_test_baseline, rt_target_mode)

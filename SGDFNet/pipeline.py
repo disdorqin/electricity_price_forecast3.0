@@ -69,8 +69,17 @@ class ModelPipeline(BaseModelPipeline):
         predictions[ts_col] = pd.to_datetime(predictions[ts_col], errors="coerce")
         start_date = pd.Timestamp(start).normalize().date()
         end_date = pd.Timestamp(end).normalize().date()
+        # Always compute pred_dates for error reporting
         pred_dates = predictions[ts_col].dt.date
-        mask = (pred_dates >= start_date) & (pred_dates <= end_date)
+
+        # SGDFNet uses business_day for the 24-hour prediction window (01:00-24:00),
+        # where the 24th point is timestamped as 00:00 of the next calendar day.
+        # Filter by business_day when available so the last hour is not dropped.
+        if "business_day" in predictions.columns:
+            biz_dates = pd.to_datetime(predictions["business_day"], errors="coerce").dt.date
+            mask = (biz_dates >= start_date) & (biz_dates <= end_date)
+        else:
+            mask = (pred_dates >= start_date) & (pred_dates <= end_date)
         filtered = predictions[mask].copy()
 
         if filtered.empty:

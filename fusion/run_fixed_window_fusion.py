@@ -229,15 +229,29 @@ def _apply_fixed_weights(
 
     fused_values: list[float] = []
     task_weights = weights_df[weights_df["task"] == task].copy()
+    renorm_count = 0
     for _, row in fused.iterrows():
         period_weights = task_weights[task_weights["period"] == row["period"]]
         value = 0.0
+        used_weight_sum = 0.0
         for _, weight_row in period_weights.iterrows():
             model_name = weight_row["model_name"]
             if model_name not in fused.columns or pd.isna(row[model_name]):
                 continue
-            value += float(weight_row["weight"]) * float(row[model_name])
+            w = float(weight_row["weight"])
+            value += w * float(row[model_name])
+            used_weight_sum += w
+        # Renormalize when some models are missing so fused values are not biased
+        if used_weight_sum > 1e-9 and abs(used_weight_sum - 1.0) > 0.01:
+            value /= used_weight_sum
+            renorm_count += 1
         fused_values.append(value)
+    if renorm_count:
+        import logging as _logging
+        _logging.getLogger(__name__).info(
+            "Renormalized fused weights for %d/%d rows (some models missing) in task=%s",
+            renorm_count, len(fused), task,
+        )
     fused["y_fused"] = fused_values
     return fused.sort_values(["target_day", "hour_business"]).reset_index(drop=True)
 

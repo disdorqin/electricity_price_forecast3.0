@@ -30,12 +30,24 @@ class ModelPipeline(BaseModelPipeline):
         predict_date = pd.Timestamp(kwargs.get("predict_date"))
         month = predict_date.strftime("%Y-%m")
 
+        start_date = kwargs.get("start") or predict_date.strftime("%Y-%m-%d")
+        end_date = kwargs.get("end") or predict_date.strftime("%Y-%m-%d")
+        # TimeMixer 的 run_monthly_reproduction 使用半开区间 [test_start, test_end_exclusive)。
+        # 当调用方传入 start == end 时（单日预测），应将 end 视为包含该日，
+        # 因此 test_end_exclusive = end + 1 天，否则 test_days 为空。
+        start_ts = pd.Timestamp(start_date)
+        end_ts = pd.Timestamp(end_date)
+        if end_ts <= start_ts:
+            end_exclusive = (end_ts + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        else:
+            end_exclusive = end_date
+
         run_cfg = RunConfig(
             data_path=self._prepare_data_path(kwargs.get("data_path")),
             output_dir=str(output_root),
             month=month,
-            test_start=kwargs.get("start") or predict_date.strftime("%Y-%m-%d"),
-            test_end_exclusive=kwargs.get("end") or (predict_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+            test_start=start_date,
+            test_end_exclusive=end_exclusive,
             append_leaderboard=False,
             train_months=int(kwargs.get("training_months", 12)),
             val_ratio=float(kwargs.get("val_ratio", 0.2)),

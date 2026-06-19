@@ -18,7 +18,6 @@ DAYAHEAD_MODELS = ["lightgbm", "timesfm", "timemixer"]
 REALTIME_MODELS = ["timesfm", "timemixer", "sgdfnet"]
 FORMAL_DAYAHEAD_MODELS = ["lightgbm", "timesfm", "timemixer"]
 FORMAL_REALTIME_MODELS = ["timesfm", "timemixer", "sgdfnet", RT916_MODEL_KEY]
-DEFAULT_VALIDATION_DAYS = 7
 logger = logging.getLogger(__name__)
 
 
@@ -54,13 +53,6 @@ def _resolve_models_for_target(target: str, stage_models: str) -> list[str]:
     if target == "realtime":
         return REALTIME_MODELS.copy() + [RT916_MODEL_KEY]
     raise ValueError(f"Unsupported staged target: {target}")
-
-
-def _validation_days(args) -> int:
-    value = getattr(args, "validation_days", None)
-    if value is None:
-        return DEFAULT_VALIDATION_DAYS
-    return max(int(value), 1)
 
 
 def _target_column(target: str) -> str:
@@ -110,15 +102,6 @@ def _attach_optional_truth(pred_df: pd.DataFrame, truth_df: pd.DataFrame) -> pd.
     return merged.reset_index(drop=True)
 
 
-def _resolve_stage_windows(run_date: str, validation_days: int) -> tuple[list[str], str, str]:
-    run_ts = pd.Timestamp(run_date)
-    validation_dates = [
-        (run_ts - pd.Timedelta(days=offset)).strftime("%Y-%m-%d")
-        for offset in range(validation_days, 0, -1)
-    ]
-    return validation_dates, run_ts.strftime("%Y-%m-%d"), run_ts.strftime("%Y-%m-%d")
-
-
 def _model_dir(layout, model_name: str) -> Path:
     model_dir = layout.model_outputs_dir / model_name
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -160,11 +143,12 @@ def run_model_stage(args):
     outputs: list[str] = []
 
     # ── Compute the validation window ──
-    # 30-day validation period: 720 hourly rows for stable SLSQP weight fitting,
+    # validation-days controls the validation period length (default 30 days).
+    # 720 hourly rows for stable SLSQP weight fitting,
     # DA training ~11 months, prediction horizon 1-30 days (acceptable for cyclical prices).
     run_ts = pd.Timestamp(run_date)
     training_months = int(getattr(args, "training_months", 12))
-    val_days = 30
+    val_days = max(int(getattr(args, "validation_days", 30) or 30), 1)
     val_start = run_ts - pd.Timedelta(days=val_days)
     val_end = run_ts - pd.Timedelta(days=1)          # last validation day
 

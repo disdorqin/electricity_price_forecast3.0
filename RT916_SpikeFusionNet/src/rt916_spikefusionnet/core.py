@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import math
@@ -32,6 +32,18 @@ from rt916_spikefusionnet.annual_loss import AnnualProtectedCappedLoss
 
 warnings.filterwarnings("ignore", message="enable_nested_tensor is True")
 load_dotenv()
+
+# === 无侵入加速:TF32 + cudnn benchmark(依据 docs/项目提高速度.md)===
+try:
+    import torch as _torch
+    if _torch.cuda.is_available():
+        if bool(int(os.getenv("OPTIM_TF32", "1"))):
+            _torch.backends.cuda.matmul.allow_tf32 = True
+            _torch.backends.cudnn.allow_tf32 = True
+        if bool(int(os.getenv("OPTIM_CUDNN_BENCHMARK", "1"))):
+            _torch.backends.cudnn.benchmark = True
+except Exception:
+    pass
 
 PROJECT_ROOT_ENV = os.getenv("PROJECT_ROOT") or str(Path(__file__).resolve().parents[3])
 DATA_PATH = os.getenv("DATA_SET_NAME", "data/shandong_pmos_hourly.xlsx")
@@ -512,8 +524,21 @@ def train_single_period(period_name, train_df):
     train_dataset = Subset(full_dataset, range(n_train))
     val_dataset = Subset(full_dataset, range(n_train, n_total))
 
-    train_loader = DataLoader(train_dataset, batch_size=CONFIG["BATCH_SIZE"], shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=CONFIG["BATCH_SIZE"], shuffle=False)
+    use_cuda = torch.cuda.is_available()
+    _num_workers = int(os.getenv("OPTIM_NUM_WORKERS", "4"))
+    _num_workers = max(0, _num_workers)
+    _pin_memory = use_cuda and bool(int(os.getenv("OPTIM_PIN_MEMORY", "1")))
+    _persistent = _num_workers > 0
+    _prefetch = int(os.getenv("OPTIM_PREFETCH", "2"))
+    _dl_kwargs = dict(
+        num_workers=_num_workers,
+        pin_memory=_pin_memory,
+        persistent_workers=_persistent,
+    )
+    if _num_workers > 0:
+        _dl_kwargs["prefetch_factor"] = _prefetch
+    train_loader = DataLoader(train_dataset, batch_size=CONFIG["BATCH_SIZE"], shuffle=True, **_dl_kwargs)
+    val_loader = DataLoader(val_dataset, batch_size=CONFIG["BATCH_SIZE"], shuffle=False, **_dl_kwargs)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = _build_model(len(CONFIG["HISTORY_INPUT"]), seq_len, pred_len, CONFIG).to(device)
@@ -546,19 +571,33 @@ def train_single_period(period_name, train_df):
     best_state = None
     patience_counter = 0
 
+    # === AMP 混合精度(依据 docs/项目提高速度.md)===
+    _use_amp = use_cuda and bool(int(os.getenv("OPTIM_AMP", "1")))
+    _amp_dtype = torch.bfloat16 if os.getenv("OPTIM_AMP_DTYPE", "bf16").lower() == "bf16" else torch.float16
+    _scaler = torch.amp.GradScaler("cuda") if (_use_amp and _amp_dtype == torch.float16) else None
+    _non_blocking = use_cuda and bool(int(os.getenv("OPTIM_NON_BLOCKING", "1")))
+
     for epoch in range(CONFIG["EPOCHS"]):
         model.train()
         epoch_loss = 0.0
 
         for batch_x, batch_y in train_loader:
-            batch_x = batch_x.to(device)
-            batch_y = batch_y.to(device)
+            batch_x = batch_x.to(device, non_blocking=_non_blocking)
+            batch_y = batch_y.to(device, non_blocking=_non_blocking)
 
-            optimizer.zero_grad()
-            loss = criterion(model(batch_x), batch_y)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type="cuda", dtype=_amp_dtype, enabled=_use_amp):
+                loss = criterion(model(batch_x), batch_y)
+            if _scaler is not None:
+                _scaler.scale(loss).backward()
+                _scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                _scaler.step(optimizer)
+                _scaler.update()
+            else:
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
             epoch_loss += loss.item()
 
         scheduler.step()

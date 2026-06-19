@@ -70,7 +70,7 @@ class ProjectPaths:
     )
     timesfm_model_dir: Path = _pick_existing_dir(
         PROJECT_ROOT / "models" / "timesFM",
-        Path("D:/作业/science/大创科研时序/代码/elec/models/timesFM"),
+        PROJECT_ROOT / "TimesFM" / "models",
     )
     lightgbm_output: Path = _pick_existing_dir(
         PROJECT_ROOT / "lightGBM" / "outputs",
