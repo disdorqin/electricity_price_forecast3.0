@@ -35,6 +35,10 @@ class ModelPipeline(BaseModelPipeline):
         return self.predict_range(**kwargs)
 
     def predict_range(self, target: str, **kwargs) -> PredictionResult:
+        # Disable AMP during RT916 inference — model weights saved in BFloat16
+        # cause "Unsupported dtype BFloat16" when converted to numpy.
+        # Training (separate path) still benefits from AMP.
+        os.environ["OPTIM_AMP"] = "0"
         os.environ["SPIKE_TRAIN_MONTHS"] = str(int(kwargs.get("training_months", 12)))
         start_end = self._resolve_start_end(kwargs)
         if target == "realtime":
