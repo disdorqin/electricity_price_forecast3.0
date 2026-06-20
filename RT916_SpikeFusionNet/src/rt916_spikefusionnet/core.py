@@ -453,7 +453,7 @@ def _validate(model, val_loader, scaler_y, device):
 
     with torch.no_grad():
         for batch_x, batch_y in val_loader:
-            pred = model(batch_x.to(device)).cpu().numpy()
+            pred = model(batch_x.to(device)).float().cpu().numpy()
             all_preds.append(pred)
             all_trues.append(batch_y.numpy())
 
@@ -725,7 +725,7 @@ def inference_single_period(period_name, test_data, truth_df=None):
     all_preds, all_trues = [], []
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
-            pred = model(batch_x.to(device)).cpu().numpy()
+            pred = model(batch_x.to(device)).float().cpu().numpy()
             all_preds.append(pred)
             all_trues.append(batch_y.numpy())
 
