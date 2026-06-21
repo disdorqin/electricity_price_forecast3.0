@@ -1,0 +1,8 @@
+python-dotenv
+numpy
+pandas
+torch
+torchvision
+timesfm[xreg]
+openpyxl
+jax
