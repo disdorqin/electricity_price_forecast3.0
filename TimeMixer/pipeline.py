@@ -11,8 +11,10 @@ from utils.io import ensure_prediction_frame, ensure_runtime_dirs
 from .repro_pipeline import RunConfig, run_monthly_reproduction
 
 
-DEFAULT_TIMEMIXER_CSV = r"D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\epf\data\shandong_pmos_hourly.csv"
-DEFAULT_DATA_XLSX = r"D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.0\data\shandong_pmos_hourly.xlsx"
+# Relative paths computed from project layout — works on any machine
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_DATA_XLSX = str(_PROJECT_ROOT / "data" / "shandong_pmos_hourly.xlsx")
+DEFAULT_TIMEMIXER_CSV = str(_PROJECT_ROOT.parent / "epf" / "data" / "shandong_pmos_hourly.csv")
 
 
 class ModelPipeline(BaseModelPipeline):

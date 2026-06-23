@@ -6,8 +6,12 @@ import argparse
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Unified electricity forecast entrypoint")
     parser.add_argument(
+        "pos_date", nargs="?", default=None,
+        help="Target date (YYYY-MM-DD). Shortcut for --pipeline full --date <DATE>",
+    )
+    parser.add_argument(
         "--pipeline",
-        required=True,
+        default="full",
         choices=[
             "predict",
             "train",
@@ -18,6 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
             "learner_stage",
             "fuse_stage",
             "classifier_stage",
+            "full",
         ],
     )
     parser.add_argument("--target", default="both", choices=["dayahead", "realtime", "both"])

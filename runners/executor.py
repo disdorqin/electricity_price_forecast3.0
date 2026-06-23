@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 
 from pipelines.base import PredictionResult
 from runners.registry import get_model_pipeline
+
+logger = logging.getLogger(__name__)
 
 
 CPU_MODELS = {"lightgbm", "sgdfnet"}
@@ -38,6 +41,8 @@ def execute_tasks(tasks: list[TaskSpec], max_cpu_workers: int = 2, max_gpu_worke
                 result = _run_task(task)
                 if result is not None:
                     results.append(result)
+                else:
+                    logger.warning("executor: %s/%s returned None — model skipped", task.model_name, task.target)
             continue
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(_run_task, task) for task in grouped_tasks]
@@ -45,4 +50,7 @@ def execute_tasks(tasks: list[TaskSpec], max_cpu_workers: int = 2, max_gpu_worke
                 result = future.result()
                 if result is not None:
                     results.append(result)
+                else:
+                    # Find which task this future corresponds to (best-effort)
+                    logger.warning("executor: a task returned None — model skipped")
     return results

@@ -48,15 +48,53 @@ pip install -r requirements.txt
 `python-dotenv` / `openpyxl` / `chinese-calendar` / `borax` / `huggingface_hub[cli]` /
 `safetensors`。
 
-若需使用 TimesFM,还需在对应环境中本地安装 `epf` 项目下的 `TF` 包:
+若需使用 TimesFM,还需安装 `timesfm` 包本体。有两种方式:
+
+**方式 A: 从本项目内置的 TimesFM 目录安装（推荐）**
+
+```bash
+pip install -e TimesFM/[xreg]
+```
+
+**方式 B: 从外部 epf 项目的 TF 目录安装**
 
 ```bash
 pip install -e <epf_project_path>/TF[xreg]
 ```
 
-其中 `<epf_project_path>` 为 `epf` 项目主目录(例如 `D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\epf`),`[xreg]` 为 `scikit-learn` 等额外依赖。
+其中 `<epf_project_path>` 为 `epf` 项目主目录(例如 `D:\作业\...\epf`),`[xreg]` 包含 `scikit-learn` 等协变量回归依赖。
 
-### 2. 准备数据
+### 2. 下载 TimesFM 模型权重
+
+> **重要**:TimesFM 的预训练权重文件(~882 MB)不包含在 git 仓库中(`.gitignore` 排除了 `models/` 目录)。
+> 如果缺少权重文件,TimesFM 会在 model_stage 中直接报错并导致该模型被排除出融合。
+
+将以下两个文件下载到 `models/timesFM/` 目录:
+
+```bash
+# HuggingFace 镜像（国内推荐）
+curl -L -o models/timesFM/config.json https://hf-mirror.com/google/timesfm-2.5-200m-pytorch/resolve/main/config.json
+curl -L -o models/timesFM/model.safetensors https://hf-mirror.com/google/timesfm-2.5-200m-pytorch/resolve/main/model.safetensors
+
+# 或 HuggingFace 官方（需科学上网）
+curl -L -o models/timesFM/config.json https://huggingface.co/google/timesfm-2.5-200m-pytorch/resolve/main/config.json
+curl -L -o models/timesFM/model.safetensors https://huggingface.co/google/timesfm-2.5-200m-pytorch/resolve/main/model.safetensors
+```
+
+下载后 `models/timesFM/` 应包含:
+```
+models/timesFM/
+├── config.json           (~4 KB)
+└── model.safetensors     (~882 MB)
+```
+
+验证:如果 TimesFM 权重缺失,运行时会看到明确的报错信息:
+```
+RuntimeError: TimesFM model weights not available: ...
+Please download google/timesfm-2.5-200m-pytorch to models/timesFM/
+```
+
+### 3. 准备数据
 
 `RT916_SpikeFusionNet` 需要山东省 PMOS 小时级电力数据(`.xlsx` 格式),
 参见 `RT916_SpikeFusionNet/configs/default_cli.json` 中的 `RAW_DF_PATH` 字段。
@@ -67,7 +105,7 @@ pip install -e <epf_project_path>/TF[xreg]
 `ds` / `day_ahead_clearing_price` / `realtime_price` / `load` / `wind` / `solar` /
 `interconnect` / `bidding_space`。
 
-### 3. 运行各模型
+### 4. 运行各模型
 
 ```bash
 # RT916
@@ -90,6 +128,28 @@ python TimesFM/pipeline.py --help
 ## 端到端四阶段运行(推荐)
 
 项目当前的标准运行链路为 **同步数据 → 模型训练/预测 → 学习器学习权重 → 加权融合 → 负电价分类器校正**。四个阶段必须按顺序执行,且统一使用 [`main.py`](./main.py) 入口。
+
+### 一行命令（推荐）
+
+```bash
+python main.py 2026-06-19
+```
+
+等价于 `--pipeline full --date 2026-06-19`,自动串行执行全部四个阶段,日前3个模型 + 实时4个模型全部参与,最终输出到 `daily_runs/2026-06-19/` 下的 `final/` 文件夹。
+
+如需指定模型子集或其他参数:
+
+```bash
+# 只跑指定模型
+python main.py 2026-06-19 --stage-models lightgbm,timemixer
+
+# 只用日前模型
+python main.py 2026-06-19 --target dayahead
+```
+
+### 分阶段执行
+
+也可以逐阶段运行（适合调试或断点续跑）:
 
 ```bash
 # 阶段 0: 同步云端/数据库最新数据
@@ -182,8 +242,9 @@ DB_PWD=your_password
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `--pipeline` | (必填) | 运行阶段：`sync_dataset` / `model_stage` / `learner_stage` / `fuse_stage` / `classifier_stage` / `predict` / `train` / `evaluate` / `fusion` |
-| `--date` | None | **[可调]** 目标预测日期（YYYY-MM-DD），即"D日"。通常为明天或指定日期 |
+| `date`（位置参数） | None | **[可调]** 目标日期（YYYY-MM-DD）。`python main.py 2026-06-19` 等价于 `--pipeline full --date 2026-06-19` |
+| `--pipeline` | `full` | 运行阶段：`full`（一键全流程）/ `sync_dataset` / `model_stage` / `learner_stage` / `fuse_stage` / `classifier_stage` / `predict` / `train` / `evaluate` / `fusion` |
+| `--date` | None | **[可调]** 目标预测日期（YYYY-MM-DD），即"D日"。与位置参数二选一 |
 | `--start` / `--end` | None | **[可调]** 批量预测的起止日期，与 `--date` 二选一 |
 | `--target` | `both` | **[可调]** 预测目标：`dayahead`（仅日前）、`realtime`（仅实时）、`both`（两者） |
 | `--data-path` | `data/shandong_pmos_hourly.xlsx` | **[可调]** 数据文件路径，甲方环境需改为实际路径 |
@@ -215,6 +276,22 @@ DB_PWD=your_password
 - [`docs/metrics_calculation.md`](./docs/metrics_calculation.md) — 三个模型统一使用的评估指标计算口径(SMAPE、MAPE、MAE、RMSE、方向准确率等)
 - [`docs/实验运行约定.md`](./docs/实验运行约定.md) — 实验运行流程约定
 - [`docs/项目执行逻辑与陪跑步骤对齐.md`](./docs/项目执行逻辑与陪跑步骤对齐.md) — 项目执行逻辑与陪跑步骤说明
+
+## 复现检查清单
+
+在新机器或新环境中复现项目时,按顺序检查以下事项:
+
+| # | 检查项 | 命令 / 方法 |
+|---|--------|-----------|
+| 1 | Python 环境 | `python --version` (需 >= 3.10) |
+| 2 | pip 依赖 | `pip install -r requirements.txt` |
+| 3 | TimesFM 包 | `pip install -e TimesFM/[xreg]` 或 `pip install -e TF/[xreg]` |
+| 4 | TimesFM 权重 | 确认 `models/timesFM/config.json` 和 `models/timesFM/model.safetensors` 存在 |
+| 5 | 数据文件 | 确认 `data/shandong_pmos_hourly.xlsx` 存在 |
+| 6 | GPU 可用 | `python -c "import torch; print(torch.cuda.is_available())"` |
+| 7 | 快速验证 | `python main.py 2026-02-01 --stage-models lightgbm --validation-days 3` (2 分钟内完成) |
+
+如果第 7 步成功运行并输出 `FULL PIPELINE COMPLETE`,说明环境配置正确。
 
 ## 许可
 

@@ -31,7 +31,15 @@ _archive/
 **/_archive/
 fusion_runs/
 daily_runs/
+daily_runs_*/
 ExtremPriceClf/daily_runs/
+
+# Ad-hoc scripts & outputs (not part of the project)
+run_*.py
+run_*.bat
+launch_*.py
+compute_*.py
+_test_*/
 
 # Temp
 _tmp_*.py

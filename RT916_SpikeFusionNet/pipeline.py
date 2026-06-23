@@ -28,6 +28,9 @@ class ModelPipeline(BaseModelPipeline):
     device_type = "gpu"
 
     def train(self, target: str = "realtime", **kwargs):
+        _dp = kwargs.get("data_path")
+        if _dp:
+            core.RAW_DF_PATH = os.path.abspath(_dp)
         start_end = self._resolve_start_end(kwargs)
         return core.train_interface(target=TARGET_MAP[target], start_end_list=start_end, mod="all")
 
@@ -40,6 +43,10 @@ class ModelPipeline(BaseModelPipeline):
         # Training (separate path) still benefits from AMP.
         os.environ["OPTIM_AMP"] = "0"
         os.environ["SPIKE_TRAIN_MONTHS"] = str(int(kwargs.get("training_months", 12)))
+        # Override frozen RAW_DF_PATH so the model works on other machines / paths
+        _dp = kwargs.get("data_path")
+        if _dp:
+            core.RAW_DF_PATH = os.path.abspath(_dp)
         start_end = self._resolve_start_end(kwargs)
         if target == "realtime":
             # RT916 realtime must first produce DA predictions, then inject them into RT.

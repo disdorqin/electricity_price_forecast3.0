@@ -1,4 +1,11 @@
-# Core scientific / ML stack
+# ============================================================
+# 山东电力现货市场预测系统 — Python 依赖
+# ============================================================
+# 安装: pip install -r requirements.txt
+# 环境: Python >= 3.10, 推荐 conda 环境
+# ============================================================
+
+# ── Core scientific / ML stack ──
 numpy>=1.23
 pandas>=1.5
 scikit-learn>=1.2
@@ -7,33 +14,33 @@ xgboost>=2.0
 catboost>=1.2
 lightgbm>=4.0
 
-# Deep learning (RT916_SpikeFusionNet / TimeMixer use torch)
+# ── Deep learning ──
+# RT916_SpikeFusionNet / TimeMixer / TimesFM(PyTorch backend) 均依赖 torch
 torch>=2.0
 
-# Visualization
-matplotlib>=3.5
-
-# I/O & utilities
+# ── I/O & utilities ──
 pyyaml>=6.0
 joblib>=1.2
 python-dotenv>=1.0
-pymysql>=1.1
-openpyxl>=3.0           # required by pandas.read_excel
-chinese-calendar>=1.10
-borax>=1.4
+pymysql>=1.1              # sync_dataset 数据库同步
+openpyxl>=3.0             # pandas.read_excel 需要
+chinese-calendar>=1.10    # 节假日判断
+borax>=1.4                # 农历日期
+matplotlib>=3.5
 
-# Variational Mode Decomposition (used by SGDFNet/RT916 fusion runner)
-vmdpy>=0.2
+# ── SGDFNet / RT916 融合 ──
+vmdpy>=0.2                # Variational Mode Decomposition
 
-# TimesFM dependencies
-huggingface_hub[cli]>=0.23.0
-safetensors>=0.5.3
-# timesfm[xreg] is installed locally via: pip install -e <epf_project>/TF[xreg]
-timesfm>=1.0            # or local editable install from epf/TF
+# ── TimesFM 依赖 ──
+# 注意: timesfm 包本身需要从本地 TF/ 目录安装（见 README 安装说明）
+huggingface_hub[cli]>=0.23.0   # 下载预训练权重
+safetensors>=0.5.3             # 加载 .safetensors 权重文件
+jax>=0.4                       # TimesFM xreg 协变量回归模块需要
 
-# TimesFM uses the Flax/JAX stack
-einshape>=1.0
-flax>=0.8
-jax>=0.4
-jaxtyping>=0.2
-orbax-checkpoint>=0.4
+# ── TimesFM Flax 后端（可选）──
+# 以下依赖仅在使用 TimesFM Flax 后端时需要。本项目使用 PyTorch 后端，
+# 如需安装可取消注释，或安装 TF 包时附带: pip install -e TF/[xreg,flax]
+# einshape>=1.0
+# flax>=0.8
+# jaxtyping>=0.2
+# orbax-checkpoint>=0.4

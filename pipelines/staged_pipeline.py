@@ -161,19 +161,38 @@ def run_model_stage(args):
         val_start_str, val_end_str, val_days, forecast_str, training_months,
     )
 
+    # Track model execution status for summary reporting
+    model_status: dict[str, str] = {}  # "{target}/{model}" -> "ok" | "skip" | "FAIL: reason"
+
     for target in targets:
         layout = build_daily_run_layout(root, run_date, target)
         truth_df = _read_truth_frame(args.data_path, target)
         requested_models = _resolve_models_for_target(target, getattr(args, "stage_models", "formal"))
         for model_name in requested_models:
+            model_key = f"{target}/{model_name}"
             model_dir = _model_dir(layout, model_name)
+
+            # ── Skip if outputs already exist (resume support) ──
+            _forecast_csv = model_dir / "forecast_predictions.csv"
+            _val_csv = model_dir / "val_predictions.csv"
+            if _forecast_csv.exists() and _val_csv.exists():
+                # Verify the files are non-empty (guard against empty files from prior failures)
+                try:
+                    _fc_head = pd.read_csv(_forecast_csv, nrows=1, encoding="utf-8-sig")
+                    _vl_head = pd.read_csv(_val_csv, nrows=1, encoding="utf-8-sig")
+                    if len(_fc_head) > 0 and len(_vl_head) > 0:
+                        logger.info("SKIP %s/%s — outputs already exist", target, model_name)
+                        model_status[model_key] = "skip (outputs exist)"
+                        continue
+                    else:
+                        logger.info("REDO %s/%s — existing outputs are empty, re-running", target, model_name)
+                except Exception:
+                    logger.info("REDO %s/%s — existing outputs unreadable, re-running", target, model_name)
 
             # ── Single predict_range call for validation period ──
             val_df = pd.DataFrame(columns=["时刻", "预测值", "model_name", "target", "run_date", "source"])
+            val_error = None
             try:
-                # start=val_start anchors both training cutoff and first prediction day.
-                # DA models: train on ~11 months before val_start, predict 30 days.
-                # RT models: retrain per day with D-1 cutoff across the 30-day window.
                 val_result = _run_model_for_range(
                     model_name, target=target,
                     start=val_start_str, end=val_end_str,
@@ -183,10 +202,12 @@ def run_model_stage(args):
                 if val_result is not None:
                     val_df = _prediction_frame_from_result(val_result, model_name, target, run_date, "validation")
             except Exception as exc:  # noqa: BLE001
-                logger.warning("Validation skipped %s/%s: %s", target, model_name, exc)
+                val_error = str(exc)
+                logger.error("FAILED validation %s/%s: %s", target, model_name, exc)
 
             # ── Single predict_range call for forecast day ──
             forecast_df = pd.DataFrame(columns=["时刻", "预测值", "model_name", "target", "run_date", "source"])
+            fc_error = None
             try:
                 fc_result = _run_model_for_range(
                     model_name, target=target,
@@ -197,9 +218,12 @@ def run_model_stage(args):
                 if fc_result is not None:
                     forecast_df = _prediction_frame_from_result(fc_result, model_name, target, run_date, "forecast")
             except Exception as exc:  # noqa: BLE001
-                logger.warning("Forecast skipped %s/%s: %s", target, model_name, exc)
+                fc_error = str(exc)
+                logger.error("FAILED forecast %s/%s: %s", target, model_name, exc)
 
             if val_df.empty and forecast_df.empty:
+                error_detail = val_error or fc_error or "both val and forecast produced no output"
+                model_status[model_key] = f"FAIL: {error_detail}"
                 continue
 
             val_path = model_dir / "val_predictions.csv"
@@ -216,6 +240,23 @@ def run_model_stage(args):
                 forecast_ready.to_csv(forecast_path, index=False, encoding="utf-8-sig")
                 outputs.append(str(forecast_path))
                 logger.info("%s/%s forecast: %d rows", target, model_name, len(forecast_ready))
+
+            model_status[model_key] = "ok"
+
+    # ── Summary: report which models succeeded/failed ──
+    if model_status:
+        ok_list = [k for k, v in model_status.items() if v == "ok" or v.startswith("skip")]
+        fail_list = [(k, v) for k, v in model_status.items() if v.startswith("FAIL")]
+        logger.info("=" * 60)
+        logger.info("model_stage summary for %s:", run_date)
+        for key in sorted(model_status):
+            status = model_status[key]
+            logger.info("  %-40s %s", key, status)
+        if fail_list:
+            logger.error("!! %d model(s) FAILED:", len(fail_list))
+            for key, reason in fail_list:
+                logger.error("   %s: %s", key, reason)
+        logger.info("=" * 60)
 
     return outputs
 
@@ -263,6 +304,20 @@ def run_learner_stage(args):
         val_df = _collect_stage_predictions(layout, file_name="val_predictions.csv")
         raw_val_path = layout.learner_inputs_dir / "validation_predictions.csv"
         val_df.to_csv(raw_val_path, index=False, encoding="utf-8-sig")
+
+        # Report which models are included in fusion
+        included_models = sorted(val_df["model_name"].dropna().unique().tolist()) if "model_name" in val_df.columns else []
+        model_row_counts = {}
+        if "model_name" in val_df.columns:
+            for m in included_models:
+                model_row_counts[m] = int((val_df["model_name"] == m).sum())
+        logger.info(
+            "learner_stage %s/%s: %d models included in fusion: %s",
+            target, run_date, len(included_models),
+            ", ".join(f"{m}({model_row_counts.get(m, 0)}rows)" for m in included_models),
+        )
+        if not included_models:
+            raise RuntimeError(f"No model predictions found for {target}/{run_date} — cannot fit fusion weights")
 
         contract_df = _to_contract_long_table(val_df, target=target)
         contract_path = layout.learner_inputs_dir / "validation_long_table.csv"
@@ -407,3 +462,50 @@ def run_classifier_stage(args):
         corrected_dst = layout.final_dir / "fused_predictions_corrected.csv"
         corrected_dst.write_bytes(corrected_src.read_bytes())
     return result
+
+
+def run_full_pipeline(args):
+    """One-command full pipeline: model_stage → learner_stage → fuse_stage → classifier_stage."""
+    run_date = _resolve_run_date(args)
+    logger.info("=" * 60)
+    logger.info("FULL PIPELINE START — date=%s target=%s stage_models=%s", run_date, args.target, args.stage_models)
+    logger.info("=" * 60)
+
+    # Stage 1: Model predictions
+    logger.info("── Stage 1/4: model_stage ──")
+    model_outputs = run_model_stage(args)
+    logger.info("model_stage produced %d output files", len(model_outputs))
+
+    # Stage 2: Learn fusion weights
+    logger.info("── Stage 2/4: learner_stage ──")
+    learner_outputs = run_learner_stage(args)
+    logger.info("learner_stage produced %d output files", len(learner_outputs))
+
+    # Stage 3: Apply fusion weights
+    logger.info("── Stage 3/4: fuse_stage ──")
+    fuse_outputs = run_fuse_stage(args)
+    logger.info("fuse_stage produced %d output files", len(fuse_outputs))
+
+    # Stage 4: Classifier (only for realtime)
+    logger.info("── Stage 4/4: classifier_stage ──")
+    if args.target in ("both", "realtime"):
+        classifier_result = run_classifier_stage(args)
+        logger.info("classifier_stage result: %s", classifier_result)
+    else:
+        logger.info("classifier_stage skipped (target=dayahead only)")
+        classifier_result = {"status": "skipped", "reason": "dayahead_only"}
+
+    logger.info("=" * 60)
+    logger.info("FULL PIPELINE COMPLETE — date=%s", run_date)
+    logger.info("  model outputs: %d files", len(model_outputs))
+    logger.info("  learner outputs: %d files", len(learner_outputs))
+    logger.info("  fuse outputs: %d files", len(fuse_outputs))
+    logger.info("  classifier: %s", classifier_result)
+    logger.info("=" * 60)
+
+    return {
+        "model_stage": model_outputs,
+        "learner_stage": learner_outputs,
+        "fuse_stage": fuse_outputs,
+        "classifier_stage": classifier_result,
+    }

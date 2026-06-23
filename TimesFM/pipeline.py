@@ -41,8 +41,12 @@ class ModelPipeline(BaseModelPipeline):
 
         ready, reason = self._local_model_ready_status()
         if not ready:
-            logger.warning("Skipping TimesFM for %s/%s: %s", target, start, reason)
-            return None
+            raise RuntimeError(
+                f"TimesFM model weights not available: {reason}\n"
+                f"Please download google/timesfm-2.5-200m-pytorch to models/timesFM/\n"
+                f"  curl -L -o models/timesFM/config.json https://hf-mirror.com/google/timesfm-2.5-200m-pytorch/resolve/main/config.json\n"
+                f"  curl -L -o models/timesFM/model.safetensors https://hf-mirror.com/google/timesfm-2.5-200m-pytorch/resolve/main/model.safetensors"
+            )
 
         result = predict_price_for_range(
             data_path=data_path,

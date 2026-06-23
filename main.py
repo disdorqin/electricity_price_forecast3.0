@@ -16,6 +16,7 @@ from pipelines.sync_dataset_pipeline import run_sync_dataset_pipeline
 from pipelines.staged_pipeline import (
     run_classifier_stage,
     run_fuse_stage,
+    run_full_pipeline,
     run_learner_stage,
     run_model_stage,
 )
@@ -24,6 +25,9 @@ from pipelines.train_pipeline import run_train_pipeline
 
 def main() -> int:
     args = build_parser().parse_args()
+    # Positional date shortcut: `python main.py 2026-02-01`
+    if args.pos_date is not None and args.date is None:
+        args.date = args.pos_date
     if args.pipeline == "predict":
         results = run_predict_pipeline(args)
         for result in results:
@@ -66,6 +70,10 @@ def main() -> int:
     if args.pipeline == "classifier_stage":
         result = run_classifier_stage(args)
         print(result)
+        return 0
+    if args.pipeline == "full":
+        result = run_full_pipeline(args)
+        print(f"Full pipeline complete: {result['classifier_stage']}")
         return 0
     return 0
 

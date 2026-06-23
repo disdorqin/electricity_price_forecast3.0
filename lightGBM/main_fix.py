@@ -1,5 +1,6 @@
 import datetime
 import gc
+import logging
 import os
 
 import lightgbm as lgb
@@ -13,6 +14,8 @@ from lightGBM.train_da_fix import LGBMPowerPredictor as LGBMPowerPredictorDA
 from lightGBM.train_da_fix import ThreeStageLGBM as ThreeStageLGBMDA
 from lightGBM.train_fix import LGBMPowerPredictor
 from lightGBM.train_fix import ThreeStageLGBM
+
+logger = logging.getLogger(__name__)
 
 
 VALLEY_HOURS = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -362,10 +365,7 @@ def run_precision_simulation(
             if use_predicted_temp and working_raw_df is not None:
                 validate_business_day_filled(working_raw_df, target_day_str)
         except Exception as e:
-            print(f"{target_day_str} failed: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error("%s failed: %s", target_day_str, e, exc_info=True)
 
         current_target_date += datetime.timedelta(days=1)
         if best_res is not None:
@@ -420,17 +420,12 @@ def run_precision_simulation_da(
                     day_result_df["best_window"] = int(training_months)
                     all_days_preds.append(day_result_df)
             except Exception as e:
-                print(f"[{target_day_str}] dayahead predict failed: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error("[%s] dayahead predict failed: %s", target_day_str, e, exc_info=True)
 
             current_target_date += datetime.timedelta(days=1)
             gc.collect()
     except Exception as e:
-        print(f"dayahead batch fit failed: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.error("dayahead batch fit failed: %s", e, exc_info=True)
     finally:
         if best_res is not None:
             del best_res
