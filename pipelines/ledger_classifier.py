@@ -82,6 +82,7 @@ def run_ledger_classifier(args: Any) -> dict:
             fused_df=fused_df,
             target_date=target_date,
             runs_root=runs_root,
+            args=args,
         )
 
         if classifier_result["success"]:
@@ -108,8 +109,11 @@ def run_ledger_classifier(args: Any) -> dict:
         # Save classifier report
         report = {
             "target_date": target_date,
+            "method": classifier_result.get("method", "unknown"),
             "success": classifier_result["success"],
+            "fallback_used": classifier_result.get("fallback_used", False),
             "error": classifier_result.get("error"),
+            "original_error": classifier_result.get("original_error"),
             "n_corrections": classifier_result.get("n_corrections", 0),
             "n_corrected_rows": manifest["results"].get("corrected_rows", 0),
         }
@@ -143,60 +147,79 @@ def _run_extreme_price_classifier(
     fused_df: pd.DataFrame,
     target_date: str,
     runs_root: Path,
+    args: Any = None,
 ) -> dict:
     """
     Run the negative price classifier on fused realtime predictions.
 
-    Tries to use the existing ExtremePriceClf module.
+    Tries to use the existing ExtremePriceClf module via classifier_bridge.
     Falls back to a simple threshold-based classifier if the module
     is not available.
     """
-    result = {"success": False, "n_corrections": 0}
+    result = {"success": False, "n_corrections": 0, "method": "unknown"}
 
     try:
-        # Try using existing classifier bridge
         from fusion.classifier_bridge import run_classifier_pipeline
 
         logger.info("Using fusion.classifier_bridge for classification")
 
-        # Prepare input — copy fused to compat location
-        compat_dir = runs_root / target_date / "realtime" / "compat_fusion" / "realtime"
-        compat_dir.mkdir(parents=True, exist_ok=True)
-        fused_df.to_csv(compat_dir / "fused_predictions.csv", index=False)
+        # Setup compat fusion directory for classifier_bridge
+        compat_work_dir = runs_root / target_date / "realtime" / "compat_fusion"
+        rt_fused_dir = compat_work_dir / "realtime"
+        rt_fused_dir.mkdir(parents=True, exist_ok=True)
 
-        # Run classifier
+        # Copy fused predictions to where bridge expects them
+        fused_df.to_csv(rt_fused_dir / "fused_predictions.csv", index=False)
+
+        # Resolve clf_data_path
+        clf_data = None
+        if args is not None:
+            clf_data = getattr(args, "clf_data", None) or getattr(args, "data_path", None)
+        if clf_data is None:
+            clf_data = "data/shandong_pmos_hourly.xlsx"
+
+        # Call bridge with correct signature
         clf_result = run_classifier_pipeline(
-            run_date=target_date,
-            daily_run_root=str(runs_root),
+            fusion_work_dir=compat_work_dir,
+            project_root=Path.cwd(),
+            start_date=target_date,
+            end_date=target_date,
+            clf_data_path=Path(clf_data),
         )
 
-        if clf_result is not None:
+        if clf_result is not None and clf_result.get("status") == "completed":
             # Load corrected predictions
-            corrected_path = compat_dir / "fused_predictions_corrected.csv"
+            corrected_path = rt_fused_dir / "fused_predictions_corrected.csv"
             if corrected_path.exists():
                 corrected_df = pd.read_csv(corrected_path)
                 result["success"] = True
+                result["method"] = "classifier_bridge"
                 result["corrected_df"] = corrected_df
 
                 # Count corrections
                 if "y_fused" in fused_df.columns and "y_fused_corrected" in corrected_df.columns:
-                    corrections = (
-                        fused_df["y_fused"].values != corrected_df["y_fused_corrected"].values
-                    ).sum()
-                    result["n_corrections"] = int(corrections)
-
+                    corrections = int(
+                        (fused_df["y_fused"].values != corrected_df["y_fused_corrected"].values).sum()
+                    )
+                    result["n_corrections"] = corrections
             else:
-                result["error"] = "Classifier completed but no corrected file produced"
+                result["error"] = "Bridge completed but no corrected file produced"
+        elif clf_result is not None and clf_result.get("status") == "skipped":
+            result["error"] = clf_result.get("reason", "Classifier data doesn't cover date range")
+            result["fallback_used"] = True
         else:
-            result["error"] = "Classifier returned None"
+            result["error"] = f"Bridge returned: {clf_result}"
+            result["fallback_used"] = True
 
     except ImportError:
         logger.warning("classifier_bridge not available, using fallback")
         result = _fallback_classifier(fused_df, target_date)
+        result["fallback_used"] = True
     except Exception as e:
         logger.warning(f"Classifier failed, using fallback: {e}")
         result = _fallback_classifier(fused_df, target_date)
         result["original_error"] = str(e)
+        result["fallback_used"] = True
 
     return result
 
@@ -225,7 +248,8 @@ def _fallback_classifier(fused_df: pd.DataFrame, target_date: str) -> dict:
 
     return {
         "success": True,
+        "method": "fallback_threshold",
+        "fallback_used": True,
         "corrected_df": df,
         "n_corrections": int(n_extreme),
-        "method": "fallback_threshold",
     }

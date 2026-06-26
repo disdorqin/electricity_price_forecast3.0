@@ -29,6 +29,7 @@ from pipelines.ledger_weight import run_ledger_weight
 from pipelines.ledger_fuse import run_ledger_fuse
 from pipelines.ledger_classifier import run_ledger_classifier
 from pipelines.ledger_full import run_ledger_full
+from pipelines.ledger_smoke import run_ledger_smoke
 
 
 def main() -> int:
@@ -107,6 +108,10 @@ def main() -> int:
     if args.pipeline == "ledger_full":
         result = run_ledger_full(args)
         print(f"ledger_full complete: {result}")
+        return 0
+    if args.pipeline == "ledger_smoke":
+        result = run_ledger_smoke(args)
+        print(f"ledger_smoke complete: {result}")
         return 0
     return 0
 

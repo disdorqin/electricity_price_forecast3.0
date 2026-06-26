@@ -184,10 +184,14 @@ def _collect_final_outputs(runs_root: Path, target_date: str) -> dict:
     final_dir = run_dir / "final"
     final_dir.mkdir(parents=True, exist_ok=True)
 
-    # Dayahead final
+    # Dayahead final — write to BOTH locations
     da_final = run_dir / "dayahead" / "fuse" / "fused_predictions.csv"
     if da_final.exists():
         shutil.copy2(da_final, final_dir / "dayahead_final_predictions.csv")
+        # Also write to dayahead/final/
+        dayahead_final_dir = run_dir / "dayahead" / "final"
+        dayahead_final_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(da_final, dayahead_final_dir / "dayahead_final_predictions.csv")
         da_df = pd.read_csv(da_final)
         result["dayahead_final_rows"] = len(da_df)
         _validate_final(da_df, "dayahead", target_date, result)
@@ -237,7 +241,7 @@ def _validate_final(df: pd.DataFrame, task: str, target_date: str, result: dict)
 
 
 def _build_submission_ready(final_dir: Path, target_date: str, result: dict):
-    """Build a consolidated submission_ready.csv with dayahead + realtime."""
+    """Build a consolidated submission_ready.csv with dayahead + realtime — fixed columns."""
     da_path = final_dir / "dayahead_final_predictions.csv"
     rt_path = final_dir / "realtime_final_predictions_corrected.csv"
 
@@ -245,34 +249,50 @@ def _build_submission_ready(final_dir: Path, target_date: str, result: dict):
     if not rt_path.exists():
         rt_path = final_dir / "realtime_final_predictions.csv"
 
-    pieces = []
+    if not da_path.exists() and not rt_path.exists():
+        result.setdefault("warnings", []).append("No data for submission_ready.csv")
+        return
+
+    da_df = None
+    rt_df = None
+
     if da_path.exists():
         da_df = pd.read_csv(da_path)
         da_df = da_df.rename(columns={"y_fused": "dayahead_price"})
-        # Keep minimal columns
-        keep = [c for c in ["business_day", "ds", "hour_business", "period", "dayahead_price"] if c in da_df.columns]
-        pieces.append(da_df[keep])
 
     if rt_path.exists():
         rt_df = pd.read_csv(rt_path)
-        # Check for corrected column name
         price_col = "y_fused_corrected" if "y_fused_corrected" in rt_df.columns else "y_fused"
         rt_df = rt_df.rename(columns={price_col: "realtime_price"})
-        keep = [c for c in ["business_day", "ds", "hour_business", "period", "realtime_price"] if c in rt_df.columns]
-        pieces.append(rt_df[keep])
 
-    if pieces:
-        submission = pieces[0]
-        for other in pieces[1:]:
-            merge_on = [c for c in ["business_day", "hour_business"] if c in submission.columns and c in other.columns]
-            if merge_on:
-                submission = submission.merge(other, on=merge_on, how="outer")
-            else:
-                submission = pd.concat([submission, other], axis=1)
+    # Build with fixed, clean columns — merge on business_day + hour_business
+    FIXED_COLUMNS = ["business_day", "ds", "hour_business", "period", "dayahead_price", "realtime_price"]
 
-        submission.to_csv(final_dir / "submission_ready.csv", index=False)
-        result["submission_ready_rows"] = len(submission)
-        logger.info(f"submission_ready.csv: {len(submission)} rows")
+    if da_df is not None and rt_df is not None:
+        # Check ds/period consistency before merge
+        da_sub = da_df[["business_day", "hour_business", "ds", "period", "dayahead_price"]].copy()
+        rt_sub = rt_df[["business_day", "hour_business", "realtime_price"]].copy()
+        submission = da_sub.merge(rt_sub, on=["business_day", "hour_business"], how="outer")
+        # Drop _x/_y columns if any
+        for col in list(submission.columns):
+            if col.endswith("_x") or col.endswith("_y"):
+                submission = submission.drop(columns=[col])
+    elif da_df is not None:
+        da_sub = da_df[["business_day", "hour_business", "ds", "period", "dayahead_price"]].copy()
+        da_sub["realtime_price"] = None
+        submission = da_sub
+    else:
+        rt_sub = rt_df[["business_day", "hour_business", "ds", "period", "realtime_price"]].copy()
+        rt_sub["dayahead_price"] = None
+        submission = rt_sub
+
+    # Enforce fixed column order
+    out_cols = [c for c in FIXED_COLUMNS if c in submission.columns]
+    submission = submission[out_cols]
+
+    submission.to_csv(final_dir / "submission_ready.csv", index=False)
+    result["submission_ready_rows"] = len(submission)
+    logger.info(f"submission_ready.csv: {len(submission)} rows")
 
 
 def _write_manifest(runs_root: Path, target_date: str, manifest: dict):

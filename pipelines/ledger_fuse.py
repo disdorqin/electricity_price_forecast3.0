@@ -51,6 +51,7 @@ def run_ledger_fuse(args: Any) -> dict:
     }
 
     try:
+        failed_tasks = []
         for task in ["dayahead", "realtime"]:
             task_result = _fuse_for_task(
                 task=task,
@@ -60,8 +61,16 @@ def run_ledger_fuse(args: Any) -> dict:
                 allow_equal_weight_fallback=allow_eq_w,
             )
             manifest["results"][task] = task_result
+            if task_result.get("status") != "complete":
+                failed_tasks.append(
+                    f"{task}: {task_result.get('error', task_result.get('status'))}"
+                )
 
-        manifest["status"] = "complete"
+        if failed_tasks:
+            manifest["status"] = "failed"
+            manifest["errors"].extend(failed_tasks)
+        else:
+            manifest["status"] = "complete"
         manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
 
     except Exception as e:

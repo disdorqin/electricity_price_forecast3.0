@@ -244,18 +244,43 @@ class DailyLedgerGEF:
                     if len(day_period_df) == 0:
                         continue
 
-                    # Get y_true for this day+period (should be same across models)
-                    y_true = day_period_df["y_true"].values
-
-                    # Compute loss per model
+                    # Compute loss per model — each model's y_pred is aligned
+                    # to its own y_true rows (sorted by hour_business, dropping NaN).
                     losses = {}
+                    shape_errors = []
                     for m in models:
-                        m_df = day_period_df[day_period_df["model_name"] == m]
+                        m_df = (
+                            day_period_df[day_period_df["model_name"] == m]
+                            .sort_values("hour_business")
+                            .dropna(subset=["y_true", "y_pred"])
+                        )
+
                         if len(m_df) == 0:
                             losses[m] = np.nan
                             continue
-                        y_pred = m_df["y_pred"].values
-                        losses[m] = compute_daily_loss(y_true, y_pred, cfg.loss_type)
+
+                        y_true_m = m_df["y_true"].values
+                        y_pred_m = m_df["y_pred"].values
+
+                        if len(y_true_m) != len(y_pred_m):
+                            err = (
+                                f"Loss shape mismatch for {task}/{period}/{day}/{m}: "
+                                f"y_true={len(y_true_m)}, y_pred={len(y_pred_m)}"
+                            )
+                            shape_errors.append(err)
+                            losses[m] = np.nan
+                            continue
+
+                        losses[m] = compute_daily_loss(y_true_m, y_pred_m, cfg.loss_type)
+
+                    if shape_errors:
+                        for err in shape_errors:
+                            logger.error(err)
+                        raise ValueError(
+                            f"Shape mismatch in {task}/{period}/{day}: "
+                            f"{len(shape_errors)} models affected. "
+                            f"First error: {shape_errors[0]}"
+                        )
 
                     # Available models
                     available = [m for m in models if not np.isnan(losses[m])]

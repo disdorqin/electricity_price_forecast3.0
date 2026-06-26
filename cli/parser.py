@@ -30,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
             "ledger_fuse",
             "ledger_classifier",
             "ledger_full",
+            "ledger_smoke",
         ],
     )
     parser.add_argument("--target", default="both", choices=["dayahead", "realtime", "both"])

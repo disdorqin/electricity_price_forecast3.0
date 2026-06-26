@@ -86,6 +86,7 @@ def run_ledger_weight(args: Any) -> dict:
     }
 
     try:
+        failed_tasks = []
         for task in ["dayahead", "realtime"]:
             task_result = _learn_weights_for_task(
                 task=task,
@@ -98,12 +99,22 @@ def run_ledger_weight(args: Any) -> dict:
                 recent_week_max_gate=recent_week_max_gate,
             )
             manifest["results"][task] = task_result
+            if task_result.get("status") != "complete":
+                failed_tasks.append(
+                    f"{task}: {task_result.get('error', task_result.get('status'))}"
+                )
 
-        manifest["status"] = "complete"
+        if failed_tasks:
+            manifest["status"] = "failed"
+            manifest["errors"].extend(failed_tasks)
+        else:
+            manifest["status"] = "complete"
+
         manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
 
-        # Weight validation
-        _validate_weights(manifest)
+        # Weight validation (only if not failed)
+        if not failed_tasks:
+            _validate_weights(manifest)
 
     except Exception as e:
         manifest["status"] = "failed"

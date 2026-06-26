@@ -754,10 +754,18 @@ def _extract_actuals(
         day_data["hour_business"] = day_data["ds"].apply(hour_business_from_timestamp)
         day_data["period"] = day_data["hour_business"].apply(infer_period)
 
-        # Find actual price columns
+        # Find actual price columns with extended aliases
+        dayahead_aliases = [
+            "日前电价", "日前出清电价", "day_ahead_clearing_price",
+            "dayahead_price", "da_price",
+        ]
+        realtime_aliases = [
+            "实时电价", "realtime_price", "rt_price",
+        ]
+
         for task, col_names in [
-            ("dayahead", ["日前电价", "da_price", "dayahead_price"]),
-            ("realtime", ["实时电价", "rt_price", "realtime_price"]),
+            ("dayahead", dayahead_aliases),
+            ("realtime", realtime_aliases),
         ]:
             y_col = None
             for cn in col_names:
@@ -766,6 +774,9 @@ def _extract_actuals(
                     break
 
             if y_col is None:
+                manifest["warnings"].append(
+                    f"Actual column not found for {task}. Tried: {col_names}"
+                )
                 continue
 
             act_df = day_data[["ds", "business_day", "hour_business", "period", y_col]].copy()
