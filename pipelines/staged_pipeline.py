@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -171,6 +172,13 @@ def run_model_stage(args):
         for model_name in requested_models:
             model_key = f"{target}/{model_name}"
             model_dir = _model_dir(layout, model_name)
+
+            force = getattr(args, "force", False)
+            if force:
+                if model_dir.exists():
+                    shutil.rmtree(model_dir)
+                    logger.info("FORCE %s/%s — deleted prior outputs", target, model_name)
+                model_dir.mkdir(parents=True, exist_ok=True)
 
             # ── Skip if outputs already exist (resume support) ──
             _forecast_csv = model_dir / "forecast_predictions.csv"

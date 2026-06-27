@@ -36,6 +36,8 @@ ExtremPriceClf/daily_runs/
 
 # Ad-hoc scripts & outputs (not part of the project)
 run_*.py
+# Allow the release entry point
+!run_one_day_release.py
 run_*.bat
 launch_*.py
 compute_*.py

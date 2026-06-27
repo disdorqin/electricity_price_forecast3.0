@@ -19,6 +19,7 @@ lightgbm>=4.0
 torch>=2.0
 
 # ── I/O & utilities ──
+pyarrow>=14.0             # parquet 读写
 pyyaml>=6.0
 joblib>=1.2
 python-dotenv>=1.0
