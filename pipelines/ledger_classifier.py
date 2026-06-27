@@ -96,6 +96,12 @@ def run_ledger_classifier(args: Any) -> dict:
                 manifest["results"]["corrected_rows"] = len(corrected_df)
                 manifest["results"]["corrections_applied"] = classifier_result.get("n_corrections", 0)
 
+                # Build corrected_hours detail
+                corrected_hours = classifier_result.get("corrected_hours", [])
+                if not corrected_hours and classifier_result.get("n_corrections", 0) > 0 and "y_fused" in fused_df.columns and "y_fused_corrected" in corrected_df.columns:
+                    corrected_hours = _build_corrected_hours(fused_df, corrected_df)
+                manifest["results"]["corrected_hours"] = corrected_hours or []
+
             manifest["status"] = "complete"
         else:
             msg = f"Classifier failed: {classifier_result.get('error', 'unknown')}"
@@ -116,6 +122,7 @@ def run_ledger_classifier(args: Any) -> dict:
             "original_error": classifier_result.get("original_error"),
             "n_corrections": classifier_result.get("n_corrections", 0),
             "n_corrected_rows": manifest["results"].get("corrected_rows", 0),
+            "corrected_hours": manifest["results"].get("corrected_hours", []),
         }
         with open(realtime_final_dir / "classifier_report.json", "w") as f:
             json.dump(report, f, indent=2, ensure_ascii=False, default=str)
@@ -196,12 +203,19 @@ def _run_extreme_price_classifier(
                 result["method"] = "classifier_bridge"
                 result["corrected_df"] = corrected_df
 
-                # Count corrections
-                if "y_fused" in fused_df.columns and "y_fused_corrected" in corrected_df.columns:
+                # Count corrections via bridge result or compute
+                corrections = classifier_result.get("n_corrections", 0)
+                if corrections == 0 and "y_fused" in fused_df.columns and "y_fused_corrected" in corrected_df.columns:
                     corrections = int(
                         (fused_df["y_fused"].values != corrected_df["y_fused_corrected"].values).sum()
                     )
-                    result["n_corrections"] = corrections
+                result["n_corrections"] = corrections
+
+                # Build corrected_hours
+                corrected_hours = classifier_result.get("corrected_hours", [])
+                if not corrected_hours and corrections > 0 and "y_fused" in fused_df.columns and "y_fused_corrected" in corrected_df.columns:
+                    corrected_hours = _build_corrected_hours(fused_df, corrected_df)
+                result["corrected_hours"] = corrected_hours or []
             else:
                 result["error"] = "Bridge completed but no corrected file produced"
                 # Fall back — ensure corrected file always exists
@@ -247,8 +261,18 @@ def _fallback_classifier(fused_df: pd.DataFrame, target_date: str) -> dict:
     extreme_mask = df["y_fused"] < -50
     n_extreme = extreme_mask.sum()
 
+    corrected_hours = []
     if n_extreme > 0:
         # Correct extreme negative prices to -80 (standard correction)
+        extreme_indices = df.index[extreme_mask].tolist()
+        for idx in extreme_indices:
+            row = df.loc[idx]
+            corrected_hours.append({
+                "hour_business": int(row.get("hour_business", 0)),
+                "ds": str(row.get("ds", "")),
+                "before": float(row["y_fused"]),
+                "after": -80.0,
+            })
         df.loc[extreme_mask, "y_fused_corrected"] = -80.0
         logger.info(
             f"Fallback classifier: {n_extreme} hours flagged as extreme negative, "
@@ -261,4 +285,31 @@ def _fallback_classifier(fused_df: pd.DataFrame, target_date: str) -> dict:
         "fallback_used": True,
         "corrected_df": df,
         "n_corrections": int(n_extreme),
+        "corrected_hours": corrected_hours,
     }
+
+
+def _build_corrected_hours(
+    fused_df: pd.DataFrame, corrected_df: pd.DataFrame
+) -> list[dict]:
+    """Build list of corrected hours with before/after values."""
+    corrected_hours = []
+    # Align by index; fall back to comparing y_fused vs y_fused_corrected
+    common_col = "y_fused_corrected"
+    if common_col not in corrected_df.columns:
+        return corrected_hours
+
+    fused_vals = fused_df["y_fused"].values
+    corrected_vals = corrected_df[common_col].values
+    min_len = min(len(fused_vals), len(corrected_vals))
+    for i in range(min_len):
+        if fused_vals[i] != corrected_vals[i]:
+            row_idx = corrected_df.index[i] if i < len(corrected_df) else i
+            row = corrected_df.iloc[i]
+            corrected_hours.append({
+                "hour_business": int(row.get("hour_business", 0)),
+                "ds": str(row.get("ds", "")),
+                "before": float(fused_vals[i]),
+                "after": float(corrected_vals[i]),
+            })
+    return corrected_hours

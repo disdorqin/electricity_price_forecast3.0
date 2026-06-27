@@ -10,6 +10,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target date (YYYY-MM-DD). Shortcut for --date with the default pipeline.",
     )
     parser.add_argument(
+        "pos_end", nargs="?", default=None,
+        help="Range end date (YYYY-MM-DD). If provided with pos_date, activates range mode.",
+    )
+    parser.add_argument(
         "--pipeline",
         default="ledger_full",
         choices=[
@@ -22,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
             "ledger_fuse",
             "ledger_classifier",
             "ledger_full",
+            "ledger_full_range",
             "ledger_smoke",
         ],
     )
@@ -61,4 +66,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--smoke-training-months", type=int, default=3)
     parser.add_argument("--smoke-timemixer-epochs", type=int, default=3)
     parser.add_argument("--smoke-timemixer-patience", type=int, default=1)
+
+    # Range pipeline params
+    parser.add_argument("--continue-on-error", action="store_true", default=False,
+        help="Continue range pipeline even if a single day fails")
+    parser.add_argument("--skip-existing-final", action="store_true", default=False,
+        help="Skip days with verified submission_ready.csv already present")
+    parser.add_argument("--range-preflight", dest="range_preflight", action="store_true", default=True,
+        help="Run preflight checks before starting range pipeline")
+    parser.add_argument("--no-range-preflight", dest="range_preflight", action="store_false",
+        help="Skip preflight checks")
     return parser

@@ -33,14 +33,15 @@ matplotlib>=3.5
 vmdpy>=0.2                # Variational Mode Decomposition
 
 # ── TimesFM 依赖 ──
-# 注意: timesfm 包本身需要从本地 TF/ 目录安装（见 README 安装说明）
+# TimesFMBackend/ 是 bundled 本地模块，不需要 pip install。
+# 预训练权重通过 huggingface_hub 下载。
 huggingface_hub[cli]>=0.23.0   # 下载预训练权重
 safetensors>=0.5.3             # 加载 .safetensors 权重文件
 jax>=0.4                       # TimesFM xreg 协变量回归模块需要
 
 # ── TimesFM Flax 后端（可选）──
 # 以下依赖仅在使用 TimesFM Flax 后端时需要。本项目使用 PyTorch 后端，
-# 如需安装可取消注释，或安装 TF 包时附带: pip install -e TF/[xreg,flax]
+# 一般不需要取消注释。
 # einshape>=1.0
 # flax>=0.8
 # jaxtyping>=0.2

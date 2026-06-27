@@ -94,6 +94,49 @@ outputs/runs/{YYYY-MM-DD}/
 
 ---
 
+## Range Daily Run Directory
+
+```
+outputs/runs/range_{YYYY-MM-DD}_to_{YYYY-MM-DD}/
+  range_manifest.json               ← Range-level manifest (all days)
+  range_summary.csv                 ← CSV summary of all days in range
+```
+
+### `range_manifest.json`
+
+```json
+{
+  "pipeline": "ledger_full_range",
+  "start_date": "2026-02-24",
+  "end_date": "2026-02-28",
+  "total_days": 5,
+  "completed_days": 5,
+  "failed_days": 0,
+  "skipped_days": 0,
+  "status": "complete",
+  "daily_results": [
+    {
+      "date": "2026-02-24",
+      "status": "complete",
+      "submission_ready_path": "outputs/runs/2026-02-24/final/submission_ready.csv",
+      "warnings_count": 0,
+      "errors_count": 0
+    }
+  ]
+}
+```
+
+### `range_summary.csv`
+
+```
+date,status,submission_ready_exists,submission_ready_rows,errors_count,warnings_count
+2026-02-24,complete,True,24,0,0
+2026-02-25,complete,True,24,0,0
+...
+```
+
+---
+
 ## File Naming Conventions
 
 | Directory Name | Content | Notes |
@@ -168,9 +211,15 @@ Classifier metadata:
   "method": "classifier_bridge",
   "success": true,
   "fallback_used": false,
-  "n_corrections": 4
+  "n_corrections": 4,
+  "corrected_hours": [
+    {"hour_business": 5, "ds": "2026-02-24 05:00:00", "before": -63.9575, "after": -80.0},
+    {"hour_business": 6, "ds": "2026-02-24 06:00:00", "before": -68.1796, "after": -80.0}
+  ]
 }
 ```
+- `corrected_hours` is an array of objects, each with `hour_business`, `ds`, `before`, `after`.
+- Empty list `[]` if no corrections were applied.
 
 ---
 
