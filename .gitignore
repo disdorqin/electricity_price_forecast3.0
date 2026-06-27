@@ -23,7 +23,8 @@ venv/
 
 # Large artifacts
 models/
-outputs/
+outputs/*
+!outputs/ledger/
 logs/
 checkpoints/
 *.pt
