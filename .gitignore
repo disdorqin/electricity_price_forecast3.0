@@ -1,3 +1,11 @@
+# Local data files (tracked in git historically, now ignored)
+data/
+ExtremPriceClf/data/
+
+# Tooling local state (not part of the project)
+.claude/
+.workbuddy/
+
 # Python
 __pycache__/
 *.py[cod]
