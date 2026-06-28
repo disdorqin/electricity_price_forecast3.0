@@ -2,8 +2,8 @@
 
 **Authoritative validation report for `electricity_forecast_model2.5` pipeline delivery.**
 
-**Repository:** `electricity_forecast_model2.1` → `electricity_forecast_model2.5`
-**Date:** 2026-06-28
+**Repository:** `electricity_forecast_model2.1` → `electricity_forecast_model2.5`  
+**Date:** 2026-06-28  
 **Platform:** Windows 11, Python 3.10, CUDA-capable (GPU used for TimeMixer/RT916)
 
 ---
@@ -15,7 +15,7 @@
 | py_compile | **PASS** | All critical files compile without syntax errors |
 | check_cli_range_args | **PASS** | 15/15 CLI argument combinations pass |
 | check_delivery_stability | **PASS** | 29/29 synthetic tests pass |
-| epf-v1-mode hidden | **PASS** | Not shown in `--help`, no stale "四阶段" refs in docs |
+| CLI surface | **PASS** | Internal v1 adapter mode flag is hidden from user-facing help; stale stage terminology not present |
 
 ## 2. Single-Day Full Pipeline — 2026-02-26
 
