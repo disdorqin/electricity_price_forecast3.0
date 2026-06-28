@@ -118,6 +118,7 @@ outputs/runs/range_{YYYY-MM-DD}_to_{YYYY-MM-DD}/
     {
       "date": "2026-02-24",
       "status": "complete",
+      "manifest_path": "outputs/runs/2026-02-24/run_manifest.json",
       "submission_ready_path": "outputs/runs/2026-02-24/final/submission_ready.csv",
       "warnings_count": 0,
       "errors_count": 0

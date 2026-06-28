@@ -136,7 +136,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ledger-root", default="outputs/ledger", help="Root directory for ledger files")
     parser.add_argument("--runs-root", default="outputs/runs", help="Root directory for daily run outputs")
     parser.add_argument("--realtime-cutoff-hour", type=int, default=14, help="Cutoff hour for realtime models on D-1")
-    parser.add_argument("--recent-week-boost", action="store_true", default=True, help="Enable recent-week boost in day_gate weighting")
+    parser.add_argument("--recent-week-boost", dest="recent_week_boost", action="store_true", default=True, help="Enable recent-week boost in day_gate weighting")
+    parser.add_argument("--no-recent-week-boost", dest="recent_week_boost", action="store_false", help="Disable recent-week boost")
     parser.add_argument("--recent-week-max-gate", type=float, default=0.85, help="Maximum day_gate with recent-week boost")
 
     # TimeMixer tuning

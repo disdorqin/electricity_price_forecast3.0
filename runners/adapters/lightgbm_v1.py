@@ -7,7 +7,7 @@ output to the ledger-compatible format.
 
 Usage:
     from runners.adapters.lightgbm_v1 import LightGBMV1Adapter
-    adapter = LightGBMV1Adapter(epf_root="D:/.../epf")
+    adapter = LightGBMV1Adapter()  # default: bundled lightGBM/, no external EPF root needed
     df = adapter.predict(target_date="2026-02-24", target="dayahead")
 """
 
