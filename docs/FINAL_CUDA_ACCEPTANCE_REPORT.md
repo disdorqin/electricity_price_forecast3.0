@@ -1,7 +1,10 @@
-# FINAL CUDA ACCEPTANCE REPORT (Superseded)
+# FINAL CUDA ACCEPTANCE REPORT — HISTORICAL
 
-> **This report is superseded by [`FINAL_VALIDATION_SUMMARY.md`](FINAL_VALIDATION_SUMMARY.md).**
-> Retained for historical reference only. Several items noted here (e.g. "no hard coverage gate") have been resolved in the final delivery. Do not use as current acceptance criteria.
+> **Historical report.** This document records an earlier CUDA acceptance run from 2026-06-28.
+>
+> The current delivery decision is superseded by [`FINAL_VALIDATION_SUMMARY.md`](FINAL_VALIDATION_SUMMARY.md), which validates the final delivery chain after the risk-closure fixes: ledger hard gate, delivery status, emergency fallback, range validation, and fault injection.
+>
+> Do not use this file alone as the final client acceptance decision.
 
 ## Audit Date
 
@@ -9,145 +12,59 @@
 
 ## Repository
 
-https://github.com/disdorqin/electricity_forecast_model2.1
+Original delivery repository: `electricity_forecast_model2.1`  
+Current GitHub repository: `disdorqin/electricity_forecast_model2.5`
 
-## Current Commit
+## Scope
 
-`2bf2f68` — `fix: small hygiene fixes — remove stale EPF path example, add --no-recent-week-boost, fix range_manifest docs`
-(Previous commit `631a7b8` + 3 additional hygiene fixes)
+This report captured a CUDA full-run acceptance before the final risk-closure validation was completed.
 
-## Hardware
+It remains useful as historical evidence that the CUDA model chain could execute, but it is no longer the authoritative readiness report.
 
-- GPU: CUDA 11.8, 1 device available (NVIDIA)
-- Python: epf-2 conda environment
-- OS: Windows 11
+## Historical Checks
 
----
+| Check | Historical Result |
+|---|---|
+| Static compilation | PASS |
+| CLI argument tests | PASS |
+| Single-day full pipeline | PASS |
+| Range pipeline | PASS |
+| Git hygiene | PASS |
 
-## 1. Static Checks
+## Superseded Risk Notes
 
-| Check | Result |
-|-------|--------|
-| `python -m py_compile` on 7 key files | PASS |
-| `python scripts/check_cli_range_args.py` | ALL 15 TESTS PASSED |
-| `python main.py --help` | OK (all options displayed) |
-| `grep "classifier_result" pipelines/ledger_classifier.py` | All references resolved (bug previously fixed) |
-| `grep "pip install -e TF"` in docs/code | No stale TF references found |
-| `git ls-files outputs data models daily_runs fusion_runs` | Empty (none tracked) |
+The earlier version of this report listed several remaining risks. Those notes are now superseded:
 
-## 2. Single-Day Full Pipeline (2026-02-24)
+| Earlier risk note | Current status |
+|---|---|
+| `ledger_weight` had no hard coverage gate | Closed. `ledger_weight` now checks D-30..D-1 ledger completeness before learning weights. |
+| Fallback output paths were incomplete | Closed. Emergency fallback now returns output/report paths and writes reports. |
+| CLI exposed internal v1 adapter mode | Closed. The deploy-facing help hides the compatibility knob. |
+| Output and classifier documentation mismatch | Closed/clarified in output convention and final validation docs. |
+| Need synthetic/fault validation | Closed. 29/29 synthetic tests and 4 fault-injection cases passed. |
 
-**Command:**
-```
-python main.py 2026-02-24 \
-    --data-path data/shandong_pmos_hourly.xlsx \
-    --max-cpu-workers 2 \
-    --max-gpu-workers 1 \
-    --seed 42 \
-    --deterministic
-```
+## Authoritative Current Report
 
-**Result:**
+Use this report for final delivery-chain readiness:
 
-| Metric | Value |
-|--------|-------|
-| Status | **complete** |
-| All 5 stages | complete |
-| Dayahead long rows | 72 ✓ (3 models × 24h) |
-| Realtime long rows | 96 ✓ (4 models × 24h) |
-| Dayahead training rows | 2160 ✓ |
-| Realtime training rows | 2880 ✓ |
-| Fused rows (DA/RT) | 24 ✓ 24 ✓ |
-| Submission ready rows | **24** ✓ |
-| Columns | `business_day, ds, hour_business, period, dayahead_price, realtime_price` ✓ |
-| No `_x`/`_y` suffix columns | ✓ |
-| **verify_final_pipeline** | **PASS** ✓ |
-
-## 3. Range Full Pipeline (2026-02-24 → 2026-02-25)
-
-**Command:**
-```
-python main.py 2026-02-24 2026-02-25 \
-    --data-path data/shandong_pmos_hourly.xlsx \
-    --max-cpu-workers 2 \
-    --max-gpu-workers 1 \
-    --seed 42 \
-    --deterministic \
-    --continue-on-error
+```text
+docs/FINAL_VALIDATION_SUMMARY.md
 ```
 
-**Result:**
+Current final validation result:
 
-| Metric | Value |
-|--------|-------|
-| Total days | 2 |
-| Completed | **2** |
-| Failed | 0 |
-| Skipped | 0 |
-| Status | **complete** |
-| **verify_range_pipeline** | **PASS** ✓ |
+```text
+PASS FOR DELIVERY-CHAIN VALIDATION
+```
 
-## 4. Output File Inspection
+Summary:
 
-| File | Status |
-|------|--------|
-| `outputs/runs/2026-02-24/final/submission_ready.csv` | 24 rows ✓ |
-| `outputs/runs/2026-02-25/final/submission_ready.csv` | 24 rows ✓ |
-| `outputs/runs/2026-02-24/run_manifest.json` | All 5 stages complete ✓ |
-| `outputs/runs/range_2026-02-24_to_2026-02-25/range_manifest.json` | 2/2 days complete ✓ |
-| `outputs/runs/range_2026-02-24_to_2026-02-25/range_summary.csv` | 2 rows, all complete ✓ |
+- Single-day full chain: NORMAL.
+- Three-day range: NORMAL, 3/3 completed, 0 degraded, 0 failed.
+- Fault injection: 4/4 PASS.
+- False successes: 0.
+- Formal outputs were not polluted by validation experiments.
 
-## 5. Classifier Report (2026-02-24)
+## Historical Decision
 
-- Method: `classifier_bridge`
-- Success: `true`
-- Fallback used: `false`
-- Corrections applied: **4** hours (hours 12-15 corrected to -80.0)
-- corrected_hours field: stored as integer count (7) — **doc discrepancy**: OUTPUT_CONVENTION.md documents it as array of objects
-
-## 6. Git Hygiene
-
-- `outputs/`, `data/`, `models/`, `daily_runs/`, `fusion_runs/`, `.claude/`, `.workbuddy/`: **none tracked in git** ✓
-- Seed ledger: tracked in `fixtures/seed_ledger/` (not under `outputs/`)
-
-## 7. Small Code Hygiene Fixes Applied
-
-In this session:
-- Removed `epf_root="D:/.../epf"` docstring example from `runners/adapters/lightgbm_v1.py`
-- Added `--no-recent-week-boost` flag to disable recent-week boost
-- Added `manifest_path` to `range_manifest.json` example in `docs/OUTPUT_CONVENTION.md`
-
-## 8. Remaining Risks (from independent review)
-
-The following issues were identified by external code review but are **not blockers** for current delivery:
-
-| Issue | Severity | Notes |
-|-------|----------|-------|
-| TimesFM default `mode="exact"` passes data as-is without cutoff guarantee | P0 design | Pipeline ran successfully with this default; `cutoff_safe` mode exists but is opt-in |
-| `fusion/project_defaults.py` references `ASSETS_ROOT = PROJECT_ROOT.parent / "epf"` | P2 legacy | Used as fallback path chain; non-breaking in current setup |
-| `corrected_hours` stored as int count vs documented array format | Documentation | Report says array of objects, code writes integer — doc mismatch |
-| `ledger_weight` no hard coverage gate (2160/2880) | P1 robustness | Verify script catches this post-hoc; code doesn't hard-fail |
-| README could detail TimesFM download source/cache strategy | P2 docs | Workable but not documented to audit-grade detail |
-
-None of these prevented the CUDA full-run from completing successfully.
-
----
-
-## Final Decision
-
-**ready for client delivery**
-
-### Rationale
-
-- ✅ Single-day full pipeline: **PASS** (CUDA, all 5 stages, 24-row submission_ready)
-- ✅ verify_final_pipeline: **PASS**
-- ✅ Range pipeline (2 days): **PASS** (2/2 complete, 0 failed)
-- ✅ verify_range_pipeline: **PASS**
-- ✅ All 15 CLI argument tests pass
-- ✅ Static compilation checks pass
-- ✅ Git hygiene clean (no unintended tracked artifacts)
-- ✅ Classifier bridge active (4 corrections applied, no fallback needed)
-- ✅ No hardcoded developer paths in delivery code
-- ✅ `--epf-v1-root` made optional, bundled models used by default
-- ✅ Small code hygiene issues fixed (stale EPF path example, argparse missing negation flag)
-- ✅ Remaining risks are documented, non-blocking design/documentation gaps
+The historical CUDA run passed at the time it was executed, but the final client-facing readiness decision should be based on `FINAL_VALIDATION_SUMMARY.md`.
