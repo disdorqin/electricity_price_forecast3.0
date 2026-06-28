@@ -222,7 +222,9 @@ def run_ledger_full_range(args: Any) -> dict:
         "completed_days": 0,
         "failed_days": 0,
         "skipped_days": 0,
+        "degraded_days": 0,
         "status": "running",
+        "delivery_status": "NORMAL",
         "daily_results": [],
         "errors": [],
         "warnings": [],
@@ -230,16 +232,18 @@ def run_ledger_full_range(args: Any) -> dict:
     }
 
     # ------------------------------------------------------------------
-    # Preflight
+    # Preflight — delegate to delivery_quality.validate_ledger_window
     # ------------------------------------------------------------------
     if range_preflight:
-        preflight_errors, preflight_warnings = _run_preflight(args, start_date)
-        if preflight_errors or preflight_warnings:
-            range_manifest["preflight_errors"] = preflight_errors
-            range_manifest["preflight_warnings"] = preflight_warnings
+        from pipelines.delivery_quality import validate_ledger_window
 
-        if preflight_errors:
+        ledger_root = Path(getattr(args, "ledger_root", "outputs/ledger"))
+        preflight_result = validate_ledger_window(start_date, ledger_root)
+
+        if preflight_result["status"] == "FAIL":
+            range_manifest["preflight_report"] = preflight_result
             range_manifest["status"] = "preflight_failed"
+            range_manifest["delivery_status"] = "FAILED_NO_DELIVERY"
             range_manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
             range_manifest["note"] = (
                 "Preflight validation failed. Run with --no-range-preflight to skip, "
@@ -247,17 +251,28 @@ def run_ledger_full_range(args: Any) -> dict:
             )
             _write_range_artifacts(range_dir, range_manifest)
             console_msg = (
-                f"[ledger_full_range] preflight FAILED — {len(preflight_errors)} error(s)\n"
+                f"[ledger_full_range] preflight FAILED — "
+                f"{len(preflight_result['errors'])} error(s)\n"
                 f"  Manifest: {range_dir / 'range_manifest.json'}\n"
-                f"  Next steps: fix errors above or use --no-range-preflight"
+                f"  Next steps: fix errors above or use --no-range-preflight\n"
             )
-            for err in preflight_errors:
-                console_msg += f"\n    ERROR: {err}"
-            logger.error(console_msg)
+            for err in preflight_result["errors"][:10]:
+                detail = err.get("error", str(err))
+                ledger = err.get("ledger", "")
+                day = err.get("day", "")
+                model = err.get("model", "")
+                if ledger:
+                    console_msg += f"    [{ledger}] "
+                if day:
+                    console_msg += f"{day} "
+                if model:
+                    console_msg += f"model={model} "
+                console_msg += f"— {detail}\n"
+            logger.error(console_msg.strip())
             return range_manifest
 
-        if preflight_warnings:
-            for w in preflight_warnings:
+        if preflight_result.get("warnings"):
+            for w in preflight_result["warnings"]:
                 logger.warning(f"Preflight warning: {w}")
                 range_manifest["warnings"].append(w)
 
@@ -318,9 +333,22 @@ def run_ledger_full_range(args: Any) -> dict:
         daily_manifest_path = runs_root / target_date / "run_manifest.json"
         submission_path = runs_root / target_date / "final" / "submission_ready.csv"
 
+        # Read delivery_status from the day result (ledger_full now sets it)
+        day_delivery_status = day_result.get("delivery_status", "UNKNOWN")
+        day_postflight = day_result.get("postflight", {})
+        day_fallback = day_result.get("fallback", {})
+        day_fallback_used = (
+            day_fallback.get("fallback_used", False)
+            if isinstance(day_fallback, dict)
+            else False
+        )
+
         day_entry: dict[str, Any] = {
             "date": target_date,
             "status": day_status,
+            "delivery_status": day_delivery_status,
+            "postflight_status": day_postflight.get("status", "NOT RUN"),
+            "fallback_used": day_fallback_used,
             "started_at": day_result.get("started_at"),
             "completed_at": day_result.get("completed_at"),
             "duration_seconds": round(day_elapsed, 1),
@@ -343,10 +371,34 @@ def run_ledger_full_range(args: Any) -> dict:
 
         range_manifest["daily_results"].append(day_entry)
 
-        if day_status in ("complete", "complete_with_warnings"):
+        # Track using delivery_status
+        if day_delivery_status == "NORMAL":
             range_manifest["completed_days"] += 1
-        elif day_status in ("failed", "error"):
+        elif day_delivery_status == "DEGRADED_DELIVERED":
+            range_manifest["completed_days"] += 1
+            range_manifest["degraded_days"] += 1
+            # Range-level delivery_status must be at least DEGRADED_DELIVERED
+            if range_manifest["delivery_status"] == "NORMAL":
+                range_manifest["delivery_status"] = "DEGRADED_DELIVERED"
+        elif day_delivery_status == "FAILED_NO_DELIVERY":
             range_manifest["failed_days"] += 1
+            range_manifest["delivery_status"] = "FAILED_NO_DELIVERY"
+            err_msg = f"Day {target_date} delivery=FAILED_NO_DELIVERY"
+            if day_result.get("error"):
+                err_msg += f": {day_result['error']}"
+            range_manifest["errors"].append(err_msg)
+            if not continue_on_error:
+                range_manifest["status"] = "failed"
+                _write_range_artifacts(range_dir, range_manifest)
+                logger.error(
+                    f"Range stopped at {target_date} (FAILED_NO_DELIVERY, "
+                    f"use --continue-on-error to continue)"
+                )
+                return range_manifest
+        elif day_status in ("failed", "error"):
+            # Status-based fallback (ledger_full may not have set delivery_status)
+            range_manifest["failed_days"] += 1
+            range_manifest["delivery_status"] = "FAILED_NO_DELIVERY"
             err_msg = f"Day {target_date} status={day_status}"
             if day_result.get("error"):
                 err_msg += f": {day_result['error']}"
@@ -361,14 +413,24 @@ def run_ledger_full_range(args: Any) -> dict:
         _write_range_artifacts(range_dir, range_manifest)
 
     # ------------------------------------------------------------------
-    # Final status
+    # Final status + range delivery report
     # ------------------------------------------------------------------
     _finalise_range_manifest(range_manifest)
     _write_range_artifacts(range_dir, range_manifest)
 
+    from pipelines.delivery_report import (
+        write_range_delivery_report,
+        print_range_delivery_report,
+    )
+    write_range_delivery_report(range_dir, range_manifest)
+    print_range_delivery_report(range_manifest)
+
     logger.info(
-        f"ledger_full_range {start_date}..{end_date}: {range_manifest['status']} "
+        f"ledger_full_range {start_date}..{end_date}: "
+        f"status={range_manifest['status']}, "
+        f"delivery={range_manifest['delivery_status']}, "
         f"({range_manifest['completed_days']}/{range_manifest['total_days']} days, "
+        f"{range_manifest['degraded_days']} degraded, "
         f"{range_manifest['failed_days']} failed, "
         f"{range_manifest['skipped_days']} skipped)"
     )
@@ -378,158 +440,6 @@ def run_ledger_full_range(args: Any) -> dict:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _run_preflight(args: Any, start_date: str) -> tuple[list[str], list[str]]:
-    """Strict preflight checks for range pipeline.
-
-    Returns (errors, warnings).  Any errors cause ``preflight_failed``.
-    """
-    errors: list[str] = []
-    warnings: list[str] = []
-
-    # 1. data_path exists
-    data_path = getattr(args, "data_path", "data/shandong_pmos_hourly.xlsx")
-    if not Path(data_path).exists():
-        errors.append(f"Data path not found: {data_path}")
-
-    # 2. ledger_root exists
-    ledger_root = Path(getattr(args, "ledger_root", "outputs/ledger"))
-    if not ledger_root.exists():
-        errors.append(
-            f"Ledger root not found: {ledger_root}. "
-            "Run backfill or copy from fixtures/seed_ledger/. "
-            "(Use --no-range-preflight to skip.)"
-        )
-        return errors, warnings
-
-    # 3. Four ledger files exist and are readable
-    ledger_files = {
-        "dayahead prediction": ledger_root / "dayahead" / "prediction" / "prediction_ledger.parquet",
-        "dayahead actual": ledger_root / "dayahead" / "actual" / "actual_ledger.parquet",
-        "realtime prediction": ledger_root / "realtime" / "prediction" / "prediction_ledger.parquet",
-        "realtime actual": ledger_root / "realtime" / "actual" / "actual_ledger.parquet",
-    }
-
-    ledgers: dict[str, pd.DataFrame] = {}
-    for label, path in ledger_files.items():
-        if not path.exists():
-            errors.append(f"Ledger file not found: {path} ({label})")
-            continue
-        try:
-            ledgers[label] = pd.read_parquet(path)
-        except Exception as exc:
-            errors.append(
-                f"Cannot read parquet ledger: {path} ({label}). "
-                f"Ensure pyarrow is installed or regenerate ledger. Error: {exc}"
-            )
-
-    if errors:
-        return errors, warnings
-
-    # 4. D-30 .. D-1 window coverage for the *start* date
-    start_dt = pd.Timestamp(start_date)
-    window_end = start_dt - pd.Timedelta(days=1)
-    window_start = start_dt - pd.Timedelta(days=30)
-    window_dates = set(
-        d.strftime("%Y-%m-%d")
-        for d in pd.date_range(start=window_start, end=window_end, freq="D")
-    )
-    expected_days_in_window = len(window_dates)  # should be 30
-
-    for label, df in ledgers.items():
-        date_col = "target_day" if "target_day" in df.columns else "business_day"
-        if date_col not in df.columns:
-            errors.append(f"Ledger {label}: no '{date_col}' column")
-            continue
-
-        available = set(pd.to_datetime(df[date_col]).unique())
-        available_str = {d.strftime("%Y-%m-%d") for d in available}
-        missing = window_dates - available_str
-
-        # Allow extra days and missing only if the whole window isn't covered
-        if missing:
-            # Check if at least enough days to cover the window, allowing
-            # some days to be in the future of the window
-            if len(available_str & window_dates) < expected_days_in_window:
-                missing_sorted = sorted(missing)[:10]  # show first 10
-                errors.append(
-                    f"Ledger {label}: missing {len(missing)} day(s) in "
-                    f"window {window_start.date()}..{window_end.date()}. "
-                    f"First missing: {missing_sorted}"
-                )
-
-        # hour_business coverage
-        if "hour_business" in df.columns and date_col in df.columns:
-            # Check the target window days only
-            window_dt_hours = pd.to_datetime(df[date_col])
-            window_dates_hours_dt = pd.to_datetime(list(window_dates))
-            window_df = df[window_dt_hours.isin(window_dates_hours_dt)]
-            hours_per_day = window_df.groupby(date_col)["hour_business"].nunique()
-            incomplete = hours_per_day[hours_per_day < 24]
-            if not incomplete.empty:
-                for bad_day, n_hours in incomplete.head(5).items():
-                    bad_day_str = (
-                        bad_day.strftime("%Y-%m-%d")
-                        if hasattr(bad_day, "strftime")
-                        else str(bad_day)
-                    )
-                    if "actual" in label:
-                        errors.append(
-                            f"Ledger {label}: day {bad_day_str} has "
-                            f"{n_hours}/24 hour rows (expected 24)"
-                        )
-                    else:
-                        warnings.append(
-                            f"Ledger {label}: day {bad_day_str} has "
-                            f"{n_hours}/24 hour rows"
-                        )
-
-        # Model coverage for prediction ledgers
-        if "prediction" in label and "model_name" in df.columns:
-            if "dayahead" in label:
-                expected_models = {"lightgbm", "timesfm", "timemixer"}
-            else:
-                expected_models = {"timesfm", "sgdfnet", "timemixer", "rt916"}
-
-            models_found = set(df["model_name"].unique())
-            missing_models = expected_models - models_found
-            if missing_models:
-                errors.append(
-                    f"Ledger {label}: missing models {missing_models}. "
-                    f"Found: {models_found}"
-                )
-
-            # Per-day per-model row count check
-            if date_col in df.columns and "hour_business" in df.columns:
-                window_dt_models = pd.to_datetime(df[date_col])
-                window_dates_models_dt = pd.to_datetime(list(window_dates))
-                window_df = df[window_dt_models.isin(window_dates_models_dt)]
-                model_day_counts = (
-                    window_df.groupby([date_col, "model_name"])
-                    .size()
-                    .reset_index(name="n_rows")
-                )
-                under = model_day_counts[model_day_counts["n_rows"] < 24]
-                for _, row in under.head(10).iterrows():
-                    day_str = (
-                        row[date_col].strftime("%Y-%m-%d")
-                        if hasattr(row[date_col], "strftime")
-                        else str(row[date_col])
-                    )
-                    errors.append(
-                        f"Ledger {label}: model '{row['model_name']}' on {day_str} "
-                        f"has {row['n_rows']}/24 rows"
-                    )
-
-    return errors, warnings
-
-
-def _is_existing_final_valid(
-    runs_root: Path, target_date: str
-) -> tuple[bool, list[str]]:
-    """Deprecated alias; use the module-level :func:`is_existing_final_valid`."""
-    return is_existing_final_valid(runs_root, target_date)
 
 
 def _copy_args_for_day(args: Any, target_date: str) -> Any:
@@ -543,14 +453,19 @@ def _copy_args_for_day(args: Any, target_date: str) -> Any:
 
 
 def _finalise_range_manifest(manifest: dict) -> None:
-    """Derive the final status of the range manifest."""
+    """Derive the final status and delivery_status of the range manifest."""
     total = manifest["total_days"]
     completed = manifest["completed_days"]
     failed = manifest["failed_days"]
     skipped = manifest["skipped_days"]
+    degraded = manifest.get("degraded_days", 0)
 
+    # Determine range status
     if failed == 0 and completed + skipped == total:
-        manifest["status"] = "complete"
+        if degraded > 0:
+            manifest["status"] = "complete_with_degraded_days"
+        else:
+            manifest["status"] = "complete"
     elif failed > 0 and completed > 0:
         manifest["status"] = "partial"
     elif completed == 0 and skipped == total and total > 0:
@@ -559,6 +474,15 @@ def _finalise_range_manifest(manifest: dict) -> None:
         manifest["status"] = "failed"
     elif manifest["status"] not in ("preflight_failed", "interrupted"):
         manifest["status"] = "failed"
+
+    # Determine delivery_status if it wasn't already set
+    # (preflight already sets FAILED_NO_DELIVERY; daily loop sets others)
+    ds = manifest.get("delivery_status", "NORMAL")
+    if ds == "NORMAL" and degraded > 0:
+        manifest["delivery_status"] = "DEGRADED_DELIVERED"
+    elif ds == "DEGRADED_DELIVERED" and degraded == 0 and failed == 0:
+        # All days passed normally — reset to NORMAL
+        manifest["delivery_status"] = "NORMAL"
 
     manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
 

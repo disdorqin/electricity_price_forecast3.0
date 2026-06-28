@@ -220,9 +220,91 @@ def run_ledger_full(args: Any) -> dict:
     else:
         manifest["status"] = "complete"
 
-    _write_manifest(runs_root, target_date, manifest)
+    # -----------------------------------------------------------------------
+    # Postflight — validate submission, fallback, next-day readiness
+    # -----------------------------------------------------------------------
+    from pipelines.delivery_quality import (
+        validate_daily_submission,
+        validate_next_day_readiness,
+    )
+    from pipelines.emergency_fallback import try_emergency_fallback
+    from pipelines.delivery_report import (
+        write_daily_delivery_report,
+        print_daily_delivery_report,
+    )
 
-    logger.info(f"ledger_full {target_date}: {manifest['status']}")
+    ledger_root = Path(getattr(args, "ledger_root", "outputs/ledger"))
+    data_path = getattr(args, "data_path", "data/shandong_pmos_hourly.xlsx")
+
+    # First postflight attempt
+    postflight_result = validate_daily_submission(runs_root, target_date)
+    manifest["postflight"] = postflight_result
+
+    if postflight_result["status"] == "PASS":
+        manifest["delivery_status"] = "NORMAL"
+        manifest["fallback"] = {"fallback_used": False}
+    else:
+        logger.warning(
+            f"Postflight FAILED for {target_date}: "
+            f"{len(postflight_result['errors'])} error(s). "
+            "Attempting emergency fallback..."
+        )
+
+        # Try emergency fallback
+        fb_args = (target_date, data_path, runs_root)
+        fb_reason = (
+            f"postflight validation failed: "
+            f"{len(postflight_result['errors'])} error(s)"
+        )
+        fallback_result = try_emergency_fallback(
+            target_date, data_path, runs_root, reason=fb_reason,
+        )
+
+        if fallback_result["success"]:
+            # Re-validate after fallback
+            second_postflight = validate_daily_submission(
+                runs_root, target_date, allow_degraded=True,
+            )
+            manifest["postflight"] = second_postflight
+            manifest["fallback"] = {
+                "fallback_used": True,
+                "fallback_method": fallback_result["fallback_method"],
+                "fallback_level": fallback_result["fallback_level"],
+                "reason": fb_reason,
+                "report": fallback_result,
+            }
+
+            if second_postflight["status"] == "PASS":
+                manifest["delivery_status"] = "DEGRADED_DELIVERED"
+            else:
+                # Fallback produced output but it still doesn't validate
+                manifest["delivery_status"] = "FAILED_NO_DELIVERY"
+        else:
+            manifest["delivery_status"] = "FAILED_NO_DELIVERY"
+            manifest["fallback"] = {
+                "fallback_used": True,
+                "fallback_method": "historical_same_hour_median",
+                "fallback_level": "failed",
+                "reason": fb_reason,
+                "report": fallback_result,
+                "errors": fallback_result.get("errors", []),
+            }
+
+    # Next-day readiness
+    ndr = validate_next_day_readiness(target_date, ledger_root)
+    manifest["next_day_readiness"] = ndr
+
+    # Write delivery report
+    _write_manifest(runs_root, target_date, manifest)
+    write_daily_delivery_report(runs_root / target_date, manifest)
+
+    # Print terminal report
+    print_daily_delivery_report(manifest)
+
+    logger.info(
+        f"ledger_full {target_date}: status={manifest['status']}, "
+        f"delivery={manifest.get('delivery_status', 'UNSET')}"
+    )
 
     return manifest
 

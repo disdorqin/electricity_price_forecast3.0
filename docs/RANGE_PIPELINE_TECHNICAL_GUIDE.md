@@ -114,13 +114,15 @@ outputs/runs/range_START_to_END/
 | completed_days | int | 成功完成的天数 |
 | failed_days | int | 失败的天数 |
 | skipped_days | int | 被跳过的天数 |
-| status | str | `complete` / `partial` / `failed` / `preflight_failed` / `interrupted` / `all_skipped` |
+| degraded_days | int | 降级交付的天数 |
+| status | str | `complete` / `complete_with_degraded_days` / `partial` / `failed` / `preflight_failed` / `interrupted` / `all_skipped` |
+| delivery_status | str | `NORMAL` / `DEGRADED_DELIVERED` / `FAILED_NO_DELIVERY` |
 | daily_results | array | 每日执行结果列表 |
 | errors | array | 区间级错误列表 |
 | warnings | array | 区间级警告列表 |
 | started_at | str (ISO 8601) | 区间开始时间 |
 | completed_at | str (ISO 8601) | 区间完成时间 |
-| preflight_errors | array | preflight 失败时列出错误详情 |
+| preflight_report | dict | validate_ledger_window 结果（preflight_failed 时） |
 | note | str | 针对 preflight_failed 的修复建议 |
 
 **daily_results 每个元素的字段：**
@@ -129,6 +131,9 @@ outputs/runs/range_START_to_END/
 |------|------|------|
 | date | str | 业务日期 |
 | status | str | `complete` / `failed` / `error` / `skipped` |
+| delivery_status | str | 当日交付状态 |
+| postflight_status | str | postflight 结果（PASS/FAIL/NOT RUN） |
+| fallback_used | bool | 是否使用了 emergency fallback |
 | started_at | str | 当天执行开始时间 |
 | completed_at | str | 当天执行完成时间 |
 | duration_seconds | float | 当天执行耗时 |
@@ -214,11 +219,65 @@ outputs/runs/range_START_to_END/
 | 状态 | 含义 |
 |------|------|
 | `complete` | 所有日期成功或跳过 |
+| `complete_with_degraded_days` | 所有日期完成但有降级交付 |
 | `partial` | 部分日期成功、部分失败（`--continue-on-error`） |
 | `failed` | 某天失败后立即停止（默认） |
 | `preflight_failed` | Preflight 校验未通过，未执行任何日期 |
 | `interrupted` | 用户 Ctrl+C 中断 |
 | `all_skipped` | 所有日期均被跳过（`--skip-existing-final`） |
+
+### 交付状态 (delivery_status)
+
+自 v2.1.1 起，每个 `run_manifest.json` 和 `range_manifest.json` 包含 `delivery_status`：
+
+| 状态 | 含义 |
+|------|------|
+| `NORMAL` | 正常五阶段完成，postflight 全部通过，未使用 fallback |
+| `DEGRADED_DELIVERED` | 正常链路或 postflight 有问题，但 emergency fallback 生成了可用输出 |
+| `FAILED_NO_DELIVERY` | 正常链路失败且 fallback 失败，无可用交付文件 |
+
+### Exit Code
+
+| 条件 | Code | 含义 |
+|------|------|------|
+| `delivery_status == NORMAL` | 0 | 正常成功 |
+| `delivery_status == DEGRADED_DELIVERED` | 2 | 有输出但降级（warning 级别） |
+| 其他失败 | 1 | 硬错误，无可用输出 |
+
+### Postflight 机制
+
+`ledger_full` 五阶段执行完毕后自动执行 postflight：
+
+1. 调用 `validate_daily_submission()` 严格检查 `submission_ready.csv`
+2. PASS → `delivery_status = NORMAL`
+3. FAIL → 尝试 `try_emergency_fallback()` 生成应急交付
+4. Fallback 成功 → `delivery_status = DEGRADED_DELIVERED`
+5. Fallback 失败 → `delivery_status = FAILED_NO_DELIVERY`
+6. 检查 next-day ledger readiness
+7. 生成 `delivery_report.md` + 终端 DAILY DELIVERY REPORT
+
+### Emergency Fallback
+
+当正常链路无法交付时，系统使用历史同小时中位数生成应急文件：
+
+- 优先最近 7 个 business_day 的同 hour_business median
+- 如果 7 天不足，用 30 天；再不足用全历史
+- 生成标准 24 行 `submission_ready.csv`
+- 写入 `final/fallback_report.md` / `final/fallback_report.json`
+- **不写入** prediction ledger，避免污染后续权重学习
+- 使用 fallback 后需要 `--force` 重跑正常链路恢复 ledger continuity
+
+### 稳定性 Synthetic 测试
+
+```shell
+python scripts/check_delivery_stability.py
+```
+
+不依赖 GPU / 模型 / 真实数据，独立验证：
+- validate_daily_submission PASS/FAIL
+- validate_ledger_window PASS/FAIL
+- emergency_fallback 生成降级交付
+- exit code 映射
 
 ---
 
@@ -379,7 +438,11 @@ outputs/runs/range_START_to_END/
 
 | 路径 | 内容 |
 |------|------|
-| `outputs/runs/YYYY-MM-DD/run_manifest.json` | 五阶段状态、row counts、配置、错误 |
+| `outputs/runs/YYYY-MM-DD/run_manifest.json` | 五阶段状态、row counts、配置、错误、交付状态 |
+| `outputs/runs/YYYY-MM-DD/delivery_report.json` | 交付报告（结构化 JSON） |
+| `outputs/runs/YYYY-MM-DD/delivery_report.md` | 交付报告（Markdown 可读） |
+| `outputs/runs/YYYY-MM-DD/final/fallback_report.json` | Fallback 报告（仅 DEGRADED_DELIVERED 时） |
+| `outputs/runs/YYYY-MM-DD/final/fallback_report.md` | Fallback 报告可读版 |
 | `outputs/runs/YYYY-MM-DD/dayahead/` | 日前预测、权重、融合、最终输出 |
 | `outputs/runs/YYYY-MM-DD/realtime/` | 实时预测、权重、融合、分类器报告 |
 | `outputs/runs/YYYY-MM-DD/final/submission_ready.csv` | 最终交付文件 |
@@ -388,7 +451,9 @@ outputs/runs/range_START_to_END/
 
 | 路径 | 内容 |
 |------|------|
-| `outputs/runs/range_START_to_END/range_manifest.json` | 区间元信息、每日状态、错误汇总 |
+| `outputs/runs/range_START_to_END/range_manifest.json` | 区间元信息、每日状态、错误汇总、交付状态 |
+| `outputs/runs/range_START_to_END/range_delivery_report.json` | 区间交付报告 |
+| `outputs/runs/range_START_to_END/range_delivery_report.md` | 区间交付报告可读版 |
 | `outputs/runs/range_START_to_END/range_summary.csv` | 区间 CSV 摘要 |
 
 ### Ledger 数据
@@ -413,11 +478,20 @@ outputs/runs/range_START_to_END/
 ## 7. 推荐验收流程
 
 ```powershell
+# 0. 稳定性 synthetic 测试（不依赖 GPU/模型/数据）
+python scripts/check_delivery_stability.py
+
 # 1. 运行时间段预测
 python main.py 2026-02-24 2026-02-28 --data-path data/shandong_pmos_hourly.xlsx --seed 42 --deterministic
 
 # 2. 验证区间输出
 python scripts/verify_range_pipeline.py --start 2026-02-24 --end 2026-02-28 --runs-root outputs/runs
+```
+
+如果区间包含降级交付的天，使用 `--allow-degraded`：
+
+```powershell
+python scripts/verify_range_pipeline.py --start 2026-02-24 --end 2026-02-28 --allow-degraded
 ```
 
 如果希望快速跳过已验证日期：
