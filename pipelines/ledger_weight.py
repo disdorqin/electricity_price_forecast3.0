@@ -86,6 +86,35 @@ def run_ledger_weight(args: Any) -> dict:
     }
 
     try:
+        # Hard gate: fusion weights must never be learned from an incomplete
+        # D-30..D-1 ledger window. This protects single-day ledger_full as well
+        # as range mode and prevents silent weight learning on broken history.
+        from pipelines.delivery_quality import validate_ledger_window
+
+        ledger_window_check = validate_ledger_window(target_date, ledger_root, days=window_days)
+        manifest["ledger_window_check"] = ledger_window_check
+        if ledger_window_check.get("status") == "FAIL":
+            missing_count = len(ledger_window_check.get("errors", []))
+            msg = (
+                f"ledger window incomplete for {target_date}: "
+                f"{missing_count} issue(s); refusing to learn weights"
+            )
+            if not allow_missing:
+                manifest["status"] = "failed"
+                manifest["errors"].append(msg)
+                for err in ledger_window_check.get("errors", [])[:20]:
+                    manifest["errors"].append(_format_ledger_window_error(err))
+                manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
+                _write_weight_manifest(runs_root, target_date, manifest)
+                logger.error(msg)
+                return manifest
+
+            manifest["warnings"].append(
+                msg + "; continuing only because --allow-missing-models was set"
+            )
+            for err in ledger_window_check.get("errors", [])[:20]:
+                manifest["warnings"].append(_format_ledger_window_error(err))
+
         failed_tasks = []
         for task in ["dayahead", "realtime"]:
             task_result = _learn_weights_for_task(
@@ -108,7 +137,7 @@ def run_ledger_weight(args: Any) -> dict:
             manifest["status"] = "failed"
             manifest["errors"].extend(failed_tasks)
         else:
-            manifest["status"] = "complete"
+            manifest["status"] = "complete_with_warnings" if manifest["warnings"] else "complete"
 
         manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
 
@@ -119,22 +148,10 @@ def run_ledger_weight(args: Any) -> dict:
     except Exception as e:
         manifest["status"] = "failed"
         manifest["errors"].append(str(e))
+        manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
         logger.exception(f"ledger_weight failed: {e}")
 
-    # Write manifest
-    manifest_path = runs_root / target_date / "run_manifest.json"
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    # Merge with existing manifest if present
-    if manifest_path.exists():
-        with open(manifest_path, "r") as f:
-            existing = json.load(f)
-        existing["weight_stage"] = manifest
-        with open(manifest_path, "w") as f:
-            json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
-    else:
-        with open(manifest_path, "w") as f:
-            json.dump(manifest, f, indent=2, ensure_ascii=False, default=str)
-
+    _write_weight_manifest(runs_root, target_date, manifest)
     return manifest
 
 
@@ -180,8 +197,41 @@ def _learn_weights_for_task(
         recent_week_max_gate=recent_week_max_gate,
     )
 
-    result["training_rows"] = len(training)
-    result["training_days"] = training["target_day"].nunique() if "target_day" in training.columns else 0
+    weight_dir = runs_root / target_date / task / "weight"
+    weight_dir.mkdir(parents=True, exist_ok=True)
+    training.to_csv(weight_dir / "ledger_training_table.csv", index=False)
+
+    # Coverage check is still saved for audit, but it is no longer merely a
+    # post-hoc note: the expected training rows below are a hard gate.
+    coverage = check_ledger_coverage(
+        pred_ledger, act_ledger, task, window_days_list, expected_models
+    )
+    coverage.to_csv(weight_dir / "coverage_report.csv", index=False)
+
+    expected_rows = len(window_days_list) * len(expected_models) * 24
+    actual_rows = len(training)
+    actual_days = training["target_day"].nunique() if "target_day" in training.columns else 0
+    expected_days = len(window_days_list)
+
+    result["training_rows"] = actual_rows
+    result["training_days"] = actual_days
+    result["coverage"] = {
+        "total_expected": expected_rows,
+        "total_actual": actual_rows,
+        "expected_days": expected_days,
+        "actual_days": actual_days,
+    }
+
+    if actual_rows != expected_rows or actual_days != expected_days:
+        result["status"] = "failed"
+        result["error"] = (
+            f"{task} ledger training coverage failed: "
+            f"expected_rows={expected_rows}, actual_rows={actual_rows}, "
+            f"expected_days={expected_days}, actual_days={actual_days}"
+        )
+        logger.error(result["error"])
+        return result
+
     result["day_gate_min"] = round(float(training["day_gate"].min()), 4)
     result["day_gate_max"] = round(float(training["day_gate"].max()), 4)
 
@@ -189,21 +239,6 @@ def _learn_weights_for_task(
         f"[{task}] Training table: {len(training)} rows, "
         f"day_gate [{result['day_gate_min']}, {result['day_gate_max']}]"
     )
-
-    # Save training table
-    weight_dir = runs_root / target_date / task / "weight"
-    weight_dir.mkdir(parents=True, exist_ok=True)
-    training.to_csv(weight_dir / "ledger_training_table.csv", index=False)
-
-    # Coverage check
-    coverage = check_ledger_coverage(
-        pred_ledger, act_ledger, task, window_days_list, expected_models
-    )
-    coverage.to_csv(weight_dir / "coverage_report.csv", index=False)
-    result["coverage"] = {
-        "total_expected": len(window_days_list) * len(expected_models) * 24,
-        "total_actual": len(training),
-    }
 
     # Learn weights
     gef = DailyLedgerGEF(GEFConfig(window_days=len(window_days_list)))
@@ -235,6 +270,34 @@ def _learn_weights_for_task(
     result["weight_dir"] = str(weight_dir)
 
     return result
+
+
+def _write_weight_manifest(runs_root: Path, target_date: str, manifest: dict) -> None:
+    """Write ledger_weight manifest, merging into run_manifest.json if present."""
+    manifest_path = runs_root / target_date / "run_manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if manifest_path.exists():
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        existing["weight_stage"] = manifest
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False, default=str)
+    else:
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2, ensure_ascii=False, default=str)
+
+
+def _format_ledger_window_error(err: Any) -> str:
+    """Compactly format a validate_ledger_window error item."""
+    if not isinstance(err, dict):
+        return str(err)
+    parts = []
+    for key in ("ledger", "day", "model", "hour_business", "detail", "error"):
+        value = err.get(key)
+        if value not in (None, ""):
+            parts.append(f"{key}={value}")
+    return "; ".join(parts) if parts else str(err)
 
 
 def _validate_weights(manifest: dict):
