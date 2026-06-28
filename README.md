@@ -131,23 +131,11 @@ data/shandong_pmos_hourly.xlsx
 
 必需字段：`ds` / `时刻` / `时间`（时间戳）、`日前电价`（dayahead 目标值）、`实时电价`（realtime 目标值）。
 
-#### 3. 复制快速复现 ledger
+#### 3. Ledger 数据
 
-Linux / macOS：
+`outputs/ledger/` 已包含在仓库中（32 天 seed ledger：2026-01-25 ~ 2026-02-25），不需要手动复制。clone 后直接可用，无需 `ledger_backfill`。
 
-```bash
-mkdir -p outputs/ledger
-cp -r fixtures/repro_bundle/ledger/* outputs/ledger/
-```
-
-Windows PowerShell：
-
-```powershell
-New-Item -ItemType Directory -Force outputs/ledger | Out-Null
-Copy-Item fixtures/repro_bundle/ledger/* outputs/ledger -Recurse -Force
-```
-
-复制后即可跳过 `ledger_backfill`。`fixtures/repro_bundle/sample_runs/` 仅用于验收参考，不需要复制到正式 outputs。
+**为什么示例日期是 2026-02-26？** 因为 seed ledger 覆盖到 2026-02-25（D-1），权重学习需要前 30 天数据。2026-02-26 是第一个 D-30..D-1 完全在 seed 范围内的日期。如果你有其他日期的数据，可以换成你想要的日期。
 
 #### 4. 快速陪跑（单日）
 
@@ -475,9 +463,9 @@ python scripts/check_delivery_stability.py
 | Realtime prediction | `outputs/ledger/realtime/prediction/prediction_ledger.parquet` |
 | Realtime actual | `outputs/ledger/realtime/actual/actual_ledger.parquet` |
 
-**自动初始化：** 如果 `outputs/ledger` 不存在且 `fixtures/repro_bundle/ledger/` 存在，首次运行会自动复制。
+**注意事项：** `outputs/ledger/` 已包含在仓库中（32 天 seed），clone 后直接可用。如果意外删除了 `outputs/ledger/`，可以从 `fixtures/repro_bundle/ledger/` 手动复制恢复，或运行 `ledger_backfill` 重新生成。
 
-**自定义路径：** 传 `--ledger-root YOUR_PATH` 则读取指定目录，不会自动从 fixtures 复制。
+**自定义路径：** 传 `--ledger-root YOUR_PATH` 则读取指定目录。
 
 ---
 
@@ -489,7 +477,7 @@ python scripts/check_delivery_stability.py
 - 仓库只保留 `fixtures/repro_bundle/sample_runs/` 作为验证通过的样例。
 - 正式输出在本地 `outputs/runs/` 生成，`.gitignore` 已忽略此目录。
 
-**注意：** `outputs/runs/` 不提交不影响任何功能。首次运行前只需确保 `outputs/ledger/` 存在（自动从 fixtures 复制或 backfill 生成）。
+**注意：** `outputs/runs/` 不提交不影响任何功能。`outputs/ledger/` 已包含在仓库中（32 天 seed），clone 后直接可用。
 
 ---
 
@@ -704,7 +692,8 @@ Remove-Item outputs/_validation_tmp -Recurse -Force -ErrorAction SilentlyContinu
 **原因：**
 - 正式运行会继续 append 新预测到 ledger。
 - `fixtures/` 应保持静态，不应被运行时修改。
-- 所以首次运行自动**复制**到 `outputs/ledger`，后续只修改 `outputs/ledger`。
+- 所以仓库中已有 `outputs/ledger/`（预置 seed），运行时直接修改 `outputs/ledger` 而不会动 `fixtures/`。
+- 如果意外删除了 `outputs/ledger/`，从 `fixtures/repro_bundle/ledger/` 手动复制即可恢复。
 
 ---
 
