@@ -1,0 +1,44 @@
+2026-06-28 10:41:03 [ERROR] runtime.resource_scheduler: CPU [timesfm/dayahead] FAILED: module 'timesfm' has no attribute 'TimesFM_2p5_200M_torch'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 425, in _predict_model
+    df = _predict_timesfm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 510, in _predict_timesfm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\timesfm_v1.py", line 120, in predict
+    df = predict_price_for_date(
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\infer.py", line 67, in predict_price_for_date
+    return forecast_next_day(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1377, in forecast_next_day
+    model = _build_model()
+            ^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1270, in _build_model
+    model = timesfm.TimesFM_2p5_200M_torch.from_pretrained(str(model_dir))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'timesfm' has no attribute 'TimesFM_2p5_200M_torch'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+AttributeError: module 'timesfm' has no attribute 'TimesFM_2p5_200M_torch'
+

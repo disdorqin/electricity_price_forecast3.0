@@ -1,0 +1,4 @@
+task,model_name,n_samples,learner_loss,smape_floor50,mae,mae_percent
+dayahead,lightgbm,720,25.0757,25.0908,77.9635,25.0405
+dayahead,timemixer,720,29.0437,29.8569,84.5194,27.1461
+dayahead,timesfm,720,18.054,18.958,49.6439,15.9447

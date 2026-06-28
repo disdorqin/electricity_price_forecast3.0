@@ -1,0 +1,11 @@
+{
+  "target_date": "2026-02-24",
+  "method": "classifier_bridge",
+  "success": true,
+  "fallback_used": false,
+  "error": null,
+  "original_error": null,
+  "n_corrections": 4,
+  "n_corrected_rows": 24,
+  "corrected_hours": 7
+}

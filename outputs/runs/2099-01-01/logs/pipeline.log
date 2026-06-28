@@ -1,0 +1,432 @@
+2026-06-28 10:42:45 [ERROR] runtime.resource_scheduler: [GPU] timemixer/dayahead FAILED in 1.3s: [Errno 2] No such file or directory: 'data\\NONEXISTENT_FILE.xlsx'
+2026-06-28 10:42:46 [ERROR] runtime.resource_scheduler: CPU [timesfm/dayahead] FAILED: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 425, in _predict_model
+    df = _predict_timesfm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 510, in _predict_timesfm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\timesfm_v1.py", line 120, in predict
+    df = predict_price_for_date(
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\infer.py", line 67, in predict_price_for_date
+    return forecast_next_day(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1373, in forecast_next_day
+    df = load_features(args.data, encoding=args.encoding, sheet_name=args.sheet)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 230, in load_features
+    df = _read_table(path, encoding=encoding, sheet_name=sheet_name)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 179, in _read_table
+    return pd.read_excel(path, sheet_name=sheet_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
+    ext = inspect_excel_format(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
+    with get_handle(
+         ^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+
+2026-06-28 10:42:46 [ERROR] runtime.resource_scheduler: CPU [lightgbm/dayahead] FAILED: 'NoneType' object has no attribute 'copy'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 423, in _predict_model
+    df = _predict_lightgbm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 486, in _predict_lightgbm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\lightgbm_v1.py", line 132, in predict
+    df = standardize_business_columns(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\utils\business_day.py", line 134, in standardize_business_columns
+    df = df.copy()
+         ^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'copy'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+AttributeError: 'NoneType' object has no attribute 'copy'
+
+2026-06-28 10:42:46 [ERROR] runtime.resource_scheduler: [GPU] timemixer/realtime FAILED in 0.0s: [Errno 2] No such file or directory: 'data\\NONEXISTENT_FILE.xlsx'
+2026-06-28 10:42:46 [ERROR] runtime.resource_scheduler: [GPU] rt916/realtime FAILED in 0.0s: [Errno 2] No such file or directory: 'D:\\作业\\大创_挑战杯_互联网\\大学生创新创业计划\\大创实现\\其他资料\\electricity_forecast_model2.1\\data\\NONEXISTENT_FILE.xlsx'
+2026-06-28 10:42:50 [ERROR] runtime.resource_scheduler: CPU [timesfm/realtime] FAILED: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 425, in _predict_model
+    df = _predict_timesfm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 510, in _predict_timesfm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\timesfm_v1.py", line 120, in predict
+    df = predict_price_for_date(
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\infer.py", line 67, in predict_price_for_date
+    return forecast_next_day(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1373, in forecast_next_day
+    df = load_features(args.data, encoding=args.encoding, sheet_name=args.sheet)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 230, in load_features
+    df = _read_table(path, encoding=encoding, sheet_name=sheet_name)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 179, in _read_table
+    return pd.read_excel(path, sheet_name=sheet_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
+    ext = inspect_excel_format(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
+    with get_handle(
+         ^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+
+2026-06-28 10:42:50 [ERROR] runtime.resource_scheduler: CPU [sgdfnet/realtime] FAILED: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 435, in _predict_model
+    df = _predict_sgdfnet(
+         ^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 562, in _predict_sgdfnet
+    return _predict_via_registry(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 617, in _predict_via_registry
+    result = pipeline.predict_range(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\SGDFNet\pipeline.py", line 72, in predict_range
+    run_dir = Path(run_protocol_b_cutoff_experiment(tmp_config))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\SGDFNet\src\sgdfnet\protocol_b_cutoff.py", line 291, in run_protocol_b_cutoff_experiment
+    raw_df = load_dataset(config.data_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\SGDFNet\src\sgdfnet\data_contract.py", line 78, in load_dataset
+    df = pd.read_excel(path)
+         ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
+    ext = inspect_excel_format(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
+    with get_handle(
+         ^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+
+2026-06-28 10:42:50 [ERROR] pipelines.ledger_full_range: Range stopped at 2099-01-01 (use --continue-on-error to continue)
+2026-06-28 10:42:53 [ERROR] runtime.resource_scheduler: [GPU] timemixer/dayahead FAILED in 1.2s: [Errno 2] No such file or directory: 'data\\NONEXISTENT_FILE.xlsx'
+2026-06-28 10:42:54 [ERROR] runtime.resource_scheduler: CPU [timesfm/dayahead] FAILED: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 425, in _predict_model
+    df = _predict_timesfm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 510, in _predict_timesfm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\timesfm_v1.py", line 120, in predict
+    df = predict_price_for_date(
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\infer.py", line 67, in predict_price_for_date
+    return forecast_next_day(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1373, in forecast_next_day
+    df = load_features(args.data, encoding=args.encoding, sheet_name=args.sheet)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 230, in load_features
+    df = _read_table(path, encoding=encoding, sheet_name=sheet_name)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 179, in _read_table
+    return pd.read_excel(path, sheet_name=sheet_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
+    ext = inspect_excel_format(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
+    with get_handle(
+         ^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+
+2026-06-28 10:42:54 [ERROR] runtime.resource_scheduler: CPU [lightgbm/dayahead] FAILED: 'NoneType' object has no attribute 'copy'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 423, in _predict_model
+    df = _predict_lightgbm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 486, in _predict_lightgbm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\lightgbm_v1.py", line 132, in predict
+    df = standardize_business_columns(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\utils\business_day.py", line 134, in standardize_business_columns
+    df = df.copy()
+         ^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'copy'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+AttributeError: 'NoneType' object has no attribute 'copy'
+
+2026-06-28 10:42:54 [ERROR] runtime.resource_scheduler: [GPU] timemixer/realtime FAILED in 0.0s: [Errno 2] No such file or directory: 'data\\NONEXISTENT_FILE.xlsx'
+2026-06-28 10:42:54 [ERROR] runtime.resource_scheduler: [GPU] rt916/realtime FAILED in 0.0s: [Errno 2] No such file or directory: 'D:\\作业\\大创_挑战杯_互联网\\大学生创新创业计划\\大创实现\\其他资料\\electricity_forecast_model2.1\\data\\NONEXISTENT_FILE.xlsx'
+2026-06-28 10:42:58 [ERROR] runtime.resource_scheduler: CPU [sgdfnet/realtime] FAILED: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 435, in _predict_model
+    df = _predict_sgdfnet(
+         ^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 562, in _predict_sgdfnet
+    return _predict_via_registry(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 617, in _predict_via_registry
+    result = pipeline.predict_range(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\SGDFNet\pipeline.py", line 72, in predict_range
+    run_dir = Path(run_protocol_b_cutoff_experiment(tmp_config))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\SGDFNet\src\sgdfnet\protocol_b_cutoff.py", line 291, in run_protocol_b_cutoff_experiment
+    raw_df = load_dataset(config.data_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\SGDFNet\src\sgdfnet\data_contract.py", line 78, in load_dataset
+    df = pd.read_excel(path)
+         ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
+    ext = inspect_excel_format(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
+    with get_handle(
+         ^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+
+2026-06-28 10:42:58 [ERROR] runtime.resource_scheduler: CPU [timesfm/realtime] FAILED: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 425, in _predict_model
+    df = _predict_timesfm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 510, in _predict_timesfm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\timesfm_v1.py", line 120, in predict
+    df = predict_price_for_date(
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\infer.py", line 67, in predict_price_for_date
+    return forecast_next_day(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1373, in forecast_next_day
+    df = load_features(args.data, encoding=args.encoding, sheet_name=args.sheet)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 230, in load_features
+    df = _read_table(path, encoding=encoding, sheet_name=sheet_name)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 179, in _read_table
+    return pd.read_excel(path, sheet_name=sheet_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 495, in read_excel
+    io = ExcelFile(
+         ^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1550, in __init__
+    ext = inspect_excel_format(
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\excel\_base.py", line 1402, in inspect_excel_format
+    with get_handle(
+         ^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\site-packages\pandas\io\common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+FileNotFoundError: [Errno 2] No such file or directory: 'data/NONEXISTENT_FILE.xlsx'
+
+2026-06-28 10:42:58 [ERROR] pipelines.ledger_full_range: Range stopped at 2099-01-01 (use --continue-on-error to continue)

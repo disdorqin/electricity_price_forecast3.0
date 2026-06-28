@@ -1,0 +1,115 @@
+{
+  "pipeline": "ledger_predict",
+  "target_date": "2026-02-11",
+  "realtime_cutoff_hour": 14,
+  "epf_v1_mode": "exact",
+  "started_at": "2026-06-27T06:30:14.061623+00:00",
+  "status": "complete",
+  "results": {
+    "dayahead": {
+      "lightgbm": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\dayahead\\prediction\\lightgbm_predictions.csv",
+        "elapsed_seconds": 0.0
+      },
+      "timesfm": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\dayahead\\prediction\\timesfm_predictions.csv",
+        "elapsed_seconds": 0.0
+      },
+      "timemixer": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\dayahead\\prediction\\timemixer_predictions.csv",
+        "elapsed_seconds": 322.98882860000595
+      }
+    },
+    "dayahead_long_rows": 72,
+    "realtime": {
+      "sgdfnet": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\realtime\\prediction\\sgdfnet_predictions.csv",
+        "elapsed_seconds": 0.0
+      },
+      "timesfm": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\realtime\\prediction\\timesfm_predictions.csv",
+        "elapsed_seconds": 0.0
+      },
+      "timemixer": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\realtime\\prediction\\timemixer_predictions.csv",
+        "elapsed_seconds": 333.6110022000212
+      },
+      "rt916": {
+        "status": "ok",
+        "output_path": "outputs\\runs\\2026-02-11\\realtime\\prediction\\rt916_predictions.csv",
+        "elapsed_seconds": 1001.2235469000007
+      }
+    },
+    "realtime_long_rows": 96,
+    "dayahead_ledger": {
+      "status": "ok",
+      "parquet_path": "outputs\\ledger\\dayahead\\prediction\\prediction_ledger.parquet",
+      "csv_path": "outputs\\ledger\\dayahead\\prediction\\prediction_ledger.csv",
+      "rows_before": 1368,
+      "rows_after": 1440,
+      "new_rows": 72,
+      "duplicates_removed": 0,
+      "duplicate_report": []
+    },
+    "realtime_ledger": {
+      "status": "ok",
+      "parquet_path": "outputs\\ledger\\realtime\\prediction\\prediction_ledger.parquet",
+      "csv_path": "outputs\\ledger\\realtime\\prediction\\prediction_ledger.csv",
+      "rows_before": 1824,
+      "rows_after": 1920,
+      "new_rows": 96,
+      "duplicates_removed": 0,
+      "duplicate_report": []
+    },
+    "dayahead_actual_ledger": {
+      "status": "ok",
+      "parquet_path": "outputs\\ledger\\dayahead\\actual\\actual_ledger.parquet",
+      "csv_path": "outputs\\ledger\\dayahead\\actual\\actual_ledger.csv",
+      "rows_before": 456,
+      "rows_after": 480
+    },
+    "realtime_actual_ledger": {
+      "status": "ok",
+      "parquet_path": "outputs\\ledger\\realtime\\actual\\actual_ledger.parquet",
+      "csv_path": "outputs\\ledger\\realtime\\actual\\actual_ledger.csv",
+      "rows_before": 456,
+      "rows_after": 480
+    }
+  },
+  "warnings": [],
+  "errors": [],
+  "data_cutoff_dayahead": "2026-02-10",
+  "data_cutoff_realtime": "2026-02-10 14:00:00",
+  "model_runtime_config": {
+    "timemixer": {
+      "cutoff_hour_rt": 14,
+      "epochs": 80,
+      "patience": 15,
+      "batch_size": 16,
+      "full_refit": true,
+      "seed": 42
+    },
+    "rt916": {
+      "asof_hour": 14,
+      "amp_inference": false,
+      "export_dtype": "fp32"
+    },
+    "sgdfnet": {
+      "decision_hour": 14
+    },
+    "timesfm": {
+      "device": "cpu",
+      "epf_v1_mode": "exact"
+    },
+    "lightgbm": {
+      "epf_v1_mode": "exact"
+    }
+  },
+  "completed_at": "2026-06-27T06:58:05.962318+00:00"
+}

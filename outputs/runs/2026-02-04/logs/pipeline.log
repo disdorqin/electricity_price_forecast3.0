@@ -1,0 +1,609 @@
+2026-06-27 12:11:56 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-04 ===
+2026-06-27 12:11:56 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 12:11:56 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:11:56 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-04 starting...
+2026-06-27 12:11:56 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-04
+2026-06-27 12:14:15 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-04\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:14:15 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 139.3s
+2026-06-27 12:14:15 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 12:14:15 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-04\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 12:14:15 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 12:14:15 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:14:15 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-04 starting...
+2026-06-27 12:14:15 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-04
+2026-06-27 12:17:20 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-04\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:17:20 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 184.6s
+2026-06-27 12:17:20 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-04 starting...
+2026-06-27 12:17:20 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-04
+2026-06-27 12:25:47 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-04\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 12:25:47 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 507.0s
+2026-06-27 12:25:47 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 12:25:47 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-04\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 12:25:47 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 864 → 936 rows (+72 new, -0 duplicates)
+2026-06-27 12:25:47 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1152 → 1248 rows (+96 new, -0 duplicates)
+2026-06-27 12:25:53 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-04
+2026-06-27 12:25:53 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 288 → 312 rows (+24 new, -0 duplicates)
+2026-06-27 12:25:53 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 288 → 312 rows (+24 new, -0 duplicates)
+2026-06-27 12:25:53 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-04: complete
+2026-06-27 12:25:53 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 12/30: 2026-02-05 ---
+2026-06-27 12:25:53 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-05 ===
+2026-06-27 12:25:53 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 12:25:53 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:25:53 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-05 starting...
+2026-06-27 12:25:53 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-05
+2026-06-27 12:29:33 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-05\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:29:33 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 220.1s
+2026-06-27 12:29:33 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 12:29:33 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-05\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 12:29:33 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 12:29:33 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:29:33 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-05 starting...
+2026-06-27 12:29:33 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-05
+2026-06-27 12:32:00 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-05\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:32:00 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 146.8s
+2026-06-27 12:32:00 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-05 starting...
+2026-06-27 12:32:00 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-05
+2026-06-27 12:40:02 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-05\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 12:40:02 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 482.1s
+2026-06-27 12:40:02 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 12:40:02 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-05\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 12:40:02 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 936 → 1008 rows (+72 new, -0 duplicates)
+2026-06-27 12:40:02 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1248 → 1344 rows (+96 new, -0 duplicates)
+2026-06-27 12:40:08 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-05
+2026-06-27 12:40:08 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 312 → 336 rows (+24 new, -0 duplicates)
+2026-06-27 12:40:08 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 312 → 336 rows (+24 new, -0 duplicates)
+2026-06-27 12:40:08 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-05: complete
+2026-06-27 12:40:08 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 13/30: 2026-02-06 ---
+2026-06-27 12:40:08 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-06 ===
+2026-06-27 12:40:08 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 12:40:08 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:40:08 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-06 starting...
+2026-06-27 12:40:08 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-06
+2026-06-27 12:42:44 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-06\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:42:44 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 156.1s
+2026-06-27 12:42:44 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 12:42:44 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-06\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 12:42:44 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 12:42:44 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:42:44 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-06 starting...
+2026-06-27 12:42:44 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-06
+2026-06-27 12:45:34 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-06\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:45:34 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 170.5s
+2026-06-27 12:45:34 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-06 starting...
+2026-06-27 12:45:34 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-06
+2026-06-27 12:51:56 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-06\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 12:51:56 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 381.8s
+2026-06-27 12:51:56 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 12:51:56 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-06\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 12:51:56 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1008 → 1080 rows (+72 new, -0 duplicates)
+2026-06-27 12:51:56 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1344 → 1440 rows (+96 new, -0 duplicates)
+2026-06-27 12:52:10 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-06
+2026-06-27 12:52:10 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 336 → 360 rows (+24 new, -0 duplicates)
+2026-06-27 12:52:10 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 336 → 360 rows (+24 new, -0 duplicates)
+2026-06-27 12:52:10 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-06: complete
+2026-06-27 12:52:10 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 14/30: 2026-02-07 ---
+2026-06-27 12:52:10 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-07 ===
+2026-06-27 12:52:10 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 12:52:10 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:52:10 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-07 starting...
+2026-06-27 12:52:10 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-07
+2026-06-27 12:57:18 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-07\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 12:57:18 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 307.8s
+2026-06-27 12:57:18 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 12:57:18 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-07\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 12:57:18 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 12:57:18 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 12:57:18 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-07 starting...
+2026-06-27 12:57:18 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-07
+2026-06-27 13:02:08 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-07\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 13:02:08 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 290.1s
+2026-06-27 13:02:08 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-07 starting...
+2026-06-27 13:02:08 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-07
+2026-06-27 13:18:09 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-07\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 13:18:09 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 960.6s
+2026-06-27 13:18:09 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 13:18:09 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-07\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 13:18:09 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1080 → 1152 rows (+72 new, -0 duplicates)
+2026-06-27 13:18:09 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1440 → 1536 rows (+96 new, -0 duplicates)
+2026-06-27 13:18:19 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-07
+2026-06-27 13:18:19 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 360 → 384 rows (+24 new, -0 duplicates)
+2026-06-27 13:18:19 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 360 → 384 rows (+24 new, -0 duplicates)
+2026-06-27 13:18:19 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-07: complete
+2026-06-27 13:18:19 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 15/30: 2026-02-08 ---
+2026-06-27 13:18:19 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-08 ===
+2026-06-27 13:18:19 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 13:18:19 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 13:18:19 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-08 starting...
+2026-06-27 13:18:19 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-08
+2026-06-27 13:23:07 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-08\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 13:23:07 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 288.0s
+2026-06-27 13:23:07 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 13:23:07 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-08\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 13:23:07 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 13:23:07 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 13:23:07 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-08 starting...
+2026-06-27 13:23:07 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-08
+2026-06-27 13:28:02 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-08\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 13:28:02 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 294.9s
+2026-06-27 13:28:02 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-08 starting...
+2026-06-27 13:28:02 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-08
+2026-06-27 13:43:06 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-08\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 13:43:06 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 903.8s
+2026-06-27 13:43:06 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 13:43:06 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-08\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 13:43:06 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1152 → 1224 rows (+72 new, -0 duplicates)
+2026-06-27 13:43:06 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1536 → 1632 rows (+96 new, -0 duplicates)
+2026-06-27 13:43:20 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-08
+2026-06-27 13:43:20 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 384 → 408 rows (+24 new, -0 duplicates)
+2026-06-27 13:43:20 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 384 → 408 rows (+24 new, -0 duplicates)
+2026-06-27 13:43:20 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-08: complete
+2026-06-27 13:43:20 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 16/30: 2026-02-09 ---
+2026-06-27 13:43:20 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-09 ===
+2026-06-27 13:43:20 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 13:43:20 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 13:43:20 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-09 starting...
+2026-06-27 13:43:20 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-09
+2026-06-27 13:47:51 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-09\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 13:47:51 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 270.6s
+2026-06-27 13:47:51 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 13:47:51 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-09\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 13:47:51 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 13:47:51 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 13:47:51 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-09 starting...
+2026-06-27 13:47:51 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-09
+2026-06-27 13:51:00 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-09\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 13:51:00 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 189.1s
+2026-06-27 13:51:00 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-09 starting...
+2026-06-27 13:51:00 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-09
+2026-06-27 14:03:51 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-09\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 14:03:51 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 771.4s
+2026-06-27 14:03:51 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 14:03:51 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-09\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 14:03:51 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1224 → 1296 rows (+72 new, -0 duplicates)
+2026-06-27 14:03:51 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1632 → 1728 rows (+96 new, -0 duplicates)
+2026-06-27 14:04:05 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-09
+2026-06-27 14:04:05 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 408 → 432 rows (+24 new, -0 duplicates)
+2026-06-27 14:04:05 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 408 → 432 rows (+24 new, -0 duplicates)
+2026-06-27 14:04:05 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-09: complete
+2026-06-27 14:04:05 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 17/30: 2026-02-10 ---
+2026-06-27 14:04:05 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-10 ===
+2026-06-27 14:04:05 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 14:04:05 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 14:04:05 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-10 starting...
+2026-06-27 14:04:05 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-10
+2026-06-27 14:08:48 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-10\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 14:08:48 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 282.6s
+2026-06-27 14:08:48 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 14:08:48 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-10\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 14:08:48 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 14:08:48 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 14:08:48 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-10 starting...
+2026-06-27 14:08:48 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-10
+2026-06-27 14:13:46 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-10\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 14:13:46 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 297.8s
+2026-06-27 14:13:46 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-10 starting...
+2026-06-27 14:13:46 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-10
+2026-06-27 14:29:59 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-10\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 14:29:59 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 973.1s
+2026-06-27 14:29:59 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 14:29:59 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-10\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 14:29:59 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1296 → 1368 rows (+72 new, -0 duplicates)
+2026-06-27 14:29:59 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1728 → 1824 rows (+96 new, -0 duplicates)
+2026-06-27 14:30:13 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-10
+2026-06-27 14:30:14 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 432 → 456 rows (+24 new, -0 duplicates)
+2026-06-27 14:30:14 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 432 → 456 rows (+24 new, -0 duplicates)
+2026-06-27 14:30:14 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-10: complete
+2026-06-27 14:30:14 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 18/30: 2026-02-11 ---
+2026-06-27 14:30:14 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-11 ===
+2026-06-27 14:30:14 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 14:30:14 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 14:30:14 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-11 starting...
+2026-06-27 14:30:14 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-11
+2026-06-27 14:35:37 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-11\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 14:35:37 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 323.0s
+2026-06-27 14:35:37 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 14:35:37 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-11\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 14:35:37 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 14:35:37 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 14:35:37 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-11 starting...
+2026-06-27 14:35:37 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-11
+2026-06-27 14:41:10 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-11\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 14:41:10 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 333.6s
+2026-06-27 14:41:10 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-11 starting...
+2026-06-27 14:41:10 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-11
+2026-06-27 14:57:51 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-11\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 14:57:51 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 1001.2s
+2026-06-27 14:57:51 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 14:57:52 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-11\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 14:57:52 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1368 → 1440 rows (+72 new, -0 duplicates)
+2026-06-27 14:57:52 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1824 → 1920 rows (+96 new, -0 duplicates)
+2026-06-27 14:58:05 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-11
+2026-06-27 14:58:05 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 456 → 480 rows (+24 new, -0 duplicates)
+2026-06-27 14:58:05 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 456 → 480 rows (+24 new, -0 duplicates)
+2026-06-27 14:58:05 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-11: complete
+2026-06-27 14:58:05 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 19/30: 2026-02-12 ---
+2026-06-27 14:58:05 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-12 ===
+2026-06-27 14:58:05 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 14:58:05 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 14:58:05 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-12 starting...
+2026-06-27 14:58:05 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-12
+2026-06-27 15:02:51 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-12\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 15:02:51 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 285.6s
+2026-06-27 15:02:51 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 15:02:51 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-12\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 15:02:51 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 15:02:51 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 15:02:51 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-12 starting...
+2026-06-27 15:02:51 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-12
+2026-06-27 15:07:36 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-12\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 15:07:36 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 285.3s
+2026-06-27 15:07:36 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-12 starting...
+2026-06-27 15:07:36 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-12
+2026-06-27 15:23:11 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-12\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 15:23:11 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 935.1s
+2026-06-27 15:23:11 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 15:23:12 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-12\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 15:23:12 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1440 → 1512 rows (+72 new, -0 duplicates)
+2026-06-27 15:23:12 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 1920 → 2016 rows (+96 new, -0 duplicates)
+2026-06-27 15:23:25 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-12
+2026-06-27 15:23:25 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 480 → 504 rows (+24 new, -0 duplicates)
+2026-06-27 15:23:25 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 480 → 504 rows (+24 new, -0 duplicates)
+2026-06-27 15:23:25 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-12: complete
+2026-06-27 15:23:25 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 20/30: 2026-02-13 ---
+2026-06-27 15:23:25 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-13 ===
+2026-06-27 15:23:25 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 15:23:25 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 15:23:25 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-13 starting...
+2026-06-27 15:23:25 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-13
+2026-06-27 15:27:58 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-13\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 15:27:58 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 272.8s
+2026-06-27 15:27:58 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 15:27:58 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-13\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 15:27:58 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 15:27:58 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 15:27:58 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-13 starting...
+2026-06-27 15:27:58 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-13
+2026-06-27 15:32:31 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-13\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 15:32:31 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 272.5s
+2026-06-27 15:32:31 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-13 starting...
+2026-06-27 15:32:31 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-13
+2026-06-27 15:48:39 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-13\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 15:48:39 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 968.3s
+2026-06-27 15:48:39 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 15:48:39 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-13\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 15:48:39 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1512 → 1584 rows (+72 new, -0 duplicates)
+2026-06-27 15:48:39 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2016 → 2112 rows (+96 new, -0 duplicates)
+2026-06-27 15:48:53 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-13
+2026-06-27 15:48:53 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 504 → 528 rows (+24 new, -0 duplicates)
+2026-06-27 15:48:53 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 504 → 528 rows (+24 new, -0 duplicates)
+2026-06-27 15:48:53 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-13: complete
+2026-06-27 15:48:53 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 21/30: 2026-02-14 ---
+2026-06-27 15:48:53 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-14 ===
+2026-06-27 15:48:53 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 15:48:53 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 15:48:53 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-14 starting...
+2026-06-27 15:48:53 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-14
+2026-06-27 15:53:28 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-14\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 15:53:28 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 274.7s
+2026-06-27 15:53:28 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 15:53:28 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-14\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 15:53:28 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 15:53:28 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 15:53:28 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-14 starting...
+2026-06-27 15:53:28 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-14
+2026-06-27 15:58:01 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-14\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 15:58:01 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 273.3s
+2026-06-27 15:58:01 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-14 starting...
+2026-06-27 15:58:01 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-14
+2026-06-27 16:12:36 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-14\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 16:12:36 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 874.8s
+2026-06-27 16:12:36 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 16:12:36 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-14\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 16:12:36 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1584 → 1656 rows (+72 new, -0 duplicates)
+2026-06-27 16:12:36 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2112 → 2208 rows (+96 new, -0 duplicates)
+2026-06-27 16:12:50 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-14
+2026-06-27 16:12:50 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 528 → 552 rows (+24 new, -0 duplicates)
+2026-06-27 16:12:50 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 528 → 552 rows (+24 new, -0 duplicates)
+2026-06-27 16:12:50 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-14: complete
+2026-06-27 16:12:50 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 22/30: 2026-02-15 ---
+2026-06-27 16:12:50 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-15 ===
+2026-06-27 16:12:50 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 16:12:50 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 16:12:50 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-15 starting...
+2026-06-27 16:12:50 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-15
+2026-06-27 16:17:19 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-15\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 16:17:19 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 269.0s
+2026-06-27 16:17:19 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 16:17:19 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-15\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 16:17:19 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 16:17:19 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 16:17:19 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-15 starting...
+2026-06-27 16:17:19 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-15
+2026-06-27 16:21:48 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-15\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 16:21:48 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 268.7s
+2026-06-27 16:21:48 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-15 starting...
+2026-06-27 16:21:48 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-15
+2026-06-27 16:35:58 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-15\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 16:35:58 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 850.6s
+2026-06-27 16:35:58 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 16:35:59 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-15\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 16:35:59 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1656 → 1728 rows (+72 new, -0 duplicates)
+2026-06-27 16:35:59 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2208 → 2304 rows (+96 new, -0 duplicates)
+2026-06-27 16:36:13 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-15
+2026-06-27 16:36:13 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 552 → 576 rows (+24 new, -0 duplicates)
+2026-06-27 16:36:13 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 552 → 576 rows (+24 new, -0 duplicates)
+2026-06-27 16:36:13 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-15: complete
+2026-06-27 16:36:13 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 23/30: 2026-02-16 ---
+2026-06-27 16:36:13 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-16 ===
+2026-06-27 16:36:13 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 16:36:13 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 16:36:13 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-16 starting...
+2026-06-27 16:36:13 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-16
+2026-06-27 16:40:28 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-16\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 16:40:28 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 255.2s
+2026-06-27 16:40:28 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 16:40:28 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-16\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 16:40:28 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 16:40:28 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 16:40:28 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-16 starting...
+2026-06-27 16:40:28 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-16
+2026-06-27 16:44:48 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-16\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 16:44:48 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 259.7s
+2026-06-27 16:44:48 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-16 starting...
+2026-06-27 16:44:48 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-16
+2026-06-27 17:01:05 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-16\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 17:01:05 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 977.4s
+2026-06-27 17:01:05 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 17:01:05 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-16\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 17:01:05 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1728 → 1800 rows (+72 new, -0 duplicates)
+2026-06-27 17:01:05 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2304 → 2400 rows (+96 new, -0 duplicates)
+2026-06-27 17:01:19 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-16
+2026-06-27 17:01:19 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 576 → 600 rows (+24 new, -0 duplicates)
+2026-06-27 17:01:19 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 576 → 600 rows (+24 new, -0 duplicates)
+2026-06-27 17:01:19 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-16: complete
+2026-06-27 17:01:19 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 24/30: 2026-02-17 ---
+2026-06-27 17:01:19 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-17 ===
+2026-06-27 17:01:19 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 17:01:19 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 17:01:19 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-17 starting...
+2026-06-27 17:01:19 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-17
+2026-06-27 17:05:52 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-17\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 17:05:52 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 273.0s
+2026-06-27 17:05:52 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 17:05:52 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-17\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 17:05:52 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 17:05:52 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 17:05:52 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-17 starting...
+2026-06-27 17:05:52 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-17
+2026-06-27 17:10:25 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-17\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 17:10:25 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 272.8s
+2026-06-27 17:10:25 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-17 starting...
+2026-06-27 17:10:25 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-17
+2026-06-27 17:25:14 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-17\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 17:25:14 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 888.6s
+2026-06-27 17:25:14 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 17:25:14 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-17\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 17:25:14 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1800 → 1872 rows (+72 new, -0 duplicates)
+2026-06-27 17:25:14 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2400 → 2496 rows (+96 new, -0 duplicates)
+2026-06-27 17:25:28 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-17
+2026-06-27 17:25:28 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 600 → 624 rows (+24 new, -0 duplicates)
+2026-06-27 17:25:28 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 600 → 624 rows (+24 new, -0 duplicates)
+2026-06-27 17:25:28 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-17: complete
+2026-06-27 17:25:28 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 25/30: 2026-02-18 ---
+2026-06-27 17:25:28 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-18 ===
+2026-06-27 17:25:28 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 17:25:28 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 17:25:28 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-18 starting...
+2026-06-27 17:25:28 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-18
+2026-06-27 17:30:19 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-18\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 17:30:19 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 291.5s
+2026-06-27 17:30:19 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 17:30:19 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-18\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 17:30:19 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 17:30:19 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 17:30:19 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-18 starting...
+2026-06-27 17:30:19 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-18
+2026-06-27 17:35:13 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-18\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 17:35:13 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 293.7s
+2026-06-27 17:35:13 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-18 starting...
+2026-06-27 17:35:13 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-18
+2026-06-27 17:52:44 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-18\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 17:52:44 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 1051.0s
+2026-06-27 17:52:44 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 17:52:44 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-18\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 17:52:44 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1872 → 1944 rows (+72 new, -0 duplicates)
+2026-06-27 17:52:44 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2496 → 2592 rows (+96 new, -0 duplicates)
+2026-06-27 17:52:58 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-18
+2026-06-27 17:52:58 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 624 → 648 rows (+24 new, -0 duplicates)
+2026-06-27 17:52:58 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 624 → 648 rows (+24 new, -0 duplicates)
+2026-06-27 17:52:58 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-18: complete
+2026-06-27 17:52:58 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 26/30: 2026-02-19 ---
+2026-06-27 17:52:58 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-19 ===
+2026-06-27 17:52:58 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 17:52:58 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 17:52:58 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-19 starting...
+2026-06-27 17:52:58 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-19
+2026-06-27 17:57:42 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-19\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 17:57:42 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 283.8s
+2026-06-27 17:57:42 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 17:57:42 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-19\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 17:57:42 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 17:57:42 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 17:57:42 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-19 starting...
+2026-06-27 17:57:42 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-19
+2026-06-27 18:02:25 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-19\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 18:02:25 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 282.9s
+2026-06-27 18:02:25 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-19 starting...
+2026-06-27 18:02:25 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-19
+2026-06-27 18:17:32 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-19\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 18:17:32 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 907.1s
+2026-06-27 18:17:32 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 18:17:32 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-19\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 18:17:32 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 1944 → 2016 rows (+72 new, -0 duplicates)
+2026-06-27 18:17:32 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2592 → 2688 rows (+96 new, -0 duplicates)
+2026-06-27 18:17:45 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-19
+2026-06-27 18:17:46 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 648 → 672 rows (+24 new, -0 duplicates)
+2026-06-27 18:17:46 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 648 → 672 rows (+24 new, -0 duplicates)
+2026-06-27 18:17:46 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-19: complete
+2026-06-27 18:17:46 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 27/30: 2026-02-20 ---
+2026-06-27 18:17:46 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-20 ===
+2026-06-27 18:17:46 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 18:17:46 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 18:17:46 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-20 starting...
+2026-06-27 18:17:46 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-20
+2026-06-27 18:22:31 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-20\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 18:22:31 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 285.5s
+2026-06-27 18:22:31 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 18:22:31 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-20\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 18:22:31 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 18:22:31 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 18:22:31 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-20 starting...
+2026-06-27 18:22:31 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-20
+2026-06-27 18:27:17 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-20\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 18:27:17 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 285.7s
+2026-06-27 18:27:17 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-20 starting...
+2026-06-27 18:27:17 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-20
+2026-06-27 18:44:35 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-20\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 18:44:35 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 1037.7s
+2026-06-27 18:44:35 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 18:44:35 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-20\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 18:44:35 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2016 → 2088 rows (+72 new, -0 duplicates)
+2026-06-27 18:44:35 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2688 → 2784 rows (+96 new, -0 duplicates)
+2026-06-27 18:44:49 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-20
+2026-06-27 18:44:49 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 672 → 696 rows (+24 new, -0 duplicates)
+2026-06-27 18:44:49 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 672 → 696 rows (+24 new, -0 duplicates)
+2026-06-27 18:44:49 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-20: complete
+2026-06-27 18:44:49 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 28/30: 2026-02-21 ---
+2026-06-27 18:44:49 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-21 ===
+2026-06-27 18:44:49 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 18:44:49 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 18:44:49 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-21 starting...
+2026-06-27 18:44:49 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-21
+2026-06-27 18:49:15 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-21\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 18:49:15 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 266.4s
+2026-06-27 18:49:15 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-27 18:49:15 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-21\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 18:49:15 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 18:49:15 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-27 18:49:15 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-21 starting...
+2026-06-27 18:49:15 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-21
+2026-06-27 18:54:22 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-21\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-27 18:54:22 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 306.9s
+2026-06-27 18:54:22 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-21 starting...
+2026-06-27 18:54:22 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-21
+2026-06-27 19:11:31 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-21\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-27 19:11:31 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 1028.5s
+2026-06-27 19:11:31 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-27 19:11:31 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-21\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 19:11:31 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2088 → 2160 rows (+72 new, -0 duplicates)
+2026-06-27 19:11:31 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2784 → 2880 rows (+96 new, -0 duplicates)
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-21
+2026-06-27 19:11:45 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 696 → 720 rows (+24 new, -0 duplicates)
+2026-06-27 19:11:45 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 696 → 720 rows (+24 new, -0 duplicates)
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-21: complete
+2026-06-27 19:11:45 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 29/30: 2026-02-22 ---
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-22 ===
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [dayahead/lightgbm] Cache hit: outputs\runs\2026-02-22\dayahead\prediction\lightgbm_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [dayahead/timesfm] Cache hit: outputs\runs\2026-02-22\dayahead\prediction\timesfm_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [dayahead/timemixer] Cache hit: outputs\runs\2026-02-22\dayahead\prediction\timemixer_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [dayahead] All models cached, nothing to run
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-22\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [realtime/timesfm] Cache hit: outputs\runs\2026-02-22\realtime\prediction\timesfm_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [realtime/sgdfnet] Cache hit: outputs\runs\2026-02-22\realtime\prediction\sgdfnet_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [realtime/timemixer] Cache hit: outputs\runs\2026-02-22\realtime\prediction\timemixer_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [realtime/rt916] Cache hit: outputs\runs\2026-02-22\realtime\prediction\rt916_predictions.csv
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: [realtime] All models cached, nothing to run
+2026-06-27 19:11:45 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-22\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 19:11:45 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2160 → 2160 rows (+72 new, -72 duplicates)
+2026-06-27 19:11:45 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2880 → 2880 rows (+96 new, -96 duplicates)
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-22
+2026-06-27 19:11:59 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 720 → 720 rows (+24 new, -24 duplicates)
+2026-06-27 19:11:59 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 720 → 720 rows (+24 new, -24 duplicates)
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-22: complete
+2026-06-27 19:11:59 [INFO] pipelines.ledger_backfill: 
+--- Backfill day 30/30: 2026-02-23 ---
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-23 ===
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [dayahead/lightgbm] Cache hit: outputs\runs\2026-02-23\dayahead\prediction\lightgbm_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [dayahead/timesfm] Cache hit: outputs\runs\2026-02-23\dayahead\prediction\timesfm_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [dayahead/timemixer] Cache hit: outputs\runs\2026-02-23\dayahead\prediction\timemixer_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [dayahead] All models cached, nothing to run
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-23\dayahead\prediction\all_model_predictions_long.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [realtime/timesfm] Cache hit: outputs\runs\2026-02-23\realtime\prediction\timesfm_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [realtime/sgdfnet] Cache hit: outputs\runs\2026-02-23\realtime\prediction\sgdfnet_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [realtime/timemixer] Cache hit: outputs\runs\2026-02-23\realtime\prediction\timemixer_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [realtime/rt916] Cache hit: outputs\runs\2026-02-23\realtime\prediction\rt916_predictions.csv
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: [realtime] All models cached, nothing to run
+2026-06-27 19:11:59 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-23\realtime\prediction\all_model_predictions_long.csv
+2026-06-27 19:11:59 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2160 → 2160 rows (+72 new, -72 duplicates)
+2026-06-27 19:11:59 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 2880 → 2880 rows (+96 new, -96 duplicates)
+2026-06-27 19:12:13 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-23
+2026-06-27 19:12:13 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 720 → 720 rows (+24 new, -24 duplicates)
+2026-06-27 19:12:13 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 720 → 720 rows (+24 new, -24 duplicates)
+2026-06-27 19:12:13 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-23: complete
+2026-06-27 19:12:13 [INFO] pipelines.ledger_backfill: Ledger [dayahead]: 2160 rows, 30 days, 3 models
+2026-06-27 19:12:13 [INFO] pipelines.ledger_backfill: Actual [dayahead]: 720 rows, 30 days
+2026-06-27 19:12:13 [INFO] pipelines.ledger_backfill: Ledger [realtime]: 2880 rows, 30 days, 4 models
+2026-06-27 19:12:13 [INFO] pipelines.ledger_backfill: Actual [realtime]: 720 rows, 30 days
+2026-06-27 19:12:13 [INFO] pipelines.ledger_backfill: Backfill complete: 30/30 days OK, 0 failed

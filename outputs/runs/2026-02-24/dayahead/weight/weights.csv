@@ -1,0 +1,10 @@
+task,period,model_name,weight
+dayahead,1_8,lightgbm,0.108293
+dayahead,1_8,timemixer,0.065361
+dayahead,1_8,timesfm,0.826346
+dayahead,9_16,lightgbm,0.049111
+dayahead,9_16,timemixer,0.049111
+dayahead,9_16,timesfm,0.901778
+dayahead,17_24,lightgbm,0.230778
+dayahead,17_24,timemixer,0.097811
+dayahead,17_24,timesfm,0.671411

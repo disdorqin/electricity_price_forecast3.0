@@ -1,0 +1,5 @@
+task,model_name,n_samples,learner_loss,smape_floor50,mae,mae_percent
+realtime,rt916,720,34.6842,33.988,116.972,36.3086
+realtime,sgdfnet,720,26.4959,26.9708,81.7901,25.388
+realtime,timemixer,720,41.33,42.07,127.5858,39.6032
+realtime,timesfm,720,32.1469,33.2188,95.5075,29.6459

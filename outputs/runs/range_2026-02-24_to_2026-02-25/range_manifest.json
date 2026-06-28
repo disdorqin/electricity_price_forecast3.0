@@ -1,0 +1,46 @@
+{
+  "pipeline": "ledger_full_range",
+  "start_date": "2026-02-24",
+  "end_date": "2026-02-25",
+  "total_days": 2,
+  "completed_days": 2,
+  "failed_days": 0,
+  "skipped_days": 0,
+  "status": "complete",
+  "daily_results": [
+    {
+      "date": "2026-02-24",
+      "status": "complete",
+      "manifest_path": "outputs\\runs\\2026-02-24\\run_manifest.json",
+      "submission_ready_path": "outputs\\runs\\2026-02-24\\final\\submission_ready.csv",
+      "warnings_count": 0,
+      "errors_count": 0,
+      "manifest_stages": [
+        "ledger_predict",
+        "ledger_weight",
+        "ledger_fuse",
+        "ledger_classifier",
+        "final_outputs"
+      ]
+    },
+    {
+      "date": "2026-02-25",
+      "status": "complete",
+      "manifest_path": "outputs\\runs\\2026-02-25\\run_manifest.json",
+      "submission_ready_path": "outputs\\runs\\2026-02-25\\final\\submission_ready.csv",
+      "warnings_count": 0,
+      "errors_count": 0,
+      "manifest_stages": [
+        "ledger_predict",
+        "ledger_weight",
+        "ledger_fuse",
+        "ledger_classifier",
+        "final_outputs"
+      ]
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "started_at": "2026-06-28T02:11:50.910235+00:00",
+  "completed_at": "2026-06-28T02:12:36.397292+00:00"
+}

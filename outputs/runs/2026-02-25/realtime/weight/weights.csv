@@ -1,0 +1,13 @@
+task,period,model_name,weight
+realtime,1_8,rt916,0.07598
+realtime,1_8,sgdfnet,0.764259
+realtime,1_8,timemixer,0.080044
+realtime,1_8,timesfm,0.079717
+realtime,9_16,rt916,0.046774
+realtime,9_16,sgdfnet,0.277126
+realtime,9_16,timemixer,0.045316
+realtime,9_16,timesfm,0.630784
+realtime,17_24,rt916,0.414798
+realtime,17_24,sgdfnet,0.461913
+realtime,17_24,timemixer,0.062866
+realtime,17_24,timesfm,0.060423

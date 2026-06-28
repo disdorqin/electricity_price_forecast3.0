@@ -1,0 +1,365 @@
+2026-06-28 09:45:55 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-25 ===
+2026-06-28 09:45:55 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-28 09:45:55 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-28 09:45:55 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-25 starting...
+2026-06-28 09:45:55 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-25
+2026-06-28 09:48:31 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-25 ===
+2026-06-28 09:48:31 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-28 09:48:31 [INFO] pipelines.ledger_predict: [dayahead/lightgbm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\lightgbm_predictions.csv
+2026-06-28 09:48:31 [INFO] pipelines.ledger_predict: [dayahead/timesfm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timesfm_predictions.csv
+2026-06-28 09:48:31 [INFO] runtime.resource_scheduler: Scheduler: 0 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-28 09:48:31 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead on 2026-02-25 starting...
+2026-06-28 09:48:31 [INFO] pipelines.ledger_predict: Predicting: timemixer/dayahead on 2026-02-25
+2026-06-28 09:48:33 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-28 09:48:33 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 157.5s
+2026-06-28 09:48:33 [INFO] runtime.resource_scheduler: Scheduler done: 3 OK, 0 FAIL
+2026-06-28 09:48:33 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-25\dayahead\prediction\all_model_predictions_long.csv
+2026-06-28 09:48:33 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-28 09:48:33 [INFO] runtime.resource_scheduler: Scheduler: 2 CPU tasks, 2 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-28 09:48:33 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime on 2026-02-25 starting...
+2026-06-28 09:48:33 [INFO] pipelines.ledger_predict: Predicting: timemixer/realtime on 2026-02-25
+2026-06-28 09:51:55 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\realtime\prediction\timemixer_predictions.csv (24 rows)
+2026-06-28 09:51:55 [INFO] runtime.resource_scheduler: [GPU] timemixer/realtime done in 201.8s
+2026-06-28 09:51:55 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-25 starting...
+2026-06-28 09:51:55 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-25
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\dayahead\prediction\timemixer_predictions.csv (24 rows)
+2026-06-28 09:52:00 [INFO] runtime.resource_scheduler: [GPU] timemixer/dayahead done in 208.2s
+2026-06-28 09:52:00 [INFO] runtime.resource_scheduler: Scheduler done: 1 OK, 0 FAIL
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-25\dayahead\prediction\all_model_predictions_long.csv
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: [realtime/timesfm] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timesfm_predictions.csv
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: [realtime/sgdfnet] Cache hit: outputs\runs\2026-02-25\realtime\prediction\sgdfnet_predictions.csv
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: [realtime/timemixer] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timemixer_predictions.csv
+2026-06-28 09:52:00 [INFO] runtime.resource_scheduler: Scheduler: 0 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-28 09:52:00 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-25 starting...
+2026-06-28 09:52:00 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-25
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-25 ===
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [dayahead/lightgbm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\lightgbm_predictions.csv
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [dayahead/timesfm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timesfm_predictions.csv
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [dayahead/timemixer] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timemixer_predictions.csv
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [dayahead] All models cached, nothing to run
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-25\dayahead\prediction\all_model_predictions_long.csv
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [realtime/timesfm] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timesfm_predictions.csv
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [realtime/sgdfnet] Cache hit: outputs\runs\2026-02-25\realtime\prediction\sgdfnet_predictions.csv
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: [realtime/timemixer] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timemixer_predictions.csv
+2026-06-28 09:53:40 [INFO] runtime.resource_scheduler: Scheduler: 0 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-28 09:53:40 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-25 starting...
+2026-06-28 09:53:40 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-25
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-25 ===
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [dayahead/lightgbm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\lightgbm_predictions.csv
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [dayahead/timesfm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timesfm_predictions.csv
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [dayahead/timemixer] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timemixer_predictions.csv
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [dayahead] All models cached, nothing to run
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-25\dayahead\prediction\all_model_predictions_long.csv
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [realtime/timesfm] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timesfm_predictions.csv
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [realtime/sgdfnet] Cache hit: outputs\runs\2026-02-25\realtime\prediction\sgdfnet_predictions.csv
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: [realtime/timemixer] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timemixer_predictions.csv
+2026-06-28 09:59:33 [INFO] runtime.resource_scheduler: Scheduler: 0 CPU tasks, 1 GPU tasks | CPU workers=2, GPU workers=1
+2026-06-28 09:59:33 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime on 2026-02-25 starting...
+2026-06-28 09:59:33 [INFO] pipelines.ledger_predict: Predicting: rt916/realtime on 2026-02-25
+2026-06-28 10:06:07 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-28 10:06:07 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 852.3s
+2026-06-28 10:06:07 [INFO] runtime.resource_scheduler: Scheduler done: 4 OK, 0 FAIL
+2026-06-28 10:06:07 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-25\realtime\prediction\all_model_predictions_long.csv
+2026-06-28 10:06:07 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2304 → 2304 rows (+72 new, -72 duplicates)
+2026-06-28 10:06:07 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 3072 → 3072 rows (+96 new, -96 duplicates)
+2026-06-28 10:06:12 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-25
+2026-06-28 10:06:12 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:06:12 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:06:12 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-25: complete
+2026-06-28 10:06:12 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 2/5: ledger_weight
+============================================================
+2026-06-28 10:06:12 [INFO] pipelines.ledger_weight: === ledger_weight: 2026-02-25 (window=30d) ===
+2026-06-28 10:06:12 [INFO] pipelines.ledger_weight: [dayahead] Loaded: 2160 prediction rows, 720 actual rows
+2026-06-28 10:06:12 [INFO] pipelines.prediction_ledger: Training table: 2160 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:06:12 [INFO] pipelines.ledger_weight: [dayahead] Training table: 2160 rows, day_gate [0.3, 0.85]
+2026-06-28 10:06:12 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 3 models, 2160 training rows
+2026-06-28 10:06:13 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:06:13 [INFO] pipelines.ledger_weight: [realtime] Loaded: 2880 prediction rows, 720 actual rows
+2026-06-28 10:06:13 [INFO] pipelines.prediction_ledger: Training table: 2880 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:06:13 [INFO] pipelines.ledger_weight: [realtime] Training table: 2880 rows, day_gate [0.3, 0.85]
+2026-06-28 10:06:13 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 4 models, 2880 training rows
+2026-06-28 10:06:13 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:06:13 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 3/5: ledger_fuse
+============================================================
+2026-06-28 10:06:13 [INFO] pipelines.ledger_fuse: === ledger_fuse: 2026-02-25 ===
+2026-06-28 10:06:13 [INFO] pipelines.ledger_fuse: [dayahead] Fusing: 72 predictions, 9 weight entries
+2026-06-28 10:06:13 [INFO] pipelines.ledger_fuse: [dayahead] Fused: 24 rows
+2026-06-28 10:06:13 [INFO] pipelines.ledger_fuse: [realtime] Fusing: 96 predictions, 12 weight entries
+2026-06-28 10:06:13 [INFO] pipelines.ledger_fuse: [realtime] Fused: 24 rows
+2026-06-28 10:06:13 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 4/5: ledger_classifier
+============================================================
+2026-06-28 10:06:13 [INFO] pipelines.ledger_classifier: === ledger_classifier: 2026-02-25 ===
+2026-06-28 10:06:13 [INFO] pipelines.ledger_classifier: Using fusion.classifier_bridge for classification
+2026-06-28 10:06:29 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 5/5: Final outputs
+============================================================
+2026-06-28 10:06:29 [INFO] pipelines.ledger_full: submission_ready.csv: 24 rows
+2026-06-28 10:06:29 [INFO] pipelines.ledger_full: ledger_full 2026-02-25: complete
+2026-06-28 10:06:29 [INFO] pipelines.ledger_full_range: Range summary: 2 days -> outputs\runs\range_2026-02-24_to_2026-02-25\range_summary.csv
+2026-06-28 10:06:29 [INFO] pipelines.ledger_full_range: ledger_full_range 2026-02-24..2026-02-25: complete (2/2 days completed, 0 failed)
+2026-06-28 10:06:35 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-28 10:06:35 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 875.2s
+2026-06-28 10:06:35 [INFO] runtime.resource_scheduler: Scheduler done: 1 OK, 0 FAIL
+2026-06-28 10:06:35 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-25\realtime\prediction\all_model_predictions_long.csv
+2026-06-28 10:06:35 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2304 → 2304 rows (+72 new, -72 duplicates)
+2026-06-28 10:06:35 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 3072 → 3072 rows (+96 new, -96 duplicates)
+2026-06-28 10:06:40 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-25
+2026-06-28 10:06:40 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:06:40 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:06:40 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-25: complete
+2026-06-28 10:06:40 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 2/5: ledger_weight
+============================================================
+2026-06-28 10:06:40 [INFO] pipelines.ledger_weight: === ledger_weight: 2026-02-25 (window=30d) ===
+2026-06-28 10:06:40 [INFO] pipelines.ledger_weight: [dayahead] Loaded: 2160 prediction rows, 720 actual rows
+2026-06-28 10:06:40 [INFO] pipelines.prediction_ledger: Training table: 2160 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:06:40 [INFO] pipelines.ledger_weight: [dayahead] Training table: 2160 rows, day_gate [0.3, 0.85]
+2026-06-28 10:06:40 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 3 models, 2160 training rows
+2026-06-28 10:06:41 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:06:41 [INFO] pipelines.ledger_weight: [realtime] Loaded: 2880 prediction rows, 720 actual rows
+2026-06-28 10:06:41 [INFO] pipelines.prediction_ledger: Training table: 2880 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:06:41 [INFO] pipelines.ledger_weight: [realtime] Training table: 2880 rows, day_gate [0.3, 0.85]
+2026-06-28 10:06:41 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 4 models, 2880 training rows
+2026-06-28 10:06:41 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:06:42 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 3/5: ledger_fuse
+============================================================
+2026-06-28 10:06:42 [INFO] pipelines.ledger_fuse: === ledger_fuse: 2026-02-25 ===
+2026-06-28 10:06:42 [INFO] pipelines.ledger_fuse: [dayahead] Fusing: 72 predictions, 9 weight entries
+2026-06-28 10:06:42 [INFO] pipelines.ledger_fuse: [dayahead] Fused: 24 rows
+2026-06-28 10:06:42 [INFO] pipelines.ledger_fuse: [realtime] Fusing: 96 predictions, 12 weight entries
+2026-06-28 10:06:42 [INFO] pipelines.ledger_fuse: [realtime] Fused: 24 rows
+2026-06-28 10:06:42 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 4/5: ledger_classifier
+============================================================
+2026-06-28 10:06:42 [INFO] pipelines.ledger_classifier: === ledger_classifier: 2026-02-25 ===
+2026-06-28 10:06:42 [INFO] pipelines.ledger_classifier: Using fusion.classifier_bridge for classification
+2026-06-28 10:06:58 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 5/5: Final outputs
+============================================================
+2026-06-28 10:06:58 [INFO] pipelines.ledger_full: submission_ready.csv: 24 rows
+2026-06-28 10:06:58 [INFO] pipelines.ledger_full: ledger_full 2026-02-25: complete
+2026-06-28 10:06:58 [INFO] pipelines.ledger_full_range: Range summary: 2 days -> outputs\runs\range_2026-02-24_to_2026-02-25\range_summary.csv
+2026-06-28 10:06:58 [INFO] pipelines.ledger_full_range: ledger_full_range 2026-02-24..2026-02-25: complete (2/2 days completed, 0 failed)
+2026-06-28 10:08:14 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-28 10:08:14 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 874.7s
+2026-06-28 10:08:14 [INFO] runtime.resource_scheduler: Scheduler done: 1 OK, 0 FAIL
+2026-06-28 10:08:14 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-25\realtime\prediction\all_model_predictions_long.csv
+2026-06-28 10:08:14 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2304 → 2304 rows (+72 new, -72 duplicates)
+2026-06-28 10:08:14 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 3072 → 3072 rows (+96 new, -96 duplicates)
+2026-06-28 10:08:20 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-25
+2026-06-28 10:08:20 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:08:20 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:08:20 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-25: complete
+2026-06-28 10:08:20 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 2/5: ledger_weight
+============================================================
+2026-06-28 10:08:20 [INFO] pipelines.ledger_weight: === ledger_weight: 2026-02-25 (window=30d) ===
+2026-06-28 10:08:20 [INFO] pipelines.ledger_weight: [dayahead] Loaded: 2160 prediction rows, 720 actual rows
+2026-06-28 10:08:20 [INFO] pipelines.prediction_ledger: Training table: 2160 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:08:20 [INFO] pipelines.ledger_weight: [dayahead] Training table: 2160 rows, day_gate [0.3, 0.85]
+2026-06-28 10:08:20 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 3 models, 2160 training rows
+2026-06-28 10:08:21 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:08:21 [INFO] pipelines.ledger_weight: [realtime] Loaded: 2880 prediction rows, 720 actual rows
+2026-06-28 10:08:21 [INFO] pipelines.prediction_ledger: Training table: 2880 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:08:21 [INFO] pipelines.ledger_weight: [realtime] Training table: 2880 rows, day_gate [0.3, 0.85]
+2026-06-28 10:08:21 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 4 models, 2880 training rows
+2026-06-28 10:08:21 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:08:21 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 3/5: ledger_fuse
+============================================================
+2026-06-28 10:08:21 [INFO] pipelines.ledger_fuse: === ledger_fuse: 2026-02-25 ===
+2026-06-28 10:08:21 [INFO] pipelines.ledger_fuse: [dayahead] Fusing: 72 predictions, 9 weight entries
+2026-06-28 10:08:21 [INFO] pipelines.ledger_fuse: [dayahead] Fused: 24 rows
+2026-06-28 10:08:21 [INFO] pipelines.ledger_fuse: [realtime] Fusing: 96 predictions, 12 weight entries
+2026-06-28 10:08:21 [INFO] pipelines.ledger_fuse: [realtime] Fused: 24 rows
+2026-06-28 10:08:21 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 4/5: ledger_classifier
+============================================================
+2026-06-28 10:08:21 [INFO] pipelines.ledger_classifier: === ledger_classifier: 2026-02-25 ===
+2026-06-28 10:08:21 [INFO] pipelines.ledger_classifier: Using fusion.classifier_bridge for classification
+2026-06-28 10:08:39 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 5/5: Final outputs
+============================================================
+2026-06-28 10:08:39 [INFO] pipelines.ledger_full: submission_ready.csv: 24 rows
+2026-06-28 10:08:39 [INFO] pipelines.ledger_full: ledger_full 2026-02-25: complete
+2026-06-28 10:08:39 [INFO] pipelines.ledger_full_range: Range summary: 2 days -> outputs\runs\range_2026-02-24_to_2026-02-25\range_summary.csv
+2026-06-28 10:08:39 [INFO] pipelines.ledger_full_range: ledger_full_range 2026-02-24..2026-02-25: complete (2/2 days completed, 0 failed)
+2026-06-28 10:10:57 [INFO] pipelines.ledger_predict: Saved: outputs\runs\2026-02-25\realtime\prediction\rt916_predictions.csv (24 rows)
+2026-06-28 10:10:57 [INFO] runtime.resource_scheduler: [GPU] rt916/realtime done in 684.2s
+2026-06-28 10:10:57 [INFO] runtime.resource_scheduler: Scheduler done: 1 OK, 0 FAIL
+2026-06-28 10:10:57 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-25\realtime\prediction\all_model_predictions_long.csv
+2026-06-28 10:10:57 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2304 → 2304 rows (+72 new, -72 duplicates)
+2026-06-28 10:10:57 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 3072 → 3072 rows (+96 new, -96 duplicates)
+2026-06-28 10:11:02 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-25
+2026-06-28 10:11:02 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:11:02 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:11:02 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-25: complete
+2026-06-28 10:11:02 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 2/5: ledger_weight
+============================================================
+2026-06-28 10:11:02 [INFO] pipelines.ledger_weight: === ledger_weight: 2026-02-25 (window=30d) ===
+2026-06-28 10:11:02 [INFO] pipelines.ledger_weight: [dayahead] Loaded: 2160 prediction rows, 720 actual rows
+2026-06-28 10:11:02 [INFO] pipelines.prediction_ledger: Training table: 2160 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:11:02 [INFO] pipelines.ledger_weight: [dayahead] Training table: 2160 rows, day_gate [0.3, 0.85]
+2026-06-28 10:11:02 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 3 models, 2160 training rows
+2026-06-28 10:11:02 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:11:02 [INFO] pipelines.ledger_weight: [realtime] Loaded: 2880 prediction rows, 720 actual rows
+2026-06-28 10:11:02 [INFO] pipelines.prediction_ledger: Training table: 2880 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:11:02 [INFO] pipelines.ledger_weight: [realtime] Training table: 2880 rows, day_gate [0.3, 0.85]
+2026-06-28 10:11:02 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 4 models, 2880 training rows
+2026-06-28 10:11:03 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:11:03 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 3/5: ledger_fuse
+============================================================
+2026-06-28 10:11:03 [INFO] pipelines.ledger_fuse: === ledger_fuse: 2026-02-25 ===
+2026-06-28 10:11:03 [INFO] pipelines.ledger_fuse: [dayahead] Fusing: 72 predictions, 9 weight entries
+2026-06-28 10:11:03 [INFO] pipelines.ledger_fuse: [dayahead] Fused: 24 rows
+2026-06-28 10:11:03 [INFO] pipelines.ledger_fuse: [realtime] Fusing: 96 predictions, 12 weight entries
+2026-06-28 10:11:03 [INFO] pipelines.ledger_fuse: [realtime] Fused: 24 rows
+2026-06-28 10:11:03 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 4/5: ledger_classifier
+============================================================
+2026-06-28 10:11:03 [INFO] pipelines.ledger_classifier: === ledger_classifier: 2026-02-25 ===
+2026-06-28 10:11:03 [INFO] pipelines.ledger_classifier: Using fusion.classifier_bridge for classification
+2026-06-28 10:11:18 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 5/5: Final outputs
+============================================================
+2026-06-28 10:11:18 [INFO] pipelines.ledger_full: submission_ready.csv: 24 rows
+2026-06-28 10:11:18 [INFO] pipelines.ledger_full: ledger_full 2026-02-25: complete
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: === ledger_predict: 2026-02-25 ===
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: 
+>>> Dayahead models starting...
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [dayahead/lightgbm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\lightgbm_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [dayahead/timesfm] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timesfm_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [dayahead/timemixer] Cache hit: outputs\runs\2026-02-25\dayahead\prediction\timemixer_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [dayahead] All models cached, nothing to run
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: dayahead long table: 72 rows → outputs\runs\2026-02-25\dayahead\prediction\all_model_predictions_long.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: 
+>>> Realtime models starting...
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [realtime/timesfm] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timesfm_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [realtime/sgdfnet] Cache hit: outputs\runs\2026-02-25\realtime\prediction\sgdfnet_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [realtime/timemixer] Cache hit: outputs\runs\2026-02-25\realtime\prediction\timemixer_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [realtime/rt916] Cache hit: outputs\runs\2026-02-25\realtime\prediction\rt916_predictions.csv
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: [realtime] All models cached, nothing to run
+2026-06-28 10:12:14 [INFO] pipelines.ledger_predict: realtime long table: 96 rows → outputs\runs\2026-02-25\realtime\prediction\all_model_predictions_long.csv
+2026-06-28 10:12:14 [INFO] pipelines.prediction_ledger: Prediction ledger [dayahead]: 2304 → 2304 rows (+72 new, -72 duplicates)
+2026-06-28 10:12:14 [INFO] pipelines.prediction_ledger: Prediction ledger [realtime]: 3072 → 3072 rows (+96 new, -96 duplicates)
+2026-06-28 10:12:19 [INFO] pipelines.ledger_predict: Extracted 24 actual rows for 2026-02-25
+2026-06-28 10:12:19 [INFO] pipelines.prediction_ledger: Actual ledger [dayahead]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:12:19 [INFO] pipelines.prediction_ledger: Actual ledger [realtime]: 768 → 768 rows (+24 new, -24 duplicates)
+2026-06-28 10:12:19 [INFO] pipelines.ledger_predict: ledger_predict 2026-02-25: complete
+2026-06-28 10:12:19 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 2/5: ledger_weight
+============================================================
+2026-06-28 10:12:19 [INFO] pipelines.ledger_weight: === ledger_weight: 2026-02-25 (window=30d) ===
+2026-06-28 10:12:19 [INFO] pipelines.ledger_weight: [dayahead] Loaded: 2160 prediction rows, 720 actual rows
+2026-06-28 10:12:19 [INFO] pipelines.prediction_ledger: Training table: 2160 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:12:19 [INFO] pipelines.ledger_weight: [dayahead] Training table: 2160 rows, day_gate [0.3, 0.85]
+2026-06-28 10:12:19 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 3 models, 2160 training rows
+2026-06-28 10:12:19 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:12:19 [INFO] pipelines.ledger_weight: [realtime] Loaded: 2880 prediction rows, 720 actual rows
+2026-06-28 10:12:19 [INFO] pipelines.prediction_ledger: Training table: 2880 rows, day_gate range [0.300, 0.850]
+2026-06-28 10:12:19 [INFO] pipelines.ledger_weight: [realtime] Training table: 2880 rows, day_gate [0.3, 0.85]
+2026-06-28 10:12:19 [INFO] fusion.learners.daily_ledger_gef: DailyLedgerGEF.fit: 1 tasks, 4 models, 2880 training rows
+2026-06-28 10:12:20 [INFO] fusion.learners.daily_ledger_gef: Learned weights for 3 (task, period) combinations
+2026-06-28 10:12:20 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 3/5: ledger_fuse
+============================================================
+2026-06-28 10:12:20 [INFO] pipelines.ledger_fuse: === ledger_fuse: 2026-02-25 ===
+2026-06-28 10:12:20 [INFO] pipelines.ledger_fuse: [dayahead] Fusing: 72 predictions, 9 weight entries
+2026-06-28 10:12:20 [INFO] pipelines.ledger_fuse: [dayahead] Fused: 24 rows
+2026-06-28 10:12:20 [INFO] pipelines.ledger_fuse: [realtime] Fusing: 96 predictions, 12 weight entries
+2026-06-28 10:12:20 [INFO] pipelines.ledger_fuse: [realtime] Fused: 24 rows
+2026-06-28 10:12:20 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 4/5: ledger_classifier
+============================================================
+2026-06-28 10:12:20 [INFO] pipelines.ledger_classifier: === ledger_classifier: 2026-02-25 ===
+2026-06-28 10:12:20 [INFO] pipelines.ledger_classifier: Using fusion.classifier_bridge for classification
+2026-06-28 10:12:36 [INFO] pipelines.ledger_full: 
+============================================================
+Stage 5/5: Final outputs
+============================================================
+2026-06-28 10:12:36 [INFO] pipelines.ledger_full: submission_ready.csv: 24 rows
+2026-06-28 10:12:36 [INFO] pipelines.ledger_full: ledger_full 2026-02-25: complete
+2026-06-28 10:12:36 [INFO] pipelines.ledger_full_range: Range summary: 2 days -> outputs\runs\range_2026-02-24_to_2026-02-25\range_summary.csv
+2026-06-28 10:12:36 [INFO] pipelines.ledger_full_range: ledger_full_range 2026-02-24..2026-02-25: complete (2/2 days completed, 0 failed)
+2026-06-28 10:41:03 [ERROR] runtime.resource_scheduler: CPU [timesfm/dayahead] FAILED: module 'timesfm' has no attribute 'TimesFM_2p5_200M_torch'
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 251, in _execute_in_subprocess
+    return fn(**kwargs)
+           ^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 425, in _predict_model
+    df = _predict_timesfm(task, target_date, data_path, epf_root, allow_v2_fallback, epf_v1_mode, cutoff_date, seed=seed, deterministic=deterministic)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\pipelines\ledger_predict.py", line 510, in _predict_timesfm
+    return adapter.predict(
+           ^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runners\adapters\timesfm_v1.py", line 120, in predict
+    df = predict_price_for_date(
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\infer.py", line 67, in predict_price_for_date
+    return forecast_next_day(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1377, in forecast_next_day
+    model = _build_model()
+            ^^^^^^^^^^^^^^
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\TimesFMBackend\price_forecast_copy_分时段预测.py", line 1270, in _build_model
+    model = timesfm.TimesFM_2p5_200M_torch.from_pretrained(str(model_dir))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'timesfm' has no attribute 'TimesFM_2p5_200M_torch'
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\作业\大创_挑战杯_互联网\大学生创新创业计划\大创实现\其他资料\electricity_forecast_model2.1\runtime\resource_scheduler.py", line 173, in _run_queue
+    output = future.result()
+             ^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\computer learning\Python learning\python\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+AttributeError: module 'timesfm' has no attribute 'TimesFM_2p5_200M_torch'
+

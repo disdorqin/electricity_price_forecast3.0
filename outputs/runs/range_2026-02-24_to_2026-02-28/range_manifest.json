@@ -1,0 +1,51 @@
+{
+  "pipeline": "ledger_full_range",
+  "start_date": "2026-02-24",
+  "end_date": "2026-02-28",
+  "total_days": 5,
+  "completed_days": 2,
+  "failed_days": 0,
+  "skipped_days": 0,
+  "status": "running",
+  "daily_results": [
+    {
+      "date": "2026-02-24",
+      "status": "complete",
+      "started_at": "2026-06-28T02:40:07.791608+00:00",
+      "completed_at": "2026-06-28T02:40:32.529420+00:00",
+      "duration_seconds": 24.7,
+      "manifest_path": "outputs\\runs\\2026-02-24\\run_manifest.json",
+      "submission_ready_path": "outputs\\runs\\2026-02-24\\final\\submission_ready.csv",
+      "stage_statuses": {
+        "ledger_predict": "complete",
+        "ledger_weight": "complete",
+        "ledger_fuse": "complete",
+        "ledger_classifier": "complete",
+        "final_outputs": "complete"
+      },
+      "errors_count": 0,
+      "warnings_count": 0
+    },
+    {
+      "date": "2026-02-25",
+      "status": "complete",
+      "started_at": "2026-06-28T02:40:32.532504+00:00",
+      "completed_at": "2026-06-28T02:40:50.142398+00:00",
+      "duration_seconds": 17.6,
+      "manifest_path": "outputs\\runs\\2026-02-25\\run_manifest.json",
+      "submission_ready_path": "outputs\\runs\\2026-02-25\\final\\submission_ready.csv",
+      "stage_statuses": {
+        "ledger_predict": "complete",
+        "ledger_weight": "complete",
+        "ledger_fuse": "complete",
+        "ledger_classifier": "complete",
+        "final_outputs": "complete"
+      },
+      "errors_count": 0,
+      "warnings_count": 0
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "started_at": "2026-06-28T02:40:07.192180+00:00"
+}

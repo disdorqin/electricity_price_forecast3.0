@@ -1,0 +1,25 @@
+task,model_name,forecast_date,target_day,business_day,ds,hour_business,period,y_pred,data_cutoff,run_id,model_version,da_feature_source
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 01:00:00,1,1_8,313.3656921386719,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 02:00:00,2,1_8,319.19073486328125,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 03:00:00,3,1_8,321.3971252441406,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 04:00:00,4,1_8,318.92608642578125,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 05:00:00,5,1_8,324.95172119140625,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 06:00:00,6,1_8,341.5299987792969,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 07:00:00,7,1_8,371.5464172363281,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 08:00:00,8,1_8,426.53314208984375,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 09:00:00,9,9_16,238.9149627685547,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 10:00:00,10,9_16,-4.873435974121094,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 11:00:00,11,9_16,-62.21418380737305,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 12:00:00,12,9_16,-82.0683364868164,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 13:00:00,13,9_16,-66.53305053710938,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 14:00:00,14,9_16,-71.16240692138672,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 15:00:00,15,9_16,-70.57817077636719,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 16:00:00,16,9_16,70.74832153320312,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 17:00:00,17,17_24,407.8035888671875,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 18:00:00,18,17_24,422.3775024414063,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 19:00:00,19,17_24,436.5252990722656,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 20:00:00,20,17_24,427.01361083984375,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 21:00:00,21,17_24,414.46038818359375,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 22:00:00,22,17_24,401.8640441894531,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-02 23:00:00,23,17_24,372.03900146484375,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
+realtime,timemixer,2026-02-02,2026-02-02,2026-02-02,2026-02-03 00:00:00,24,17_24,373.2976989746094,2026-02-01 14:00:00,timemixer_v2_2026-02-02,v2.0,timemixer_internal_dayahead_prediction
