@@ -432,6 +432,94 @@ def test_exit_code_mapping() -> str:
     return ""
 
 
+def test_validate_degraded_manifest_with_errors_passes_when_allowed() -> str:
+    """Test 8: validate_daily_submission with allow_degraded=True accepts
+    a manifest that has errors and incomplete stages but valid submission
+    + fallback_report + fallback.fallback_used."""
+    with tempfile.TemporaryDirectory() as td:
+        runs_root = Path(td)
+        target_date = "2026-02-24"
+
+        # Create valid submission_ready.csv
+        run_dir = runs_root / target_date / "final"
+        run_dir.mkdir(parents=True)
+        rows = []
+        for h in range(1, 25):
+            if h <= 23:
+                ds = f"2026-02-24 {h:02d}:00:00"
+            else:
+                ds = "2026-02-25 00:00:00"
+            period = "1_8" if h <= 8 else ("9_16" if h <= 16 else "17_24")
+            rows.append({
+                "business_day": target_date, "ds": ds,
+                "hour_business": h, "period": period,
+                "dayahead_price": 100.0 + h, "realtime_price": 90.0 + h,
+            })
+        pd.DataFrame(rows).to_csv(run_dir / "submission_ready.csv", index=False)
+
+        # Create run_manifest.json with DEGRADED_DELIVERED, errors, failed stage
+        manifest = {
+            "pipeline": "ledger_full",
+            "target_date": target_date,
+            "status": "failed",
+            "delivery_status": "DEGRADED_DELIVERED",
+            "stages": {
+                "ledger_predict": {"status": "complete"},
+                "ledger_weight": {"status": "failed"},  # stage failed
+                "ledger_fuse": {"status": "complete"},
+                "ledger_classifier": {"status": "complete"},
+                "final_outputs": {"status": "complete"},
+            },
+            "errors": ["ledger_weight failed", "postflight validation failed"],
+            "warnings": [],
+            "fallback": {"fallback_used": True},
+        }
+        with open(runs_root / target_date / "run_manifest.json", "w") as f:
+            json.dump(manifest, f)
+
+        # Create fallback_report.json — required for DEGRADED_DELIVERED
+        with open(run_dir / "fallback_report.json", "w") as f:
+            json.dump({"fallback_used": True, "method": "historical_same_hour_median"}, f)
+
+        # Validate with allow_degraded=True → must PASS
+        result = validate_daily_submission(runs_root, target_date, allow_degraded=True)
+        check(
+            "degraded manifest with errors passes when allow_degraded=True",
+            result["status"] == "PASS",
+            f"expected PASS, got {result['status']}: {result['errors'][:3]}",
+        )
+
+        # Validate without allow_degraded → must FAIL
+        result2 = validate_daily_submission(runs_root, target_date, allow_degraded=False)
+        check(
+            "degraded manifest without allow_degraded fails",
+            result2["status"] == "FAIL",
+            f"expected FAIL, got {result2['status']}",
+        )
+    return ""
+
+
+def test_fallback_business_hour_mapping() -> str:
+    """Test 9: _to_business_day_hour maps timestamps correctly per formal convention."""
+    from pipelines.emergency_fallback import _to_business_day_hour
+
+    test_cases = [
+        (pd.Timestamp("2026-02-23 00:00:00"), "2026-02-22", 24, "midnight -> prev day h24"),
+        (pd.Timestamp("2026-02-23 01:00:00"), "2026-02-23", 1, "01:00 -> same day h1"),
+        (pd.Timestamp("2026-02-23 02:00:00"), "2026-02-23", 2, "02:00 -> same day h2"),
+        (pd.Timestamp("2026-02-23 23:00:00"), "2026-02-23", 23, "23:00 -> same day h23"),
+    ]
+
+    for ts, expected_bd, expected_hb, label in test_cases:
+        bd, hb = _to_business_day_hour(ts)
+        check(
+            f"business_hour mapping: {label}",
+            bd == expected_bd and hb == expected_hb,
+            f"ts={ts}: expected ({expected_bd}, {expected_hb}), got ({bd}, {hb})",
+        )
+    return ""
+
+
 def main() -> int:
     print("=" * 60)
     print("CHECK_DELIVERY_STABILITY")
@@ -444,6 +532,8 @@ def main() -> int:
     test_ledger_window_missing_hour()
     test_emergency_fallback()
     test_exit_code_mapping()
+    test_validate_degraded_manifest_with_errors_passes_when_allowed()
+    test_fallback_business_hour_mapping()
 
     print()
 

@@ -116,14 +116,15 @@ def try_emergency_fallback(
         return _fallback_result(False, warnings, errors, reason)
 
     # ---------------------------------------------------------------
-    # 4. Build business_day and hour_business
+    # 4. Build business_day and hour_business (formal convention)
     # ---------------------------------------------------------------
-    df["business_day"] = df["_ts"].dt.strftime("%Y-%m-%d")
-    df["hour_business"] = df["_ts"].dt.hour + 1  # hour 0 -> 1, hour 23 -> 24
-    df["hour_business"] = df["hour_business"].astype(int)
-
-    # Ensure hour_business is 1..24 (handle hour 24 wrap)
-    df.loc[df["hour_business"] == 25, "hour_business"] = 24
+    # Formal convention:
+    #   ts.hour == 0 -> business_day = ts.date - 1, hour_business = 24
+    #   ts.hour == 1 -> business_day = ts.date,     hour_business = 1
+    #   ts.hour == 23 -> business_day = ts.date,    hour_business = 23
+    bd_and_hb = df["_ts"].apply(_to_business_day_hour)
+    df["business_day"] = [x[0] for x in bd_and_hb]
+    df["hour_business"] = [x[1] for x in bd_and_hb]
 
     # ---------------------------------------------------------------
     # 5. Filter to history < target_date (avoid future leakage)
@@ -236,6 +237,28 @@ def _resolve_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
         if name in df.columns:
             return name
     return None
+
+
+def _to_business_day_hour(ts: pd.Timestamp) -> tuple[str, int]:
+    """Convert a timestamp to (business_day, hour_business) per formal convention.
+
+    Formal convention:
+      - hour 0 (midnight) +- 0 min → previous day, hour_business 24
+      - hour 1 (01:00)             → same day,     hour_business 1
+      - hour 23 (23:00)            → same day,     hour_business 23
+
+    Example
+    -------
+    >>> _to_business_day_hour(pd.Timestamp("2026-02-24 00:00:00"))
+    ("2026-02-23", 24)
+    >>> _to_business_day_hour(pd.Timestamp("2026-02-24 01:00:00"))
+    ("2026-02-24", 1)
+    """
+    if ts.hour == 0:
+        prev = ts - pd.Timedelta(days=1)
+        return (prev.strftime("%Y-%m-%d"), 24)
+    else:
+        return (ts.strftime("%Y-%m-%d"), ts.hour)
 
 
 def _compute_hourly_medians(

@@ -85,7 +85,7 @@ def run_ledger_full(args: Any) -> dict:
         "errors": [],
     }
 
-    failed_early = False
+    skip_remaining = False
 
     # -----------------------------------------------------------------------
     # Stage 1: ledger_predict
@@ -99,120 +99,131 @@ def run_ledger_full(args: Any) -> dict:
         if predict_result.get("status") == "failed":
             manifest["status"] = "failed"
             manifest["errors"].append("ledger_predict failed")
-            failed_early = True
+            skip_remaining = True
     except Exception as e:
         manifest["stages"]["ledger_predict"] = {"status": "error", "error": str(e)}
         manifest["errors"].append(f"ledger_predict: {e}")
         manifest["status"] = "failed"
-        failed_early = True
-
-    if failed_early:
-        _write_manifest(runs_root, target_date, manifest)
-        return manifest
+        skip_remaining = True
 
     # -----------------------------------------------------------------------
-    # Stage 2: ledger_weight
+    # Stage 2: ledger_weight (skip if previous stage failed)
     # -----------------------------------------------------------------------
-    logger.info(f"\n{'='*60}\nStage 2/5: ledger_weight\n{'='*60}")
-    try:
-        from pipelines.ledger_weight import run_ledger_weight
-        weight_result = run_ledger_weight(args)
-        manifest["stages"]["ledger_weight"] = weight_result
+    if not skip_remaining:
+        logger.info(f"\n{'='*60}\nStage 2/5: ledger_weight\n{'='*60}")
+        try:
+            from pipelines.ledger_weight import run_ledger_weight
+            weight_result = run_ledger_weight(args)
+            manifest["stages"]["ledger_weight"] = weight_result
 
-        if weight_result.get("status") == "failed":
-            manifest["status"] = "failed"
-            manifest["errors"].append("ledger_weight failed")
-            failed_early = True
-    except Exception as e:
-        manifest["stages"]["ledger_weight"] = {"status": "error", "error": str(e)}
-        manifest["errors"].append(f"ledger_weight: {e}")
-        manifest["status"] = "failed"
-        failed_early = True
-
-    if failed_early:
-        _write_manifest(runs_root, target_date, manifest)
-        return manifest
-
-    # -----------------------------------------------------------------------
-    # Stage 3: ledger_fuse
-    # -----------------------------------------------------------------------
-    logger.info(f"\n{'='*60}\nStage 3/5: ledger_fuse\n{'='*60}")
-    try:
-        from pipelines.ledger_fuse import run_ledger_fuse
-        fuse_result = run_ledger_fuse(args)
-        manifest["stages"]["ledger_fuse"] = fuse_result
-
-        if fuse_result.get("status") == "failed":
-            manifest["status"] = "failed"
-            manifest["errors"].append("ledger_fuse failed")
-            failed_early = True
-    except Exception as e:
-        manifest["stages"]["ledger_fuse"] = {"status": "error", "error": str(e)}
-        manifest["errors"].append(f"ledger_fuse: {e}")
-        manifest["status"] = "failed"
-        failed_early = True
-
-    if failed_early:
-        _write_manifest(runs_root, target_date, manifest)
-        return manifest
-
-    # -----------------------------------------------------------------------
-    # Stage 4: ledger_classifier
-    # -----------------------------------------------------------------------
-    logger.info(f"\n{'='*60}\nStage 4/5: ledger_classifier\n{'='*60}")
-    strict_clf = getattr(args, "strict_classifier", False)
-    try:
-        from pipelines.ledger_classifier import run_ledger_classifier
-        clf_result = run_ledger_classifier(args)
-        manifest["stages"]["ledger_classifier"] = clf_result
-
-        clf_status = clf_result.get("status")
-        if clf_status == "failed":
-            manifest["errors"].append("ledger_classifier failed")
-            if strict_clf:
+            if weight_result.get("status") == "failed":
                 manifest["status"] = "failed"
-                manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
-                _write_manifest(runs_root, target_date, manifest)
-                return manifest
-        else:
-            # Propagate classifier warnings/errors to top-level manifest
-            for w in clf_result.get("warnings", []):
-                manifest["warnings"].append(f"ledger_classifier: {w}")
-            for e in clf_result.get("errors", []):
-                if strict_clf:
-                    manifest["errors"].append(f"ledger_classifier: {e}")
-                else:
-                    manifest["warnings"].append(f"ledger_classifier: {e}")
-    except Exception as e:
-        manifest["stages"]["ledger_classifier"] = {"status": "error", "error": str(e)}
-        if strict_clf:
-            manifest["errors"].append(f"ledger_classifier: {e}")
+                manifest["errors"].append("ledger_weight failed")
+                skip_remaining = True
+        except Exception as e:
+            manifest["stages"]["ledger_weight"] = {"status": "error", "error": str(e)}
+            manifest["errors"].append(f"ledger_weight: {e}")
             manifest["status"] = "failed"
-            manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
-            _write_manifest(runs_root, target_date, manifest)
-            return manifest
-        else:
-            manifest["warnings"].append(f"ledger_classifier: {e}")
+            skip_remaining = True
 
     # -----------------------------------------------------------------------
-    # Stage 5: Final outputs
+    # Stage 3: ledger_fuse (skip if previous stage failed)
     # -----------------------------------------------------------------------
-    logger.info(f"\n{'='*60}\nStage 5/5: Final outputs\n{'='*60}")
-    try:
-        final_result = _collect_final_outputs(runs_root, target_date)
-        manifest["stages"]["final_outputs"] = final_result
-    except Exception as e:
-        manifest["stages"]["final_outputs"] = {"status": "error", "error": str(e)}
-        manifest["warnings"].append(f"final_outputs: {e}")
+    if not skip_remaining:
+        logger.info(f"\n{'='*60}\nStage 3/5: ledger_fuse\n{'='*60}")
+        try:
+            from pipelines.ledger_fuse import run_ledger_fuse
+            fuse_result = run_ledger_fuse(args)
+            manifest["stages"]["ledger_fuse"] = fuse_result
+
+            if fuse_result.get("status") == "failed":
+                manifest["status"] = "failed"
+                manifest["errors"].append("ledger_fuse failed")
+                skip_remaining = True
+        except Exception as e:
+            manifest["stages"]["ledger_fuse"] = {"status": "error", "error": str(e)}
+            manifest["errors"].append(f"ledger_fuse: {e}")
+            manifest["status"] = "failed"
+            skip_remaining = True
 
     # -----------------------------------------------------------------------
-    # Determine final status
+    # Stage 4: ledger_classifier (skip if previous stage failed)
     # -----------------------------------------------------------------------
+    if not skip_remaining:
+        logger.info(f"\n{'='*60}\nStage 4/5: ledger_classifier\n{'='*60}")
+        strict_clf = getattr(args, "strict_classifier", False)
+        try:
+            from pipelines.ledger_classifier import run_ledger_classifier
+            clf_result = run_ledger_classifier(args)
+            manifest["stages"]["ledger_classifier"] = clf_result
+
+            clf_status = clf_result.get("status")
+            if clf_status == "failed":
+                manifest["errors"].append("ledger_classifier failed")
+                if strict_clf:
+                    manifest["status"] = "failed"
+                    skip_remaining = True
+            else:
+                # Propagate classifier warnings/errors to top-level manifest
+                for w in clf_result.get("warnings", []):
+                    manifest["warnings"].append(f"ledger_classifier: {w}")
+                for e in clf_result.get("errors", []):
+                    if strict_clf:
+                        manifest["errors"].append(f"ledger_classifier: {e}")
+                    else:
+                        manifest["warnings"].append(f"ledger_classifier: {e}")
+        except Exception as e:
+            manifest["stages"]["ledger_classifier"] = {"status": "error", "error": str(e)}
+            if strict_clf:
+                manifest["errors"].append(f"ledger_classifier: {e}")
+                manifest["status"] = "failed"
+                skip_remaining = True
+            else:
+                manifest["warnings"].append(f"ledger_classifier: {e}")
+
+    # -----------------------------------------------------------------------
+    # Stage 5: Final outputs (skip if previous stage failed)
+    # -----------------------------------------------------------------------
+    if not skip_remaining:
+        logger.info(f"\n{'='*60}\nStage 5/5: Final outputs\n{'='*60}")
+        try:
+            final_result = _collect_final_outputs(runs_root, target_date)
+            manifest["stages"]["final_outputs"] = final_result
+        except Exception as e:
+            manifest["stages"]["final_outputs"] = {"status": "error", "error": str(e)}
+            manifest["warnings"].append(f"final_outputs: {e}")
+
+    # -----------------------------------------------------------------------
+    # Unified finalization — write manifest, postflight, fallback, report
+    # -----------------------------------------------------------------------
+    return _finalize_delivery(args, manifest)
+
+
+def _finalize_delivery(args: Any, manifest: dict) -> dict:
+    """Unified delivery finalization — always called, even on early failure.
+
+    Steps
+    -----
+    1. Derive ``status`` from errors/warnings.
+    2. **Write manifest first** so ``validate_daily_submission`` can read it.
+    3. ``validate_daily_submission`` — if no submission_ready.csv exists yet,
+       the check will fail, triggering emergency fallback.
+    4. If postflight fails → ``try_emergency_fallback``.
+    5. Set ``delivery_status``: NORMAL / DEGRADED_DELIVERED / FAILED_NO_DELIVERY.
+    6. ``validate_next_day_readiness``.
+    7. Write final manifest + delivery report.
+    8. Print terminal DAILY DELIVERY REPORT.
+    """
+    target_date = manifest["target_date"]
+    runs_root = Path(getattr(args, "runs_root", "outputs/runs"))
+    ledger_root = Path(getattr(args, "ledger_root", "outputs/ledger"))
+    data_path = getattr(args, "data_path", "data/shandong_pmos_hourly.xlsx")
+
+    # 1. Derive status
     manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
 
     errors = manifest.get("errors", [])
     warnings = manifest.get("warnings", [])
-
     if errors:
         manifest["status"] = "failed"
     elif warnings:
@@ -220,9 +231,10 @@ def run_ledger_full(args: Any) -> dict:
     else:
         manifest["status"] = "complete"
 
-    # -----------------------------------------------------------------------
-    # Postflight — validate submission, fallback, next-day readiness
-    # -----------------------------------------------------------------------
+    # 2. Write manifest first (postflight/fallback will read it)
+    _write_manifest(runs_root, target_date, manifest)
+
+    # Imports (lazy to avoid circulars at module level)
     from pipelines.delivery_quality import (
         validate_daily_submission,
         validate_next_day_readiness,
@@ -233,10 +245,7 @@ def run_ledger_full(args: Any) -> dict:
         print_daily_delivery_report,
     )
 
-    ledger_root = Path(getattr(args, "ledger_root", "outputs/ledger"))
-    data_path = getattr(args, "data_path", "data/shandong_pmos_hourly.xlsx")
-
-    # First postflight attempt
+    # 3. Postflight
     postflight_result = validate_daily_submission(runs_root, target_date)
     manifest["postflight"] = postflight_result
 
@@ -250,10 +259,9 @@ def run_ledger_full(args: Any) -> dict:
             "Attempting emergency fallback..."
         )
 
-        # Try emergency fallback
-        fb_args = (target_date, data_path, runs_root)
+        # 4. Emergency fallback
         fb_reason = (
-            f"postflight validation failed: "
+            f"normal pipeline {'failed' if manifest.get('status') == 'failed' else 'postflight failed'}: "
             f"{len(postflight_result['errors'])} error(s)"
         )
         fallback_result = try_emergency_fallback(
@@ -261,7 +269,7 @@ def run_ledger_full(args: Any) -> dict:
         )
 
         if fallback_result["success"]:
-            # Re-validate after fallback
+            # Re-validate after fallback (allow_degraded=True — manifest has errors)
             second_postflight = validate_daily_submission(
                 runs_root, target_date, allow_degraded=True,
             )
@@ -273,12 +281,10 @@ def run_ledger_full(args: Any) -> dict:
                 "reason": fb_reason,
                 "report": fallback_result,
             }
-
-            if second_postflight["status"] == "PASS":
-                manifest["delivery_status"] = "DEGRADED_DELIVERED"
-            else:
-                # Fallback produced output but it still doesn't validate
-                manifest["delivery_status"] = "FAILED_NO_DELIVERY"
+            manifest["delivery_status"] = (
+                "DEGRADED_DELIVERED" if second_postflight["status"] == "PASS"
+                else "FAILED_NO_DELIVERY"
+            )
         else:
             manifest["delivery_status"] = "FAILED_NO_DELIVERY"
             manifest["fallback"] = {
@@ -290,15 +296,15 @@ def run_ledger_full(args: Any) -> dict:
                 "errors": fallback_result.get("errors", []),
             }
 
-    # Next-day readiness
+    # 5. Next-day readiness
     ndr = validate_next_day_readiness(target_date, ledger_root)
     manifest["next_day_readiness"] = ndr
 
-    # Write delivery report
+    # 6. Write final manifest + delivery report
     _write_manifest(runs_root, target_date, manifest)
     write_daily_delivery_report(runs_root / target_date, manifest)
 
-    # Print terminal report
+    # 7. Terminal report
     print_daily_delivery_report(manifest)
 
     logger.info(

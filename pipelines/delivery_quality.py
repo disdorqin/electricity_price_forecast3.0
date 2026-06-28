@@ -477,31 +477,58 @@ def validate_daily_submission(
         errors.append(f"cannot read manifest: {exc}")
         return _submission_result("FAIL", errors, warnings, sub_path, manifest_path)
 
-    # Check delivery_status if present
+    # Check delivery_status
     delivery_status = manifest.get("delivery_status")
+
     if delivery_status == "FAILED_NO_DELIVERY":
         errors.append(f"delivery_status is FAILED_NO_DELIVERY — no usable output")
-    elif delivery_status == "DEGRADED_DELIVERED" and not allow_degraded:
-        errors.append(
-            f"delivery_status is DEGRADED_DELIVERED — degraded output, "
-            f"pass allow_degraded=True to accept"
-        )
+        return _submission_result("FAIL", errors, warnings, sub_path, manifest_path)
 
-    # Five stages complete (skip if degraded and allowed)
+    if delivery_status == "DEGRADED_DELIVERED":
+        if not allow_degraded:
+            errors.append(
+                f"delivery_status is DEGRADED_DELIVERED — degraded output, "
+                f"pass allow_degraded=True to accept"
+            )
+            return _submission_result("FAIL", errors, warnings, sub_path, manifest_path)
+
+        # DEGRADED_DELIVERED with allow_degraded=True:
+        #   - submission_ready.csv structure already checked above (must PASS)
+        #   - skip five-stage complete check
+        #   - skip manifest errors check
+        #   - verify fallback_report exists
+        #   - verify manifest.fallback.fallback_used == True
+        fb_json = run_dir / "final" / "fallback_report.json"
+        fb_md = run_dir / "final" / "fallback_report.md"
+        if not fb_json.exists() and not fb_md.exists():
+            errors.append(
+                f"fallback_report.json/md not found in {run_dir / 'final'}/"
+            )
+
+        fb = manifest.get("fallback", {})
+        if not fb.get("fallback_used", False):
+            errors.append(
+                f"manifest.fallback.fallback_used is False — "
+                f"expected True for DEGRADED_DELIVERED"
+            )
+
+        status = "PASS" if not errors else "FAIL"
+        return _submission_result(status, errors, warnings, sub_path, manifest_path)
+
+    # NORMAL or unset delivery_status → strict checks
     stages = manifest.get("stages", {})
     expected_stages = [
         "ledger_predict", "ledger_weight", "ledger_fuse",
         "ledger_classifier", "final_outputs",
     ]
 
-    if delivery_status != "DEGRADED_DELIVERED" or not allow_degraded:
-        for stage_name in expected_stages:
-            stage = stages.get(stage_name, {})
-            if stage.get("status") != "complete":
-                errors.append(
-                    f"stage '{stage_name}' status={stage.get('status', 'missing')}, "
-                    f"expected 'complete'"
-                )
+    for stage_name in expected_stages:
+        stage = stages.get(stage_name, {})
+        if stage.get("status") != "complete":
+            errors.append(
+                f"stage '{stage_name}' status={stage.get('status', 'missing')}, "
+                f"expected 'complete'"
+            )
 
     # Manifest errors
     manifest_errors = manifest.get("errors", [])
