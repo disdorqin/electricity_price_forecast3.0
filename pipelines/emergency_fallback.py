@@ -40,21 +40,10 @@ def try_emergency_fallback(
     4. Write ``submission_ready.csv`` with the fixed 6-column schema.
     5. Write ``fallback_report.json`` and ``fallback_report.md``.
 
-    Parameters
-    ----------
-    target_date : str
-        The business day (YYYY-MM-DD) that failed.
-    data_path : str | Path
-        Path to historical data (``.xlsx`` or ``.csv``).
-    runs_root : str | Path
-        Root run output directory.
-    reason : str
-        Human-readable reason for the fallback.
-
     Returns
     -------
     dict with keys: success, fallback_method, fallback_level, reason,
-    output_path, warnings, errors.
+    output_path, fallback_report_json, fallback_report_md, warnings, errors.
     """
     data_path = Path(data_path)
     runs_root = Path(runs_root)
@@ -62,9 +51,6 @@ def try_emergency_fallback(
     errors: list[str] = []
     target_dt = pd.Timestamp(target_date)
 
-    # ---------------------------------------------------------------
-    # 1. Read historical data
-    # ---------------------------------------------------------------
     try:
         if data_path.suffix.lower() == ".csv":
             raw = pd.read_csv(data_path)
@@ -74,9 +60,6 @@ def try_emergency_fallback(
         errors.append(f"cannot read data_path {data_path}: {exc}")
         return _fallback_result(False, warnings, errors, reason)
 
-    # ---------------------------------------------------------------
-    # 2. Parse time column
-    # ---------------------------------------------------------------
     time_col = _resolve_time_column(raw)
     if time_col is None:
         errors.append(
@@ -90,14 +73,10 @@ def try_emergency_fallback(
     df["_ts"] = pd.to_datetime(df[time_col], errors="coerce")
     df = df.dropna(subset=["_ts"])
 
-    # ---------------------------------------------------------------
-    # 3. Resolve price columns
-    # ---------------------------------------------------------------
     da_col = _resolve_column(df, ["日前电价", "dayahead_price", "day_ahead_price", "da_price"])
     rt_col = _resolve_column(df, ["实时电价", "realtime_price", "real_time_price", "rt_price"])
 
     if da_col is None:
-        # Try reverse: look for common patterns
         for c in df.columns:
             if "dayahead" in c.lower() or "日前" in c or "da_price" in c.lower():
                 da_col = c
@@ -115,10 +94,7 @@ def try_emergency_fallback(
         )
         return _fallback_result(False, warnings, errors, reason)
 
-    # ---------------------------------------------------------------
-    # 4. Build business_day and hour_business (formal convention)
-    # ---------------------------------------------------------------
-    # Formal convention:
+    # Formal business-hour convention:
     #   ts.hour == 0 -> business_day = ts.date - 1, hour_business = 24
     #   ts.hour == 1 -> business_day = ts.date,     hour_business = 1
     #   ts.hour == 23 -> business_day = ts.date,    hour_business = 23
@@ -126,23 +102,15 @@ def try_emergency_fallback(
     df["business_day"] = [x[0] for x in bd_and_hb]
     df["hour_business"] = [x[1] for x in bd_and_hb]
 
-    # ---------------------------------------------------------------
-    # 5. Filter to history < target_date (avoid future leakage)
-    #    Filter on business_day AFTER mapping so D's midnight
-    #    (→ D-1 hour 24) is correctly included as history.
-    # ---------------------------------------------------------------
+    # Filter on business_day after mapping so D's midnight (→ D-1 hour 24)
+    # is correctly included as history.
     hist = df[df["business_day"] < target_date].copy()
     if hist.empty:
         errors.append(f"no historical data before {target_date}")
         return _fallback_result(False, warnings, errors, reason)
 
-    logger.info(
-        f"Fallback: {len(hist)} historical rows before {target_date}"
-    )
+    logger.info(f"Fallback: {len(hist)} historical rows before {target_date}")
 
-    # ---------------------------------------------------------------
-    # 6. Compute per-hour medians with fallback levels
-    # ---------------------------------------------------------------
     latest_day = hist["business_day"].max()
     max_days_available = hist["business_day"].nunique()
     logger.info(
@@ -153,9 +121,6 @@ def try_emergency_fallback(
     medians = _compute_hourly_medians(hist, da_col, rt_col, target_dt)
     fallback_level = _determine_fallback_level(max_days_available, warnings)
 
-    # ---------------------------------------------------------------
-    # 7. Build 24-row submission
-    # ---------------------------------------------------------------
     rows = []
     for h in range(1, 25):
         if h <= 23:
@@ -163,7 +128,6 @@ def try_emergency_fallback(
         else:
             ds_ts = target_dt + pd.Timedelta(days=1)  # hour 24 -> D+1 00:00
 
-        # Period
         if 1 <= h <= 8:
             period = "1_8"
         elif 9 <= h <= 16:
@@ -184,18 +148,13 @@ def try_emergency_fallback(
     out_df = pd.DataFrame(rows)
     out_df = out_df[FALLBACK_COLUMNS]
 
-    # ---------------------------------------------------------------
-    # 8. Write outputs
-    # ---------------------------------------------------------------
     final_dir = runs_root / target_date / "final"
     final_dir.mkdir(parents=True, exist_ok=True)
 
-    # submission_ready.csv
     sub_path = final_dir / "submission_ready.csv"
     out_df.to_csv(sub_path, index=False)
     logger.info(f"Fallback submission_ready.csv -> {sub_path}")
 
-    # Write fallback manifest JSON (also update run_manifest.json)
     fallback_manifest = {
         "fallback_used": True,
         "fallback_method": "historical_same_hour_median",
@@ -205,6 +164,7 @@ def try_emergency_fallback(
         "historical_days_used": max_days_available,
         "warnings": warnings,
         "errors": errors,
+        "output_path": str(sub_path),
     }
 
     fb_json_path = final_dir / "fallback_report.json"
@@ -217,7 +177,16 @@ def try_emergency_fallback(
 
     logger.info(f"Fallback report -> {fb_json_path}")
 
-    return _fallback_result(True, warnings, errors, reason)
+    return _fallback_result(
+        True,
+        warnings,
+        errors,
+        reason,
+        output_path=str(sub_path),
+        fallback_report_json=str(fb_json_path),
+        fallback_report_md=str(fb_md_path),
+        fallback_level=fallback_level,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -245,22 +214,14 @@ def _to_business_day_hour(ts: pd.Timestamp) -> tuple[str, int]:
     """Convert a timestamp to (business_day, hour_business) per formal convention.
 
     Formal convention:
-      - hour 0 (midnight) +- 0 min → previous day, hour_business 24
-      - hour 1 (01:00)             → same day,     hour_business 1
-      - hour 23 (23:00)            → same day,     hour_business 23
-
-    Example
-    -------
-    >>> _to_business_day_hour(pd.Timestamp("2026-02-24 00:00:00"))
-    ("2026-02-23", 24)
-    >>> _to_business_day_hour(pd.Timestamp("2026-02-24 01:00:00"))
-    ("2026-02-24", 1)
+      - hour 0 (midnight) -> previous day, hour_business 24
+      - hour 1 (01:00)   -> same day,     hour_business 1
+      - hour 23 (23:00)  -> same day,     hour_business 23
     """
     if ts.hour == 0:
         prev = ts - pd.Timedelta(days=1)
         return (prev.strftime("%Y-%m-%d"), 24)
-    else:
-        return (ts.strftime("%Y-%m-%d"), ts.hour)
+    return (ts.strftime("%Y-%m-%d"), ts.hour)
 
 
 def _compute_hourly_medians(
@@ -277,10 +238,7 @@ def _compute_hourly_medians(
       3. All history same hour
       4. Global median
     """
-    # Determine the most recent business_day
     all_days = sorted(hist["business_day"].unique(), reverse=True)
-
-    # Last 7
     last_7 = all_days[:7] if len(all_days) >= 7 else all_days
     last_30 = all_days[:30] if len(all_days) >= 30 else all_days
 
@@ -294,14 +252,12 @@ def _compute_hourly_medians(
 
         da_val = rt_val = None
 
-        # Tier 1: last 7
         h7 = hour_data[hour_data["business_day"].isin(last_7)]
         if da_col and not h7.empty:
             da_val = float(h7[da_col].median())
         if rt_col and not h7.empty:
             rt_val = float(h7[rt_col].median())
 
-        # Tier 2: last 30
         if da_val is None or rt_val is None:
             h30 = hour_data[hour_data["business_day"].isin(last_30)]
             if da_val is None and da_col and not h30.empty:
@@ -309,7 +265,6 @@ def _compute_hourly_medians(
             if rt_val is None and rt_col and not h30.empty:
                 rt_val = float(h30[rt_col].median())
 
-        # Tier 3: all history same hour
         if da_val is None and da_col and not hour_data.empty:
             da_val = float(hour_data[da_col].median())
         if rt_val is None and rt_col and not hour_data.empty:
@@ -317,15 +272,8 @@ def _compute_hourly_medians(
 
         medians[h] = {"dayahead": da_val, "realtime": rt_val}
 
-    # Tier 4: global median for any still-None values
-    if da_col:
-        global_da = float(hist[da_col].median())
-    else:
-        global_da = None
-    if rt_col:
-        global_rt = float(hist[rt_col].median())
-    else:
-        global_rt = None
+    global_da = float(hist[da_col].median()) if da_col else None
+    global_rt = float(hist[rt_col].median()) if rt_col else None
 
     for h in range(1, 25):
         if medians[h]["dayahead"] is None:
@@ -339,15 +287,12 @@ def _compute_hourly_medians(
 def _determine_fallback_level(max_days: int, warnings: list) -> str:
     """Determine which tier of fallback was used."""
     if max_days >= 7:
-        return "emergency_baseline"  # used last 7 days
-    elif max_days >= 1:
-        warnings.append(
-            f"only {max_days} day(s) of historical data available for fallback"
-        )
+        return "emergency_baseline"
+    if max_days >= 1:
+        warnings.append(f"only {max_days} day(s) of historical data available for fallback")
         return "sparse_history"
-    else:
-        warnings.append("no historical data for per-hour median; using global median")
-        return "global_median"
+    warnings.append("no historical data for per-hour median; using global median")
+    return "global_median"
 
 
 def _fallback_result(
@@ -355,13 +300,19 @@ def _fallback_result(
     warnings: list[str],
     errors: list[str],
     reason: str,
+    output_path: str = "",
+    fallback_report_json: str = "",
+    fallback_report_md: str = "",
+    fallback_level: str | None = None,
 ) -> dict:
     return {
         "success": success,
         "fallback_method": "historical_same_hour_median",
-        "fallback_level": "emergency_baseline" if success else "failed",
+        "fallback_level": fallback_level or ("emergency_baseline" if success else "failed"),
         "reason": reason,
-        "output_path": "",
+        "output_path": output_path,
+        "fallback_report_json": fallback_report_json,
+        "fallback_report_md": fallback_report_md,
         "warnings": warnings,
         "errors": errors,
     }
@@ -380,8 +331,10 @@ def _fallback_markdown(
         f"**Level:** {fb['fallback_level']}",
         f"**Reason:** {fb['reason']}",
         f"**Historical days used:** {fb['historical_days_used']}",
-        "",
     ]
+    if fb.get("output_path"):
+        lines.append(f"**Output:** `{fb['output_path']}`")
+    lines.append("")
 
     if fb["warnings"]:
         lines.append("## Warnings")
