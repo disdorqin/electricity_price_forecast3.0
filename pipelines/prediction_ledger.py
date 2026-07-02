@@ -321,12 +321,12 @@ def build_ledger_training_table(
     day_gate_oldest: float = 0.3,
     recent_week_boost: bool = True,
     recent_week_max_gate: float = 0.85,
+    window_days_list: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Build the training table for weight learning on target_day.
 
-    Joins prediction ledger with actual ledger for the window
-    [target_day - window_days, target_day - 1].
+    Joins prediction ledger with actual ledger for the specified window.
 
     Parameters
     ----------
@@ -338,6 +338,7 @@ def build_ledger_training_table(
         The prediction day D (YYYY-MM-DD).
     window_days : int
         Number of days in the lookback window (default 30).
+        Used only when *window_days_list* is None.
     day_gate_recent : float
         Base weight for the most recent day (D-1).
     day_gate_oldest : float
@@ -346,6 +347,10 @@ def build_ledger_training_table(
         Enable smooth recent-week boost on top of linear day_gate.
     recent_week_max_gate : float
         Max day_gate with boost enabled (default 0.85).
+    window_days_list : list[str], optional
+        Explicit list of training days (YYYY-MM-DD, newest-first).
+        When provided, overrides *window_days* and supports non-contiguous
+        date selections produced by adaptive training-day selection.
 
     Returns
     -------
@@ -354,11 +359,12 @@ def build_ledger_training_table(
     """
     D = pd.Timestamp(target_day)
 
-    # Generate window days
-    window_days_list = []
-    for i in range(1, window_days + 1):
-        d = D - pd.Timedelta(days=i)
-        window_days_list.append(d.strftime("%Y-%m-%d"))
+    # Use explicit list if provided, otherwise generate contiguous window
+    if window_days_list is None:
+        window_days_list = []
+        for i in range(1, window_days + 1):
+            d = D - pd.Timedelta(days=i)
+            window_days_list.append(d.strftime("%Y-%m-%d"))
 
     # Filter prediction ledger to window
     pred = prediction_ledger.copy()
@@ -396,7 +402,8 @@ def build_ledger_training_table(
         training["age_days"] = 0
 
     # Compute day_gate: linear decay from day_gate_recent to day_gate_oldest
-    decay_rate = (day_gate_recent - day_gate_oldest) / (window_days - 1)
+    n_days = max(len(window_days_list), 2)
+    decay_rate = (day_gate_recent - day_gate_oldest) / (n_days - 1)
     training["day_gate"] = day_gate_recent - (training["age_days"] - 1) * decay_rate
 
     # Recent week boost: smooth enhancement for D-1 through D-7

@@ -141,6 +141,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--recent-week-boost", dest="recent_week_boost", action="store_true", default=True, help="Enable recent-week boost in day_gate weighting")
     parser.add_argument("--no-recent-week-boost", dest="recent_week_boost", action="store_false", help="Disable recent-week boost")
     parser.add_argument("--recent-week-max-gate", type=float, default=0.85, help="Maximum day_gate with recent-week boost")
+    parser.add_argument("--weight-max-lookback-days", type=int, default=90, help="Maximum calendar days to look back when selecting complete realtime training days (default 90)")
 
     # TimeMixer tuning
     parser.add_argument("--timemixer-epochs", type=int, default=80)
