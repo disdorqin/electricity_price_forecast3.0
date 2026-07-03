@@ -169,11 +169,10 @@ def _run_extreme_price_classifier(
     """
     Run the negative price classifier on fused realtime predictions.
 
-    Tries to use the existing ExtremePriceClf module via classifier_bridge.
-    Falls back to a simple threshold-based classifier if the module
-    is not available.
+    Uses the ExtremePriceClf module via classifier_bridge.
+    On failure, reports error only — no fallback correction.
     """
-    result = {"success": False, "n_corrections": 0, "method": "unknown"}
+    result: dict[str, Any] = {"success": False, "n_corrections": 0, "method": "unknown"}
 
     try:
         from fusion.classifier_bridge import run_classifier_pipeline
@@ -228,31 +227,20 @@ def _run_extreme_price_classifier(
                 result["corrected_hours"] = corrected_hours or []
             else:
                 result["error"] = "Bridge completed but no corrected file produced"
-                # Fall back — ensure corrected file always exists
-                result = _fallback_classifier(fused_df, target_date)
-                result["original_error"] = result.get("error", "")
-                result["fallback_used"] = True
         elif clf_result is not None and clf_result.get("status") == "skipped":
-            logger.warning(f"Classifier bridge skipped: {clf_result.get('reason')}")
-            # Bridge skipped — run fallback to ensure corrected file exists
-            result = _fallback_classifier(fused_df, target_date)
-            result["original_error"] = clf_result.get("reason", "Bridge skipped")
-            result["fallback_used"] = True
+            reason = clf_result.get("reason", "unknown")
+            logger.warning(f"Classifier bridge skipped: {reason}")
+            result["error"] = f"Bridge skipped: {reason}"
         else:
             logger.warning(f"Classifier bridge returned unexpected: {clf_result}")
-            result = _fallback_classifier(fused_df, target_date)
-            result["original_error"] = f"Bridge returned: {clf_result}"
-            result["fallback_used"] = True
+            result["error"] = f"Bridge returned unexpected: {clf_result}"
 
     except ImportError:
-        logger.warning("classifier_bridge not available, using fallback")
-        result = _fallback_classifier(fused_df, target_date)
-        result["fallback_used"] = True
+        logger.warning("classifier_bridge not available")
+        result["error"] = "classifier_bridge module not available"
     except Exception as e:
-        logger.warning(f"Classifier failed, using fallback: {e}")
-        result = _fallback_classifier(fused_df, target_date)
-        result["original_error"] = str(e)
-        result["fallback_used"] = True
+        logger.warning(f"Classifier failed: {e}")
+        result["error"] = str(e)
 
     return result
 
@@ -265,11 +253,7 @@ def _write_classifier_prob_csv(
     realtime_final_dir: Path,
     manifest: dict,
 ):
-    """Write -80_prob.csv with 时刻 and final_prob columns.
-
-    Uses the classifier bridge output xlsx when available, otherwise
-    derives rule-based probabilities from the fallback threshold.
-    """
+    """Write -80_prob.csv with classifier probabilities from bridge output."""
     prob_path = realtime_final_dir / "-80_prob.csv"
 
     if classifier_result.get("method") == "classifier_bridge" and classifier_result.get("success"):
@@ -285,56 +269,6 @@ def _write_classifier_prob_csv(
                     return
             except Exception as e:
                 logger.warning(f"Failed to read classifier xlsx for prob CSV: {e}")
-
-    # Fallback: rule-based probabilities (1.0 where y_fused < -50)
-    prob_df = fused_df[["ds"]].copy()
-    prob_df = prob_df.rename(columns={"ds": "时刻"})
-    prob_df["final_prob"] = (fused_df["y_fused"] < -50).astype(float)
-    prob_df.to_csv(prob_path, index=False, encoding="utf-8-sig")
-    logger.info(f"-80_prob.csv written from fallback ({len(prob_df)} rows)")
-    manifest["results"]["prob_csv"] = "fallback"
-
-
-def _fallback_classifier(fused_df: pd.DataFrame, target_date: str) -> dict:
-    """
-    Simple threshold-based negative price classifier.
-
-    This is a fallback when the full ExtremePriceClf module is not
-    available or fails.
-    """
-    df = fused_df.copy()
-    df["y_fused_corrected"] = df["y_fused"].copy()
-
-    # Simple rule: if y_fused < -50 (very negative), flag as extreme
-    extreme_mask = df["y_fused"] < -50
-    n_extreme = extreme_mask.sum()
-
-    corrected_hours = []
-    if n_extreme > 0:
-        # Correct extreme negative prices to -80 (standard correction)
-        extreme_indices = df.index[extreme_mask].tolist()
-        for idx in extreme_indices:
-            row = df.loc[idx]
-            corrected_hours.append({
-                "hour_business": int(row.get("hour_business", 0)),
-                "ds": str(row.get("ds", "")),
-                "before": float(row["y_fused"]),
-                "after": -80.0,
-            })
-        df.loc[extreme_mask, "y_fused_corrected"] = -80.0
-        logger.info(
-            f"Fallback classifier: {n_extreme} hours flagged as extreme negative, "
-            f"corrected to -80"
-        )
-
-    return {
-        "success": True,
-        "method": "fallback_threshold",
-        "fallback_used": True,
-        "corrected_df": df,
-        "n_corrections": int(n_extreme),
-        "corrected_hours": corrected_hours,
-    }
 
 
 def _build_corrected_hours(
