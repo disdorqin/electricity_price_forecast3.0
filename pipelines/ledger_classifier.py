@@ -127,6 +127,16 @@ def run_ledger_classifier(args: Any) -> dict:
         with open(realtime_final_dir / "classifier_report.json", "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False, default=str)
 
+        # Write -80_prob.csv with classifier probabilities
+        _write_classifier_prob_csv(
+            classifier_result=classifier_result,
+            fused_df=fused_df,
+            target_date=target_date,
+            runs_root=runs_root,
+            realtime_final_dir=realtime_final_dir,
+            manifest=manifest,
+        )
+
         manifest["completed_at"] = datetime.now(timezone.utc).isoformat()
 
     except Exception as e:
@@ -245,6 +255,44 @@ def _run_extreme_price_classifier(
         result["fallback_used"] = True
 
     return result
+
+
+def _write_classifier_prob_csv(
+    classifier_result: dict,
+    fused_df: pd.DataFrame,
+    target_date: str,
+    runs_root: Path,
+    realtime_final_dir: Path,
+    manifest: dict,
+):
+    """Write -80_prob.csv with 时刻 and final_prob columns.
+
+    Uses the classifier bridge output xlsx when available, otherwise
+    derives rule-based probabilities from the fallback threshold.
+    """
+    prob_path = realtime_final_dir / "-80_prob.csv"
+
+    if classifier_result.get("method") == "classifier_bridge" and classifier_result.get("success"):
+        clf_xlsx = runs_root / target_date / "realtime" / "compat_fusion" / "classifier" / f"{target_date}_{target_date}_clf.xlsx"
+        if clf_xlsx.exists():
+            try:
+                clf_df = pd.read_excel(clf_xlsx, engine="openpyxl")
+                if "时刻" in clf_df.columns and "final_prob" in clf_df.columns:
+                    prob_df = clf_df[["时刻", "final_prob", "threshold", "final_pred"]].copy()
+                    prob_df.to_csv(prob_path, index=False, encoding="utf-8-sig")
+                    logger.info(f"-80_prob.csv written from classifier bridge ({len(prob_df)} rows)")
+                    manifest["results"]["prob_csv"] = "classifier_bridge"
+                    return
+            except Exception as e:
+                logger.warning(f"Failed to read classifier xlsx for prob CSV: {e}")
+
+    # Fallback: rule-based probabilities (1.0 where y_fused < -50)
+    prob_df = fused_df[["ds"]].copy()
+    prob_df = prob_df.rename(columns={"ds": "时刻"})
+    prob_df["final_prob"] = (fused_df["y_fused"] < -50).astype(float)
+    prob_df.to_csv(prob_path, index=False, encoding="utf-8-sig")
+    logger.info(f"-80_prob.csv written from fallback ({len(prob_df)} rows)")
+    manifest["results"]["prob_csv"] = "fallback"
 
 
 def _fallback_classifier(fused_df: pd.DataFrame, target_date: str) -> dict:

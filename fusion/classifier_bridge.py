@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -35,32 +34,11 @@ def classifier_data_covers_range(clf_data_path: Path, start_date: str, end_date:
     )
 
 
-def convert_fusion_to_clf_input(fused_csv_path: Path, output_xlsx_path: Path) -> Path:
-    df = pd.read_csv(fused_csv_path)
-    if "ds" not in df.columns or "y_fused" not in df.columns:
-        raise ValueError(f"Fusion output missing required columns: {fused_csv_path}")
-    frame = df.copy()
-    frame["ds"] = pd.to_datetime(frame["ds"], errors="coerce")
-    frame = frame.dropna(subset=["ds"]).sort_values("ds").reset_index(drop=True)
-    out = pd.DataFrame(
-        {
-            "时刻": frame["ds"],
-            "预测实时电价": frame["y_fused"],
-        }
-    )
-    if "y_true" in frame.columns:
-        out["实时电价"] = frame["y_true"]
-    output_xlsx_path.parent.mkdir(parents=True, exist_ok=True)
-    out.to_excel(output_xlsx_path, index=False)
-    return output_xlsx_path
-
-
 def run_extreme_price_classifier(
     *,
     project_root: Path,
     start_date: str,
     end_date: str,
-    clf_input_path: Path,
     clf_data_path: Path,
     output_dir: Path,
 ) -> Path:
@@ -82,10 +60,6 @@ def run_extreme_price_classifier(
         "--data",
         str(abs_data_path),
     ]
-    if clf_input_path.exists():
-        temp_copy = clf_input_path
-        target_copy = project_root / "ExtremPriceClf" / "data" / "融合模型预测电价数据.xlsx"
-        shutil.copyfile(temp_copy, target_copy)
     try:
         subprocess.run(cmd, check=True, cwd=script_path.parent.parent, capture_output=True, text=True)
     except subprocess.CalledProcessError as exc:
@@ -137,13 +111,10 @@ def run_classifier_pipeline(
         return {"status": "skipped", "reason": reason, "clf_data_path": str(clf_data_path)}
     clf_dir = fusion_work_dir / "classifier"
     clf_dir.mkdir(parents=True, exist_ok=True)
-    clf_input = clf_dir / "clf_input.xlsx"
-    convert_fusion_to_clf_input(rt_fused, clf_input)
     clf_result = run_extreme_price_classifier(
         project_root=project_root,
         start_date=start_date,
         end_date=end_date,
-        clf_input_path=clf_input,
         clf_data_path=clf_data_path,
         output_dir=clf_dir,
     )
@@ -154,5 +125,4 @@ def run_classifier_pipeline(
         "corrected_hours": int((merged["final_pred"] == 1).sum()),
         "output_path": str(corrected),
         "clf_result_path": str(clf_result),
-        "clf_input_path": str(clf_input),
     }

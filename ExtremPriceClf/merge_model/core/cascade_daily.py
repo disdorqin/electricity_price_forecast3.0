@@ -48,6 +48,10 @@ class Stage2Config:
     dynamic_high_step: float = 0.01
     dynamic_max_delta: float = 0.02
     dynamic_smooth_alpha: float = 0.30
+    # --- 新增：一致性检验配置 ---
+    consistency_diff_threshold: float = 0.25
+    conflict_shrink_ratio: float = 0.3
+    use_conservative_strategy: bool = True
 
 
 def set_seed(seed: int = 42) -> None:
@@ -600,6 +604,83 @@ def _compute_stage1_probabilities(pipeline: RadarPipeline, infer_df: pd.DataFram
     return prob_df
 
 
+def compute_final_pred_with_consistency_check(
+        p1_prob: np.ndarray,
+        p2_prob: np.ndarray,
+        p2_pred: np.ndarray,
+        gray_low: float,
+        gray_high: float,
+        threshold_s2: float,
+        consistency_diff_threshold: float = 0.3,
+        conflict_shrink_ratio: float = 0.3,
+        use_conservative_strategy: bool = True,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    带一致性检验的最终预测计算。
+    返回 (final_pred, p2_prob_adj, p2_pred_adj)，其中 p2_prob_adj/p2_pred_adj
+    是高冲突样本经缩水修正后的值（非高冲突样本保持不变）。
+
+    策略：
+      - p1 > gray_high: 直接认定为正
+      - p1 < gray_low: 直接认定为负
+      - 灰度区处理：
+        ① use_conservative_strategy=False → 完全信任 p2
+        ② 标签未变 → 信任 p2
+        ③ 标签变 + 跨度小 → 信任 p2
+        ④ 标签变 + 跨度大 → p2 向 p1 缩水后重判
+    """
+    final_pred = np.zeros(len(p1_prob), dtype=int)
+    p2_prob_adj = p2_prob.copy()
+    p2_pred_adj = p2_pred.copy()
+
+    # 高置信区
+    final_pred[p1_prob > gray_high] = 1
+
+    # 灰度区处理
+    gray_mask = (p1_prob >= gray_low) & (p1_prob <= gray_high)
+    if gray_mask.any():
+        p1_gray = p1_prob[gray_mask]
+        p2_gray = p2_prob[gray_mask]
+
+        # 若二阶段模型未能成功产出概率(存在nan)，则默认将 nan 转为 0
+        p2_gray = np.nan_to_num(p2_gray, nan=0.0)
+
+        if use_conservative_strategy:
+            p1_label = (p1_gray > 0.5).astype(int)
+            p2_label = (p2_gray > threshold_s2).astype(int)
+
+            label_changed = (p1_label != p2_label)
+            prob_span = np.abs(p1_gray - p2_gray)
+
+            # 情况④: 标签改变且跨度大 → 高冲突
+            high_conflict = label_changed & (prob_span > consistency_diff_threshold)
+
+            # 情况②③: 信任 p2 的判定
+            gray_pred = p2_label.copy()
+
+            # 情况④: p2 向 p1 缩水后重判
+            if high_conflict.any():
+                p1_conflict = p1_gray[high_conflict]
+                p2_conflict = p2_gray[high_conflict]
+                p2_adjusted = p1_conflict + (p2_conflict - p1_conflict) * (1 - conflict_shrink_ratio)
+                adjusted_labels = (p2_adjusted > threshold_s2).astype(int)
+
+                gray_pred[high_conflict] = adjusted_labels
+
+                # 同步修正输出概率和标签
+                gray_indices = np.where(gray_mask)[0]
+                conflict_global = gray_indices[high_conflict]
+                p2_prob_adj[conflict_global] = p2_adjusted
+                p2_pred_adj[conflict_global] = adjusted_labels
+        else:
+            # 不启用策略时，无脑听二阶段的
+            gray_pred = (p2_gray > threshold_s2).astype(int)
+
+        final_pred[gray_mask] = gray_pred
+
+    return final_pred, p2_prob_adj, p2_pred_adj
+
+
 def run_rolling_daily_cascade(
     df: pd.DataFrame,
     target_name: str,
@@ -735,7 +816,7 @@ def run_rolling_daily_cascade(
             stage2_config.model_name,
         )
         # 如配置固定阈值则覆盖校准阈值。
-        threshold_s2 = stage2_config.threshold if stage2_config.threshold is not None else threshold_s2
+        threshold_s2 = threshold_s2 if threshold_s2 is not None else stage2_config.threshold
         # 计算二阶段特征并截取最后 24 小时。
         stage2_features_df = build_stage2_features(infer_df, stage2_config.feature_type)
         stage2_features_df = stage2_features_df.sort_values(time_col).reset_index(drop=True)
@@ -752,12 +833,19 @@ def run_rolling_daily_cascade(
             p2_prob_gray = stage2_model.predict_proba(X_stage2_last24[gray_mask])
             p2_prob[gray_mask] = p2_prob_gray
             p2_pred[gray_mask] = (p2_prob_gray > threshold_s2).astype(int)
-        # 合并阶段1/2结果为最终预测。
-        final_pred = np.where(
-            p1_prob > current_gray_high,
-            1,
-            np.where(p1_prob < current_gray_low, 0, (p2_prob > threshold_s2).astype(int)),
+
+        final_pred, p2_prob, p2_pred = compute_final_pred_with_consistency_check(
+            p1_prob=p1_prob,
+            p2_prob=p2_prob,
+            p2_pred=p2_pred,
+            gray_low=current_gray_low,
+            gray_high=current_gray_high,
+            threshold_s2=threshold_s2,
+            consistency_diff_threshold=stage2_config.consistency_diff_threshold,
+            conflict_shrink_ratio=stage2_config.conflict_shrink_ratio,
+            use_conservative_strategy=stage2_config.use_conservative_strategy,
         )
+
         actual_slice = infer_df.iloc[-24:]
         actual_times = actual_slice[time_col].values
         actual_prices = actual_slice[target_name].values
@@ -785,6 +873,8 @@ def run_rolling_daily_cascade(
                     "gray_high": current_gray_high,
                     "gray_source": threshold_meta["source"],
                     "gray_reason": threshold_meta.get("reason", ""),
+                    "threshold": threshold_s2,
+                    "final_prob": p2p if not np.isnan(p2l) else p1p,
                     "final_pred": int(fp),
                 }
             )

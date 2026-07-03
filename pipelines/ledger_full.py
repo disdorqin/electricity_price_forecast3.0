@@ -386,11 +386,7 @@ def _validate_final(df: pd.DataFrame, task: str, target_date: str, result: dict)
 def _build_submission_ready(final_dir: Path, target_date: str, result: dict):
     """Build a consolidated submission_ready.csv with dayahead + realtime — fixed columns."""
     da_path = final_dir / "dayahead_final_predictions.csv"
-    rt_path = final_dir / "realtime_final_predictions_corrected.csv"
-
-    # Prefer corrected realtime, fall back to uncorrected
-    if not rt_path.exists():
-        rt_path = final_dir / "realtime_final_predictions.csv"
+    rt_path = final_dir / "realtime_final_predictions.csv"
 
     if not da_path.exists() and not rt_path.exists():
         result.setdefault("warnings", []).append("No data for submission_ready.csv")
@@ -405,8 +401,7 @@ def _build_submission_ready(final_dir: Path, target_date: str, result: dict):
 
     if rt_path.exists():
         rt_df = pd.read_csv(rt_path)
-        price_col = "y_fused_corrected" if "y_fused_corrected" in rt_df.columns else "y_fused"
-        rt_df = rt_df.rename(columns={price_col: "realtime_price"})
+        rt_df = rt_df.rename(columns={"y_fused": "realtime_price"})
 
     # Build with fixed, clean columns — merge on business_day + hour_business
     FIXED_COLUMNS = ["business_day", "ds", "hour_business", "period", "dayahead_price", "realtime_price"]
