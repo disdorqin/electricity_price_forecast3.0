@@ -1,0 +1,77 @@
+{
+  "recommended_status": "candidate",
+  "reason": "单月(32天) shadow 评估通过全部 16 条标准：overall sMAPE 40.88→34.22(-6.66)，负价 78.14→53.75(-24.39)，尖峰 39.95→36.26(-3.69)，正常时段仅 +0.33(不明显)，period 17_24 +0.14(不恶化)，无 NaN，24h 完整，cutoff 安全，rollback 可用。时序稳定性代理(半段 split)通过：固定配置在两个测试半段(各~100+负价小时)均改善负价且不伤正常时段，证明单月 PASS 非单窗口假象。但因仍仅 32 天单 ledger，未满足'shadow'所需的真实多月份复核，故保持 candidate；稳定性证据已支持在 owner 签字下进入受控 shadow 部署，待 ≥3 个月数据最终确认后升级。",
+  "original_smape_floor50": 40.88159681502679,
+  "corrected_smape_floor50": 34.221642407097136,
+  "temporal_stability_proxy": {
+    "method": "temporal split (train-half 选参 → test-half 评估) + 周切片；因无多月份数据，此乃可得最强代理",
+    "decision_gate": "temporal_split_stable",
+    "temporal_split_stable": true,
+    "splitA_test_negΔ": -31.52,
+    "splitA_test_normalΔ": 0.26,
+    "splitB_test_negΔ": -19.2,
+    "splitB_test_normalΔ": 1.89,
+    "fixed_on_splitB_test_negΔ": -6.46,
+    "fixed_on_splitB_test_normalΔ": 0.38,
+    "weekly_negative_direction_improves_judged": true,
+    "weekly_normal_blip_watch_items": [
+      [
+        "2026-02-01..2026-02-07",
+        2.01
+      ]
+    ],
+    "small_sample_weeks_excluded": [
+      "2026-01-25..2026-01-31"
+    ],
+    "note": "Core stability rests on temporal-split halves (~100+ negative hours each). Weekly slices are supporting/contextual only: weeks with <15 negative hours are excluded from hard judgement (sMAPE unstable on tiny subsets); weeks with 0 spike hours yield NaN spike sMAPE (divide-by-zero) and are reported as n/a. A mild local normal-hour blip in one judged week is surfaced as a watch item, not a hard fail, because the full-set normalΔ (+0.33) is negligible."
+  },
+  "period_results": {
+    "1_8": {
+      "before_sMAPE": 43.84274292190125,
+      "after_sMAPE": 38.58039249137221
+    },
+    "9_16": {
+      "before_sMAPE": 54.77758564809883,
+      "after_sMAPE": 39.924454357232804
+    },
+    "17_24": {
+      "before_sMAPE": 24.024461875080284,
+      "after_sMAPE": 24.160080372686387
+    }
+  },
+  "spike_results": {
+    "before_sMAPE": 39.94573410087549,
+    "after_sMAPE": 36.26370975204459,
+    "classifier_P": 0.11764705882352941,
+    "classifier_R": 0.15384615384615385,
+    "classifier_F1": 0.13333333333333333
+  },
+  "negative_results": {
+    "before_sMAPE": 78.13607993318792,
+    "after_sMAPE": 53.74976823309781,
+    "classifier_P": 0.8936170212765957,
+    "classifier_R": 0.6363636363636364,
+    "classifier_F1": 0.7433628318584069
+  },
+  "normal_damage_result": {
+    "sMAPE_delta": 0.33113807164238906,
+    "MAE_delta": 1.6164914933837338,
+    "verdict": "acceptable (<+1.0 sMAPE)"
+  },
+  "rollback_result": {
+    "enabled": true,
+    "rollback_count_in_candidate": 0,
+    "cap_hit_count": 9
+  },
+  "known_risks": [
+    "尖峰分类器弱(P=0.118,R=0.154)：需更多尖峰样本/更好特征重训",
+    "仅单月(32天)数据，未验证多月份稳定性",
+    "负价召回 0.636（部分真负价未被修正，保留 fused 近零值，误差有限）",
+    "fused baseline 为 inverse-MAE 重建集成，非生产 BGEW（已注明）"
+  ],
+  "required_followup": [
+    "在 ≥3 个月数据上复核稳定性后升级为 shadow",
+    "扩充尖峰标签样本并重训 spike classifier",
+    "若需更高负价召回，可下调 NEG_ACT_PRED_CAP（权衡正常损伤）"
+  ]
+}

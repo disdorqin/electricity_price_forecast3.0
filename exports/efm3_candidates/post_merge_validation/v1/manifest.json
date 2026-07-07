@@ -1,0 +1,11 @@
+{
+  "pipeline": "post_merge_validation",
+  "run_id": "v1",
+  "main_sha": "b958c8999446b33c0f4f7d9de48a1b34cc2567b7",
+  "environment": "conda epf-2",
+  "compile_all_pass": true,
+  "pytest_result": "83/86 passed, 3 known failures (no runtime impact)",
+  "default_off_verified": true,
+  "explicit_shadow_safe": true,
+  "contamination_free": true
+}

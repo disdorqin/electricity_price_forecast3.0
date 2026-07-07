@@ -1,0 +1,31 @@
+{
+  "run_id": "p3_rt_20260125_20260225_v1_cand",
+  "created_at": "2026-07-07T03:21:54.698215+00:00",
+  "source_repo": "electricity_price_forecast3.0 (efm3.0)",
+  "source_commit": "463dd95e6c2aa9905157b3cec63a648cda89e1e2",
+  "experience_source_repo": "electricity_forecast_model2.0_exp",
+  "experience_source_commit": "49db6b5665fc34b953c32556976acfdfab98772c",
+  "target_task": "spike_residual",
+  "module_name": "ExtremePriceCorrectionSystem",
+  "module_version": "p3_v1_candidate",
+  "data_range": "2026-01-25..2026-02-25",
+  "test_months": 1,
+  "baseline_reference": "inverse-MAE expanding-window ensemble of 4 RT models (rt916/sgdfnet/timemixer/timesfm)",
+  "metric_names": [
+    "MAE",
+    "RMSE",
+    "sMAPE_floor50",
+    "P",
+    "R",
+    "F1"
+  ],
+  "output_schema_version": "p3_spike_residual_v1",
+  "cutoff": "D14",
+  "leakage_check": "passed (features D-1 14:00 cutoff-safe; actual used only as training label)",
+  "nan_check": "passed",
+  "hour_completeness_check": "passed",
+  "correction_cap": "CAP_ABS=350, CAP_RATIO=0.35 (negative: abs+price-floor only; spike/resid: +ratio)",
+  "rollback_enabled": true,
+  "shadow_only": true,
+  "temporal_stability_proxy": "passed (temporal_split_stable=true; single 32-day ledger, no multi-month available)"
+}

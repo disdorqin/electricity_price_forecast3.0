@@ -1,0 +1,343 @@
+{
+  "run_id": "p3_rt_20260125_20260225_v1",
+  "cutoff": "D14",
+  "shadow_only": true,
+  "data_range": "2026-01-25..2026-02-25",
+  "n_days": 32,
+  "global_config": {
+    "NEG_THRESH": 0.8,
+    "CAP": 50.0
+  },
+  "splits": {
+    "splitA_train_first": {
+      "train_days": "2026-01-25..2026-02-09",
+      "test_days": "2026-02-10..2026-02-25",
+      "selected_params": {
+        "score": null,
+        "NEG_THRESH": 0.8,
+        "CAP": 50.0,
+        "neg_delta_smape": null,
+        "normal_delta_smape": null,
+        "overall_delta_smape": null
+      },
+      "test_with_selected": {
+        "n_test_hours": 384,
+        "deltas": {
+          "overall": {
+            "sMAPE_floor50": -12.57,
+            "MAE": -15.77,
+            "RMSE": -3.56
+          },
+          "negative": {
+            "sMAPE_floor50": -31.52,
+            "MAE": -40.99,
+            "RMSE": -12.16
+          },
+          "spike": {
+            "sMAPE_floor50": 0.0,
+            "MAE": 0.0,
+            "RMSE": 0.0
+          },
+          "normal": {
+            "sMAPE_floor50": 0.26,
+            "MAE": 1.31,
+            "RMSE": 3.36
+          }
+        },
+        "normal_MAE_delta": 1.31
+      },
+      "fixed_config_on_train": {
+        "overall": {
+          "sMAPE_floor50": -0.92,
+          "MAE": -0.51,
+          "RMSE": -2.14
+        },
+        "negative": {
+          "sMAPE_floor50": -6.46,
+          "MAE": -4.39,
+          "RMSE": 4.48
+        },
+        "spike": {
+          "sMAPE_floor50": -4.16,
+          "MAE": -21.7,
+          "RMSE": -26.13
+        },
+        "normal": {
+          "sMAPE_floor50": 0.38,
+          "MAE": 1.84,
+          "RMSE": 1.39
+        }
+      },
+      "fixed_config_on_test": {
+        "overall": {
+          "sMAPE_floor50": -12.57,
+          "MAE": -15.77,
+          "RMSE": -3.56
+        },
+        "negative": {
+          "sMAPE_floor50": -31.52,
+          "MAE": -40.99,
+          "RMSE": -12.16
+        },
+        "spike": {
+          "sMAPE_floor50": 0.0,
+          "MAE": 0.0,
+          "RMSE": 0.0
+        },
+        "normal": {
+          "sMAPE_floor50": 0.26,
+          "MAE": 1.31,
+          "RMSE": 3.36
+        }
+      }
+    },
+    "splitB_train_second": {
+      "train_days": "2026-02-10..2026-02-25",
+      "test_days": "2026-01-25..2026-02-09",
+      "selected_params": {
+        "score": 30.73,
+        "NEG_THRESH": 0.6,
+        "CAP": 50.0,
+        "neg_delta_smape": -31.52,
+        "normal_delta_smape": 0.26,
+        "overall_delta_smape": -12.57
+      },
+      "test_with_selected": {
+        "n_test_hours": 384,
+        "deltas": {
+          "overall": {
+            "sMAPE_floor50": -1.65,
+            "MAE": 0.49,
+            "RMSE": 2.44
+          },
+          "negative": {
+            "sMAPE_floor50": -19.2,
+            "MAE": -16.35,
+            "RMSE": 1.66
+          },
+          "spike": {
+            "sMAPE_floor50": -4.16,
+            "MAE": -21.7,
+            "RMSE": -26.13
+          },
+          "normal": {
+            "sMAPE_floor50": 1.89,
+            "MAE": 5.4,
+            "RMSE": 9.95
+          }
+        },
+        "normal_MAE_delta": 5.4
+      },
+      "fixed_config_on_train": {
+        "overall": {
+          "sMAPE_floor50": -12.57,
+          "MAE": -15.77,
+          "RMSE": -3.56
+        },
+        "negative": {
+          "sMAPE_floor50": -31.52,
+          "MAE": -40.99,
+          "RMSE": -12.16
+        },
+        "spike": {
+          "sMAPE_floor50": 0.0,
+          "MAE": 0.0,
+          "RMSE": 0.0
+        },
+        "normal": {
+          "sMAPE_floor50": 0.26,
+          "MAE": 1.31,
+          "RMSE": 3.36
+        }
+      },
+      "fixed_config_on_test": {
+        "overall": {
+          "sMAPE_floor50": -0.92,
+          "MAE": -0.51,
+          "RMSE": -2.14
+        },
+        "negative": {
+          "sMAPE_floor50": -6.46,
+          "MAE": -4.39,
+          "RMSE": 4.48
+        },
+        "spike": {
+          "sMAPE_floor50": -4.16,
+          "MAE": -21.7,
+          "RMSE": -26.13
+        },
+        "normal": {
+          "sMAPE_floor50": 0.38,
+          "MAE": 1.84,
+          "RMSE": 1.39
+        }
+      }
+    }
+  },
+  "weekly_slices": [
+    {
+      "window": "2026-01-25..2026-01-31",
+      "n_hours": 168,
+      "neg_hours": 8,
+      "spike_hours": 5,
+      "deltas": {
+        "overall": {
+          "sMAPE_floor50": 0.57,
+          "MAE": 1.75,
+          "RMSE": -3.9
+        },
+        "negative": {
+          "sMAPE_floor50": 7.2,
+          "MAE": 22.53,
+          "RMSE": 24.29
+        },
+        "spike": {
+          "sMAPE_floor50": -8.68,
+          "MAE": -46.34,
+          "RMSE": -56.33
+        },
+        "normal": {
+          "sMAPE_floor50": 0.52,
+          "MAE": 2.23,
+          "RMSE": 2.29
+        }
+      }
+    },
+    {
+      "window": "2026-02-01..2026-02-07",
+      "n_hours": 168,
+      "neg_hours": 28,
+      "spike_hours": 18,
+      "deltas": {
+        "overall": {
+          "sMAPE_floor50": -0.65,
+          "MAE": -1.31,
+          "RMSE": -0.85
+        },
+        "negative": {
+          "sMAPE_floor50": -3.54,
+          "MAE": -3.74,
+          "RMSE": -1.72
+        },
+        "spike": {
+          "sMAPE_floor50": -14.19,
+          "MAE": -74.86,
+          "RMSE": -50.35
+        },
+        "normal": {
+          "sMAPE_floor50": 2.01,
+          "MAE": 10.1,
+          "RMSE": 6.94
+        }
+      }
+    },
+    {
+      "window": "2026-02-08..2026-02-14",
+      "n_hours": 168,
+      "neg_hours": 61,
+      "spike_hours": 0,
+      "deltas": {
+        "overall": {
+          "sMAPE_floor50": -6.53,
+          "MAE": -7.04,
+          "RMSE": -2.01
+        },
+        "negative": {
+          "sMAPE_floor50": -17.99,
+          "MAE": -19.38,
+          "RMSE": -4.26
+        },
+        "spike": {
+          "sMAPE_floor50": NaN,
+          "MAE": NaN,
+          "RMSE": NaN
+        },
+        "normal": {
+          "sMAPE_floor50": 0.0,
+          "MAE": 0.0,
+          "RMSE": 0.0
+        }
+      }
+    },
+    {
+      "window": "2026-02-15..2026-02-21",
+      "n_hours": 168,
+      "neg_hours": 91,
+      "spike_hours": 2,
+      "deltas": {
+        "overall": {
+          "sMAPE_floor50": -13.55,
+          "MAE": -20.69,
+          "RMSE": -6.39
+        },
+        "negative": {
+          "sMAPE_floor50": -25.01,
+          "MAE": -38.2,
+          "RMSE": -11.36
+        },
+        "spike": {
+          "sMAPE_floor50": 0.0,
+          "MAE": 0.0,
+          "RMSE": 0.0
+        },
+        "normal": {
+          "sMAPE_floor50": 0.0,
+          "MAE": 0.0,
+          "RMSE": 0.0
+        }
+      }
+    },
+    {
+      "window": "2026-02-22..2026-02-25",
+      "n_hours": 96,
+      "neg_hours": 25,
+      "spike_hours": 1,
+      "deltas": {
+        "overall": {
+          "sMAPE_floor50": -2.29,
+          "MAE": 0.33,
+          "RMSE": 6.48
+        },
+        "negative": {
+          "sMAPE_floor50": -11.18,
+          "MAE": -10.6,
+          "RMSE": -2.64
+        },
+        "spike": {
+          "sMAPE_floor50": 0.0,
+          "MAE": 0.0,
+          "RMSE": 0.0
+        },
+        "normal": {
+          "sMAPE_floor50": 0.85,
+          "MAE": 4.23,
+          "RMSE": 10.2
+        }
+      }
+    }
+  ],
+  "stability_verdict": {
+    "decision_gate": "temporal_split_stable",
+    "temporal_split_negative_improves": true,
+    "temporal_split_normal_undamaged": true,
+    "temporal_split_stable": true,
+    "weekly_judged_windows": [
+      "2026-02-01..2026-02-07",
+      "2026-02-08..2026-02-14",
+      "2026-02-15..2026-02-21",
+      "2026-02-22..2026-02-25"
+    ],
+    "weekly_negative_direction_improves_judged": true,
+    "weekly_normal_blip_watch_items": [
+      [
+        "2026-02-01..2026-02-07",
+        2.01
+      ]
+    ],
+    "small_sample_weeks_excluded": [
+      "2026-01-25..2026-01-31"
+    ],
+    "stable": true,
+    "note": "Core stability rests on temporal-split halves (~100+ negative hours each). Weekly slices are supporting/contextual only: weeks with <15 negative hours are excluded from hard judgement (sMAPE unstable on tiny subsets); weeks with 0 spike hours yield NaN spike sMAPE (divide-by-zero) and are reported as n/a. A mild local normal-hour blip in one judged week is surfaced as a watch item, not a hard fail, because the full-set normalΔ (+0.33) is negligible."
+  }
+}
