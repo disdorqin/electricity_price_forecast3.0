@@ -125,6 +125,44 @@ def main() -> int:
             logging.getLogger(__name__).exception(
                 f"[extreme_price_shadow] hook error (main chain untouched): {e}"
             )
+
+    # --- Fusion Chain v1 shadow backtest (default OFF) ---
+    # Runs only when --enable-fusion-shadow-v1 is explicitly passed.
+    # Writes ONLY to outputs/fusion_shadow_v1/ and exports/efm3_candidates/fusion_chain/.
+    # Never writes final/, submission_ready.csv, or affects champion/delivery/exit_code.
+    if getattr(args, "enable_fusion_shadow_v1", False):
+        try:
+            from pipelines.fusion_shadow_v1 import run_fusion_shadow_v1, serialize_results
+            fusion_config = getattr(args, "fusion_shadow_config", "configs/fusion_shadow_v1.yaml")
+            fusion_result = run_fusion_shadow_v1(
+                config_path=fusion_config,
+                data_path=args.data_path,
+                runs_root=args.runs_root,
+                silent=True,
+            )
+            with open("outputs/fusion_shadow_v1/_before_serialize.pkl", "wb") as f:
+                import pickle
+                pickle.dump(fusion_result, f)
+            serialize_results(
+                result=fusion_result,
+                output_root="outputs/fusion_shadow_v1",
+                export_root="exports/efm3_candidates/fusion_chain/fusion_v1_first_big_run",
+                months=[
+                    "2025-03","2025-04","2025-05","2025-06",
+                    "2025-09","2025-10",
+                    "2025-11","2025-12","2026-01","2026-02",
+                    "2026-03","2026-04","2026-05","2026-06",
+                ],
+                base_sha="unknown",
+                branch="agent/fusion-chain-v1-shadow-backtest",
+                variants=None,
+            )
+            logger = logging.getLogger(__name__)
+            logger.info(f"[fusion_shadow_v1] runtime={fusion_result.runtime_s:.1f}s | variants={len(fusion_result.variants)}")
+        except Exception as e:  # pragma: no cover - defensive
+            logging.getLogger(__name__).exception(
+                f"[fusion_shadow_v1] hook error (main chain untouched): {e}"
+            )
     return exit_code
 
 

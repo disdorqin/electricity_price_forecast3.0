@@ -227,4 +227,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--realtime-selector-shadow-config",
         default="configs/realtime_da_sgdf_selector_shadow.yaml",
         help="Path to selector shadow config YAML (default: configs/realtime_da_sgdf_selector_shadow.yaml)")
+
+    # Fusion Chain v1 params (default off)
+    parser.add_argument("--enable-fusion-shadow-v1",
+        action="store_true", default=False,
+        help="Enable the Fusion Chain v1 shadow backtest. "
+             "Default off. When enabled, runs shadow evaluation and writes to "
+             "outputs/fusion_shadow_v1/ and exports/efm3_candidates/fusion_chain/. "
+             "Does NOT modify final, submission_ready, champion, delivery_status, or exit_code.")
+    parser.add_argument("--fusion-shadow-config",
+        default="configs/fusion_shadow_v1.yaml",
+        help="Path to fusion shadow v1 config YAML (default: configs/fusion_shadow_v1.yaml)")
     return parser

@@ -1,0 +1,87 @@
+# EFM3 Fusion Chain v1 — Shadow Backtest Configuration
+# 
+# This config defines the rule-based fusion policy graph.
+# All policies are evaluated in shadow mode — no output reaches final/ or submission_ready.csv.
+
+fusion:
+  enabled: false                     # default OFF — must be enabled via --enable-fusion-shadow-v1
+  mode: shadow_backtest              # only shadow mode is supported
+  output_root: outputs/fusion_shadow_v1
+  export_root: exports/efm3_candidates/fusion_chain/fusion_v1_first_big_run
+
+# ── Target Months ──
+# First priority: 14 months covering winter and non-winter canonical windows
+test_months:
+  non_winter:
+    - 2025-03
+    - 2025-04
+    - 2025-05
+    - 2025-06
+    - 2025-09
+    - 2025-10
+    - 2026-03
+    - 2026-04
+    - 2026-05
+    - 2026-06
+  winter:
+    - 2025-11
+    - 2025-12
+    - 2026-01
+    - 2026-02
+
+# ── Data Sources ──
+data:
+  xlsx_path: data/shandong_pmos_hourly.xlsx
+  runs_root: outputs/runs
+  pred_ledger_realtime: outputs/ledger/realtime/prediction/prediction_ledger.parquet
+  pred_ledger_dayahead: outputs/ledger/dayahead/prediction/prediction_ledger.parquet
+  actual_ledger_realtime: outputs/ledger/realtime/actual/actual_ledger.parquet
+  actual_ledger_dayahead: outputs/ledger/dayahead/actual/actual_ledger.parquet
+  canonical_da_anchor: outputs/p2_7_canonical_ledger/dayahead_anchor_canonical.csv
+  canonical_rt_actual: outputs/p2_7_canonical_ledger/realtime_actual_canonical.csv
+
+# ── Fusion Policy Parameters ──
+policy:
+  # Winter months: force DA-only default
+  winter_months: [11, 12, 1, 2]
+  
+  # Selector rules
+  selector:
+    gap_threshold: 50                # |DA_anchor - SGDFNet| > threshold → consider selector
+    confidence_high: 0.85
+    avoid_17_24_switch: true         # during 17-24, prefer DA anchor
+    negative_allowed: false          # negative prices: force DA anchor
+  
+  # P3 overlay rules
+  p3:
+    confidence_threshold: 0.7
+    negative_correction_enabled: true
+    spike_correction_enabled: true
+    max_correction_per_hour: 80.0
+    normal_degradation_monitor: true
+  
+  # Winter DA-only
+  winter:
+    force_da_only: true
+    selector_allowed: false
+    p3_allowed: true                  # P3 can still provide corrections in winter
+  
+  # Conservative fusion
+  conservative:
+    use_p3_only_if_very_high_confidence: true
+    p3_very_high_confidence: 0.9
+    cap_correction_magnitude: true
+
+# ── Ablation Variants ──
+ablation:
+  variants:
+    - official_baseline
+    - da_anchor
+    - sgdfnet_only
+    - realtime_selector_shadow
+    - p3_extreme_shadow
+    - winter_da_only_policy
+    - selector_then_p3_overlay
+    - p3_then_selector_overlay
+    - conservative_fusion_v1
+    - oracle_upper_bound
