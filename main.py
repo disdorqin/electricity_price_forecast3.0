@@ -27,6 +27,12 @@ from pipelines.extreme_price_shadow import (
     run_extreme_price_shadow_safe,
 )
 
+# Realtime DA-SGDF Selector Shadow (default off)
+from pipelines.realtime_da_sgdf_selector_shadow import (
+    run_realtime_da_sgdf_selector_shadow,
+    enable_shadow,
+)
+
 
 def _delivery_exit_code(delivery_status: str, default: int = 1) -> int:
     """Map delivery status to exit code.
@@ -42,6 +48,31 @@ def _delivery_exit_code(delivery_status: str, default: int = 1) -> int:
     elif delivery_status == "FAILED_NO_DELIVERY":
         return 1
     return default
+
+
+def _run_selector_shadow_if_enabled(args, pipeline_result) -> None:
+    """Run the DA-SGDF selector shadow if the flag is set.
+
+    This is a no-op unless --enable-realtime-da-sgdf-selector-shadow is passed.
+    It never modifies exit_code, delivery_status, final, or submission_ready.
+    """
+    if not getattr(args, "enable_realtime_da_sgdf_selector_shadow", False):
+        return
+    enable_shadow()
+    target_date = getattr(args, "date", None) or pipeline_result.get("target_date", "")
+    if not target_date:
+        target_date = getattr(args, "pos_date", None) or ""
+    try:
+        manifest = run_realtime_da_sgdf_selector_shadow(
+            target_date=target_date,
+            runs_root=getattr(args, "runs_root", "outputs/runs"),
+            data_path=getattr(args, "data_path", "data/shandong_pmos_hourly.xlsx"),
+            config_path=getattr(args, "realtime_selector_shadow_config", None),
+        )
+        print(f"[shadow-selector] manifest: status={manifest.get('status')}", flush=True)
+    except Exception as e:
+        print(f"[shadow-selector] WARNING: non-fatal error: {e}", flush=True)
+    # NEVER modify exit_code — shadow failures must NOT affect main pipeline.
 
 
 def main() -> int:
@@ -134,6 +165,10 @@ def _dispatch_pipeline(args) -> int:
         ds = result.get("delivery_status", "UNKNOWN")
         exit_code = _delivery_exit_code(ds, default=1)
         print(f"ledger_full complete: delivery_status={ds}, exit_code={exit_code}")
+
+        # --- Optional realtime DA-SGDF selector shadow (default off) ---
+        _run_selector_shadow_if_enabled(args, result)
+
         return exit_code
     if args.pipeline == "ledger_full_range":
         result = run_ledger_full_range(args)
@@ -152,6 +187,10 @@ def _dispatch_pipeline(args) -> int:
             exit_code = 1
         print(f"ledger_full_range complete: status={range_status}, "
               f"delivery_status={ds}, exit_code={exit_code}")
+
+        # --- Optional realtime DA-SGDF selector shadow (default off) ---
+        _run_selector_shadow_if_enabled(args, result)
+
         return exit_code
     if args.pipeline == "ledger_smoke":
         result = run_ledger_smoke(args)
