@@ -1,0 +1,44 @@
+# P3.2 Extreme Price Shadow — controlled integration config
+# Location: efm3.0/configs/extreme_price_shadow.yaml
+#
+# Hard rules (controlled shadow ONLY):
+#   - DEFAULT OFF. The shadow runs only when `--enable-extreme-price-shadow` is passed.
+#   - Writes ONLY to outputs/runs/{date}/extreme_price_shadow/.
+#   - NEVER writes final/ or submission_ready.csv.
+#   - NEVER replaces the original fused realtime prediction with the corrected one.
+#   - NEVER marked champion; NEVER claimed as NORMAL improvement.
+#   - Cutoff-safe: classifiers are fit on HISTORY ONLY (actuals strictly before the
+#     target day); the target day's actual is never used.
+#
+# Knobs mirror the validated P3 candidate config (p3_rt_20260125_20260225_v1_cand):
+#   negative + spike classifiers ON, residual corrector OFF
+#   (residual ablation showed +0.29 overall with 279 spurious corrections -> dropped).
+
+shadow:
+  enabled: false                 # master switch (also forced ON by --enable-extreme-price-shadow)
+  shadow_only: true              # always true; --shadow-only reaffirms the observation-only contract
+  model_version: extreme_price_shadow_v1
+  history_window_days: 90        # max calendar days of history used to fit classifiers
+  run_id_prefix: eps_shadow
+  require_risk_pack: false       # 3.0 run does not yet emit a separate risk pack; corrections still run,
+                                  # but effectiveness is NOT claimed without a risk pack (degraded diagnostics).
+
+correction:
+  negative_classifier_enabled: true
+  spike_classifier_enabled: true
+  residual_corrector_enabled: false   # dropped after P3 ablation
+  NEG_THRESH: 0.80                   # conservative: only fire when very confident
+  NEG_LABEL: -50.0                   # negative-price label threshold (actual <= -50)
+  NEG_ACT_PRED_CAP: 50.0             # only push toward -80 floor when fused is already very low
+  NEG_FLOOR_TARGET: -80.0            # Shandong negative-price floor
+  SPK_THRESH: 0.60                   # conservative spike trigger
+  SPK_LABEL: 500.0                   # spike label threshold (actual > 500)
+  SPK_MIN_ORIGINAL: 250.0            # only uplift when fused is already mid/high (avoid hurting normal hours)
+  SPK_LIFT_RATIO: 0.35
+  SPK_LIFT_ABS: 350.0
+  SPK_9_16_BOOST: 1.15
+  CAP_ABS: 350.0                     # absolute correction cap (safety net)
+  CAP_RATIO: 0.35                    # relative correction cap (spike/residual only)
+  PRICE_FLOOR: -100.0                # physiological price floor
+  PRICE_CEIL: 1500.0                 # physiological price ceiling
+  ROLLBACK_MIN_CONF: 0.30            # rollback corrections below this confidence

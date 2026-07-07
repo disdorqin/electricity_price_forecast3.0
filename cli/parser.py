@@ -79,7 +79,8 @@ def normalize_date_args(args: argparse.Namespace, parser: argparse.ArgumentParse
         if datetime.strptime(args.start, "%Y-%m-%d") > datetime.strptime(args.end, "%Y-%m-%d"):
             parser.error(f"--start ({args.start}) must be <= --end ({args.end})")
     elif args.pipeline in ("ledger_full", "ledger_predict", "ledger_weight",
-                           "ledger_fuse", "ledger_classifier", "ledger_smoke"):
+                           "ledger_fuse", "ledger_classifier", "ledger_smoke",
+                           "extreme_price_shadow"):
         if not args.date:
             parser.error(f"--pipeline {args.pipeline} requires --date (or positional date)")
     elif args.pipeline == "ledger_backfill":
@@ -112,6 +113,7 @@ def build_parser() -> argparse.ArgumentParser:
             "ledger_full",
             "ledger_full_range",
             "ledger_smoke",
+            "extreme_price_shadow",
         ],
     )
     parser.add_argument("--target", default="both", choices=["dayahead", "realtime", "both"])
@@ -142,6 +144,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-recent-week-boost", dest="recent_week_boost", action="store_false", help="Disable recent-week boost")
     parser.add_argument("--recent-week-max-gate", type=float, default=0.85, help="Maximum day_gate with recent-week boost")
     parser.add_argument("--weight-max-lookback-days", type=int, default=90, help="Maximum calendar days to look back when selecting complete realtime training days (default 90)")
+
+    # --- P3.2 Extreme Price Shadow (controlled, default OFF) ---
+    parser.add_argument(
+        "--enable-extreme-price-shadow", action="store_true", default=False,
+        help="Run the P3.2 Extreme Price Correction as a CONTROLLED SHADOW (default OFF). "
+             "Writes ONLY to outputs/runs/{date}/extreme_price_shadow/; never writes "
+             "submission_ready.csv or final outputs. Safe no-op unless explicitly set.",
+    )
+    parser.add_argument(
+        "--shadow-only", action="store_true", default=False,
+        help="Reaffirm shadow-only observation mode. The shadow is ALWAYS shadow-only "
+             "(corrected values never replace the original fused realtime prediction); "
+             "this flag makes the intent explicit.",
+    )
+    parser.add_argument(
+        "--extreme-price-shadow-config", default=None,
+        help="Path to extreme_price_shadow.yaml (defaults to configs/extreme_price_shadow.yaml).",
+    )
 
     # TimeMixer tuning
     parser.add_argument("--timemixer-epochs", type=int, default=80)
