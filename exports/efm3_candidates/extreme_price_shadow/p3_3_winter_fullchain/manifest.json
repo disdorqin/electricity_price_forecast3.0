@@ -1,0 +1,15 @@
+{
+  "pipeline": "extreme_price_shadow",
+  "run_id": "p3_3_winter_fullchain",
+  "mode": "replay_from_ledger",
+  "total_days": 120,
+  "ok_days": 120,
+  "failed_days": 0,
+  "default_off_verified": false,
+  "shadow_only": true,
+  "final_contaminated": false,
+  "main_chain_affected": false,
+  "champion_replaced": false,
+  "submission_ready_written": false,
+  "selector_module_available": false
+}
