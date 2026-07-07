@@ -1,0 +1,52 @@
+# P1 Dayahead Candidate Registry — cfg05
+# 写入位置：efm3.0/configs/candidate_registry/dayahead_cfg05.yaml
+# 说明：status=candidate（仅注册，不进 shadow / champion，不替换 3.0 正式模型）
+
+candidate:
+  model_name: cfg05
+  model_version: v_cfg05
+  model_family: LightGBM
+  target_task: dayahead
+  feature_frame: rich            # ~55 列 lag/同小时/momentum/calendar/volatility/交互, 90d 窗口
+  window_days: 90
+  source_repo: epf-sota-experiment
+  run_id: run_full_rich_v4
+  registered_at: "2026-07-07"
+  registered_by: p1_review_gate
+
+status: candidate               # no_go | experimental_result | candidate | shadow
+shadow_allowed: false           # gate 未过，禁止进 shadow
+champion: false
+
+metrics:
+  sMAPE_floor50: 14.68          # 2025-11~2026-02, 120d, NaN=0
+  sMAPE_floor50_180d: 14.25
+  period:
+    p1_8: 13.91
+    p9_16: 16.01
+    p17_24: 14.12
+  spike_sMAPE: 13.51
+  normal_sMAPE: 14.81
+  negative_price_hit_rate: 72.4
+
+baseline_context:               # 同窗口才可比较，禁止跨窗口声称击败
+  faithful_2_5_ThreeStageLGBM: 21.87      # 同硬窗口 → cfg05 诚实地优于它
+  trusted_champion_best_two_average: 11.85  # Feb1-Mar2 easy 窗口 → 不同窗口，不可比
+  old_cfg05_prior: 11.48                 # prior 30d easy → 不同窗口
+  lgbm_spike_residual_11_27: INVALIDATED_leakage   # 严禁引用
+
+schema_check: PASS
+safety_check: PASS              # 无 leakage / 无 D+1 特征 / 24行每天 / hour 1..24 / period 合法
+
+gate_to_shadow:                 # 全部满足后才可重评 shadow
+  - same_window_retest_of_best_two_average: pending   # 同 4 硬月窗口重测 2.5 冠军
+  - negative_price_classifier_added: pending
+  - period_aware_ensemble_validated: pending
+  - package_complete_metrics_manifest_promotion: pending
+
+recommended_companion: xgboost_rich   # period/spike diversity, 14.72%
+
+forbidden_actions:
+  - replace_3_0_production_model
+  - write_submission_ready_csv
+  - modify_main_py_final_outputs_ledger_predict
