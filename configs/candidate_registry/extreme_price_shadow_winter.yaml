@@ -1,0 +1,120 @@
+candidate_id: extreme_price_shadow_winter
+# P3.4 registry entry based on P3.3 Winter Extreme Price Shadow validation report.
+# This is shadow-monitoring only. It is NOT production and NOT champion.
+task: realtime_extreme_price
+status: shadow_monitoring_ready
+promotion_level: shadow_monitoring_only
+selection_role: winter_negative_price_diagnostic_overlay
+source_repo: disdorqin/electricity_price_forecast3.0
+source_report: P3.3 Winter Extreme Price Shadow Full-Chain Validation Report
+source_commit: pending_not_provided_in_report
+source_package: exports/efm3_candidates/extreme_price_shadow/p3_3_winter_fullchain
+model_name: extreme_price_shadow
+model_version: p3_3_winter_shadow
+metric: sMAPE_floor50
+windows:
+  - "2025-11"
+  - "2025-12"
+  - "2026-01"
+  - "2026-02"
+days_tested: 120
+mode: replay_from_ledger
+actual_available_days: 120
+recommendation: WINTER_SHADOW_MONITORING_READY
+result: PASS
+monthly_metrics:
+  "2025-11":
+    original: 27.13
+    corrected: 26.47
+    delta: -0.66
+    negative_delta: -8.47
+    spike_delta: -2.36
+    normal_delta: 2.03
+  "2025-12":
+    original: 33.32
+    corrected: 32.16
+    delta: -1.16
+    negative_delta: -9.15
+    spike_delta: 0.00
+    normal_delta: 0.45
+  "2026-01":
+    original: 45.20
+    corrected: 43.21
+    delta: -1.99
+    negative_delta: -10.50
+    spike_delta: 0.00
+    normal_delta: 0.93
+  "2026-02":
+    original: 65.99
+    corrected: 56.44
+    delta: -9.55
+    negative_delta: -23.07
+    spike_delta: 0.00
+    normal_delta: 0.34
+scene_overall:
+  negative:
+    hours: 584
+    original: 88.36
+    corrected: 75.56
+    delta: -12.80
+    decision: strong_positive
+  spike:
+    hours: 109
+    original: 35.81
+    corrected: 35.22
+    delta: -0.59
+    decision: slight_positive
+  normal:
+    hours: 2187
+    original: 32.91
+    corrected: 33.85
+    delta: 0.94
+    decision: acceptable_tradeoff_under_shadow
+correction_behavior:
+  applied_total: 466
+  rollbacks: 0
+  cap_hits: 0
+  false_positives: 166
+  false_positive_rate: 0.356
+  false_negative_negative_hours: 58
+  false_negative_spike_hours: 23
+safety_checks:
+  default_off_verified: true
+  writes_final: false
+  writes_submission_ready: false
+  replaces_champion: false
+  delivery_status_unchanged: true
+  exit_code_unchanged: true
+  cap_hits_ok: true
+  rollback_ok: true
+known_limits:
+  - "Validation was replay_from_ledger, not full production chain."
+  - "Selector + P3 coexistence was not tested because selector module was unavailable on the P3.2 branch used by the run."
+  - "Normal hours worsen slightly (+0.94 sMAPE); acceptable only under shadow monitoring."
+  - "False positive correction rate is 35.6%; monitoring and threshold tuning are required."
+  - "source_commit was not provided in the P3.3 report and should be backfilled later."
+monitoring_policy:
+  default_enabled: false
+  winter_shadow_allowed: true
+  production_replacement_allowed: false
+  champion_allowed: false
+  requires_manual_enable: true
+  requires_selector_overlap_followup: true
+  allowed_months:
+    - 11
+    - 12
+    - 1
+    - 2
+candidate_rules:
+  writes_submission_ready: false
+  replaces_champion: false
+  modifies_final_outputs: false
+  default_enabled: false
+  shadow_only: true
+  champion_allowed: false
+  production_replacement_allowed: false
+required_followup:
+  - "Run selector + P3 coexistence validation on current 3.0 main."
+  - "Backfill source commit after P3.3 artifacts are pushed."
+  - "Tune negative threshold / false positive handling only in shadow experiments."
+  - "Do not promote to production without full-chain default-off monitoring evidence."
