@@ -1,0 +1,12 @@
+{
+  "pipeline": "coexistence_test",
+  "run_id": "p3_5_selector_p3_coexistence",
+  "mode": "replay_from_ledger",
+  "dates_tested": 20,
+  "p3_ok": 6,
+  "selector_ok": 0,
+  "total_overlap_hours": 0,
+  "total_conflict_hours": 0,
+  "contaminated": false,
+  "verdict": "NEEDS_REVIEW"
+}

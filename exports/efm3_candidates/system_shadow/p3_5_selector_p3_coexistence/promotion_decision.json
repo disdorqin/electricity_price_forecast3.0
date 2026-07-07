@@ -1,0 +1,19 @@
+{
+  "pipeline": "coexistence_test",
+  "run_id": "p3_5_selector_p3_coexistence",
+  "mode": "replay_from_ledger",
+  "dates_tested": 20,
+  "p3_degraded_count": 14,
+  "p3_full_run_count": 6,
+  "selector_complete_count": 20,
+  "selector_sgdf_total_hours": 14,
+  "selector_da_total_hours": 466,
+  "p3_corrected_hours": 30,
+  "overlap_hours": 0,
+  "conflict_hours": 0,
+  "any_contamination": false,
+  "coexistence_summary": "Selector and P3 can coexist safely. Selector chooses DA-SGDF; P3 corrects extremes. Both shadow-only, separate dirs. No overlap in test window (P3 corrections in Feb, selector chose DA for all Feb hours). No operational conflict by design — P3 is shadow-only, never replaces original_pred.",
+  "winter_no_go_summary": "P2.13 winter no-go confirmed: selector chooses DA_anchor 97%+ in winter, consistent with P2.12 conclusion. Selector is safe but not beneficial in winter.",
+  "recommendation": "COEXISTENCE_SAFE",
+  "result": "PASS"
+}
