@@ -1,0 +1,70 @@
+# EFM3 Fusion Chain v1.1 — Targeted Policy Optimization Configuration
+#
+# Default OFF. Extends v1 with 5 new targeted policy variants.
+# Train/validation split enforced by scripts/run_fusion_shadow_v1_1.py.
+
+fusion:
+  enabled: false                     # default OFF
+  mode: shadow_backtest
+  output_root: outputs/fusion_shadow_v1
+  export_root: exports/efm3_candidates/fusion_chain/fusion_v1_1_targeted_policy
+
+# ── Train / Validation Split ──
+train_months:
+  - 2025-03
+  - 2025-04
+  - 2025-05
+  - 2025-06
+  - 2025-09
+  - 2025-10
+  - 2025-11
+  - 2025-12
+
+validation_months:
+  - 2026-01
+  - 2026-02
+  - 2026-03
+  - 2026-04
+  - 2026-05
+  - 2026-06
+
+# ── Data Sources ── (same as v1)
+data:
+  xlsx_path: data/shandong_pmos_hourly.xlsx
+  runs_root: outputs/runs
+
+# ── v1.1 Policy Parameters ──
+policy:
+  winter_months: [11, 12, 1, 2]
+  
+  p3:
+    negative_confidence_threshold: 0.7     # for negative-only correction
+    spike_very_high_confidence: 0.9         # for spike correction
+    max_correction_per_hour: 80.0
+  
+  selector:
+    nonwinter_confidence_threshold: 0.85
+    safe_fallback_confidence: 0.9
+    avoid_17_24: true
+  
+  safe_fallback:
+    p3_negative_high_confidence: 0.85
+
+# ── Variants ──
+ablation:
+  variants:
+    # v1 baselines
+    - official_baseline
+    - da_anchor
+    - sgdfnet_only
+    - realtime_selector_shadow
+    - p3_extreme_shadow
+    - conservative_fusion_v1
+    # v1.1 new
+    - v1_1_negative_only_p3
+    - v1_1_negative_plus_conservative_spike
+    - v1_1_nonwinter_selector_negative_p3
+    - v1_1_safe_fallback
+    - v1_1_minimal_patch
+    # Oracle (analysis only)
+    - oracle_upper_bound

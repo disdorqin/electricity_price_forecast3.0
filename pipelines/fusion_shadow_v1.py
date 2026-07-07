@@ -426,6 +426,138 @@ def build_conservative_fusion(merged: pd.DataFrame) -> np.ndarray:
     return pred
 
 
+# ═══════════════════════════════════════════════════════════════
+#  Fusion v1.1 Targeted Policy Builders
+# ═══════════════════════════════════════════════════════════════
+
+def build_v1_1_negative_only_p3(merged: pd.DataFrame) -> np.ndarray:
+    """
+    fusion_v1_1_negative_only_p3:
+    - Winter: DA anchor forced
+    - Non-winter: official baseline (SGDFNet)
+    - P3 correction ONLY on DA-negative-risk hours with high confidence
+    - Normal/spike hours: NEVER corrected by P3
+    """
+    pred = merged["y_pred_sgdf"].values.copy()
+    winter_mask = merged["month"].isin(WINTER_MONTHS).values.astype(bool)
+    pred[winter_mask] = merged.loc[winter_mask, "da_anchor"].values
+    
+    da_negative_risk = merged["da_anchor"].values < 0
+    p3_avail = merged["p3_pred"].notna().values.astype(bool)
+    p3_conf = merged["p3_confidence"].fillna(0).values.astype(float)
+    
+    p3_neg_mask = da_negative_risk & p3_avail & (p3_conf >= 0.7)
+    if p3_neg_mask.any():
+        pred[p3_neg_mask] = merged.loc[p3_neg_mask, "p3_pred"].values
+    return pred
+
+
+def build_v1_1_negative_plus_conservative_spike(merged: pd.DataFrame) -> np.ndarray:
+    """
+    fusion_v1_1_negative_plus_conservative_spike:
+    - Winter: DA anchor forced
+    - P3 negative: on DA-negative-risk hours with confidence >= 0.7
+    - P3 spike: only at confidence >= 0.9, capped +/-80
+    - Normal hours: NEVER corrected by P3
+    """
+    pred = merged["y_pred_sgdf"].values.copy()
+    winter_mask = merged["month"].isin(WINTER_MONTHS).values.astype(bool)
+    pred[winter_mask] = merged.loc[winter_mask, "da_anchor"].values
+    
+    p3_avail = merged["p3_pred"].notna().values.astype(bool)
+    p3_conf = merged["p3_confidence"].fillna(0).values.astype(float)
+    
+    da_negative_risk = merged["da_anchor"].values < 0
+    neg_mask = da_negative_risk & p3_avail & (p3_conf >= 0.7)
+    if neg_mask.any():
+        pred[neg_mask] = merged.loc[neg_mask, "p3_pred"].values
+    
+    spike_risk = merged["da_anchor"].values > 200
+    spike_mask = spike_risk & p3_avail & (p3_conf >= 0.9)
+    if spike_mask.any():
+        bl = merged["y_pred_sgdf"].values
+        raw_c = merged.loc[spike_mask, "p3_pred"].values
+        raw_bl = bl[spike_mask]
+        pred[spike_mask] = np.clip(raw_c, raw_bl - 80, raw_bl + 80)
+    return pred
+
+
+def build_v1_1_nonwinter_selector_negative_p3(merged: pd.DataFrame) -> np.ndarray:
+    """
+    fusion_v1_1_nonwinter_selector_negative_p3:
+    - Winter: DA anchor forced
+    - Non-winter: SGDFNet + selector (conf>=0.85, not 17-24) + P3 negative-only
+    """
+    pred = merged["y_pred_sgdf"].values.copy()
+    month_arr = merged["month"].values.astype(int)
+    winter_mask = np.isin(month_arr, list(WINTER_MONTHS))
+    non_winter_mask = ~winter_mask
+    pred[winter_mask] = merged.loc[winter_mask, "da_anchor"].values
+    
+    sel_avail = merged["selector_pred"].notna().values.astype(bool)
+    sel_conf = merged["confidence"].fillna(0).values.astype(float)
+    period_17_24 = merged["period"].values == "17_24"
+    
+    sel_mask = non_winter_mask & sel_avail & (sel_conf >= 0.85) & ~period_17_24
+    if sel_mask.any():
+        pred[sel_mask] = merged.loc[sel_mask, "selector_pred"].values
+    
+    da_negative_risk = merged["da_anchor"].values < 0
+    p3_avail = merged["p3_pred"].notna().values.astype(bool)
+    p3_conf = merged["p3_confidence"].fillna(0).values.astype(float)
+    p3_neg_mask = non_winter_mask & da_negative_risk & p3_avail & (p3_conf >= 0.7)
+    if p3_neg_mask.any():
+        pred[p3_neg_mask] = merged.loc[p3_neg_mask, "p3_pred"].values
+    return pred
+
+
+def build_v1_1_safe_fallback(merged: pd.DataFrame) -> np.ndarray:
+    """
+    fusion_v1_1_safe_fallback:
+    - Default: official baseline (SGDFNet)
+    - Winter: DA anchor forced
+    - P3 negative-only at very high confidence (>= 0.85)
+    - Selector only non-winter, non-17-24, very high confidence (>= 0.9)
+    """
+    pred = merged["y_pred_sgdf"].values.copy()
+    month_arr = merged["month"].values.astype(int)
+    winter_mask = np.isin(month_arr, list(WINTER_MONTHS))
+    non_winter_mask = ~winter_mask
+    pred[winter_mask] = merged.loc[winter_mask, "da_anchor"].values
+    
+    p3_avail = merged["p3_pred"].notna().values.astype(bool)
+    p3_conf = merged["p3_confidence"].fillna(0).values.astype(float)
+    sel_avail = merged["selector_pred"].notna().values.astype(bool)
+    sel_conf = merged["confidence"].fillna(0).values.astype(float)
+    
+    da_negative_risk = merged["da_anchor"].values < 0
+    p3_neg_mask = non_winter_mask & da_negative_risk & p3_avail & (p3_conf >= 0.85)
+    if p3_neg_mask.any():
+        pred[p3_neg_mask] = merged.loc[p3_neg_mask, "p3_pred"].values
+    
+    period_17_24 = merged["period"].values == "17_24"
+    sel_mask = non_winter_mask & ~period_17_24 & sel_avail & (sel_conf >= 0.9)
+    if sel_mask.any():
+        pred[sel_mask] = merged.loc[sel_mask, "selector_pred"].values
+    return pred
+
+
+def build_v1_1_minimal_patch(merged: pd.DataFrame) -> np.ndarray:
+    """
+    fusion_v1_1_minimal_patch:
+    Minimal fix on conservative_fusion_v1:
+    - Winter: DA anchor forced
+    - P3 completely disabled (no overlay at all)
+    - Selector completely disabled
+    - 17-24: official baseline (already default)
+    """
+    pred = merged["y_pred_sgdf"].values.copy()
+    winter_mask = merged["month"].isin(WINTER_MONTHS).values.astype(bool)
+    pred[winter_mask] = merged.loc[winter_mask, "da_anchor"].values
+    # P3 disabled, selector disabled, 17-24 unchanged
+    return pred
+
+
 def build_oracle_upper_bound(merged: pd.DataFrame) -> np.ndarray:
     """
     oracle_upper_bound: for EACH HOUR, pick the variant with lowest absolute error.
@@ -483,6 +615,13 @@ POLICY_BUILDERS = {
     "selector_then_p3_overlay": build_selector_then_p3,
     "p3_then_selector_overlay": build_p3_then_selector,
     "conservative_fusion_v1": build_conservative_fusion,
+    # Fusion v1.1 variants
+    "v1_1_negative_only_p3": build_v1_1_negative_only_p3,
+    "v1_1_negative_plus_conservative_spike": build_v1_1_negative_plus_conservative_spike,
+    "v1_1_nonwinter_selector_negative_p3": build_v1_1_nonwinter_selector_negative_p3,
+    "v1_1_safe_fallback": build_v1_1_safe_fallback,
+    "v1_1_minimal_patch": build_v1_1_minimal_patch,
+    # Oracle (analysis only)
     "oracle_upper_bound": build_oracle_upper_bound,
 }
 
