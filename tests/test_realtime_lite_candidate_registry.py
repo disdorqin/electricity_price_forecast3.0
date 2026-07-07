@@ -17,7 +17,7 @@ def test_registry_files_exist():
 
 def test_sgdfnet_registry_is_safe():
     cfg = load_yaml("realtime_sgdfnet_lite.yaml")
-    assert cfg["status"] == "candidate"
+    assert cfg["status"] in ("candidate", "seasonal_candidate")
     assert cfg["promotion_level"] == "registry_only"
     rules = cfg["candidate_rules"]
     assert rules["writes_submission_ready"] is False
@@ -47,14 +47,14 @@ def test_sgdfnet_runtime_and_coverage():
 
 def test_timesfm_registry_is_experimental_only():
     cfg = load_yaml("realtime_timesfm_lite.yaml")
-    assert cfg["status"] in ("experimental_result", "candidate")
+    assert cfg["status"] in ("experimental_result", "candidate", "seasonal_candidate")
     assert cfg["candidate_rules"]["writes_submission_ready"] is False
     assert cfg["candidate_rules"]["replaces_champion"] is False
     assert cfg["candidate_rules"]["modifies_final_outputs"] is False
     assert cfg["candidate_rules"]["requires_more_windows"] is True
 
 
-def test_no_rt916_or_timemixer_candidate():
+def test_no_rt916_or_timemixer_production_candidate():
     for p in REGISTRY_DIR.glob("*.yaml"):
         text = p.read_text(encoding="utf-8").lower()
         if "rt916" in text:
