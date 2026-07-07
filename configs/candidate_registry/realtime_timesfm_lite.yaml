@@ -1,0 +1,31 @@
+candidate_id: realtime_timesfm_lite
+task: realtime
+status: experimental_result
+promotion_level: registry_only
+source_repo: disdorqin/electricity_forecast_deep_sgdf_delta
+source_commit: b4dd9cc0ec9b1ef81469de5b004c59de6071dee7
+model_name: timesfm
+model_version: p2_3_smoke
+test_windows:
+  - "2025-03"
+  - "2025-09"
+  - "2026-05"
+completed_days: 91
+expected_days: 92
+runtime_sec_per_day: 11.9
+decision: KEEP_CANDIDATE
+gpu_required: true
+scheduler_issue_fixed: PARTIAL
+candidate_rules:
+  writes_submission_ready: false
+  replaces_champion: false
+  modifies_final_outputs: false
+  requires_more_windows: true
+known_risks:
+  - "Only 3-month smoke test."
+  - "Requires dedicated GPU slot scheduling."
+  - "Not yet part of production feasible 10-window comparison."
+required_followup:
+  - "Run wider smoke after scheduler fix."
+  - "Test SGDFNet+TimesFM lite ensemble."
+  - "Do not block main chain on TimesFM."

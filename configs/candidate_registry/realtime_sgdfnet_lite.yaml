@@ -1,0 +1,48 @@
+candidate_id: realtime_sgdfnet_lite
+task: realtime
+status: candidate
+promotion_level: registry_only
+source_repo: disdorqin/electricity_forecast_deep_sgdf_delta
+source_commit: b4dd9cc0ec9b1ef81469de5b004c59de6071dee7
+source_package: exports/efm3_candidates/realtime_lite/p2_3_sgdfnet_lite
+model_name: sgdfnet
+model_version: p2_3_lite
+test_windows:
+  - "2025-03"
+  - "2025-04"
+  - "2025-05"
+  - "2025-06"
+  - "2025-09"
+  - "2025-10"
+  - "2026-03"
+  - "2026-04"
+  - "2026-05"
+  - "2026-06"
+completed_days: 363
+expected_days: 363
+metric: sMAPE_floor50
+overall_smape_floor50: 20.20
+baseline_name: DA_anchor
+baseline_smape_floor50: 26.95
+delta_vs_baseline: -6.75
+runtime_sec_per_day: 40
+cpu_only: true
+gpu_required: false
+coverage_check: PASS
+runtime_check: PASS
+leakage_check: PASS
+nan_check: PASS
+hour_completeness_check: PASS
+candidate_rules:
+  writes_submission_ready: false
+  replaces_champion: false
+  modifies_final_outputs: false
+  requires_future_shadow_adapter: true
+known_risks:
+  - "Not yet compared as a 3.0 shadow output."
+  - "Does not represent the full 2.5 four-model fusion."
+  - "Needs production adapter review before runtime integration."
+required_followup:
+  - "Implement 3.0 realtime lite shadow adapter."
+  - "Compare SGDFNet lite against official 3.0 realtime output in shadow mode."
+  - "Optionally add TimesFM as lite ensemble partner after scheduler review."
