@@ -1,0 +1,53 @@
+# =====================================================================
+# P1 Day-ahead Daemon — configuration
+# Maps directly to the requested "continuous daemon mode" spec.
+# (Flat key:value; lists are comma-separated. No external deps needed.)
+# =====================================================================
+
+# --- spec point 6: daemon config ---
+mode: daemon            # daemon | batch
+loop: true              # spec point 2: while/event loop stays alive
+auto_exit: false        # spec point 1: do NOT exit after Phase D/E/F complete
+
+# --- spec point 3: keep-alive heartbeat ---
+heartbeat_interval_s: 30
+
+# --- spec point 5: stop flag control ---
+stop_flag: .daemon_stop # create this file (or send SIGTERM) to gracefully exit
+
+# --- bookkeeping ---
+state_file: daemon_state.json
+progress_log: daemon_progress.log      # spec point 3: per-round status log
+event_stream: daemon_events.jsonl      # spec point 4 & 7: streaming progress events
+
+# --- environment (absolute paths; engine lives in the models workspace) ---
+models_root: D:/作业/大创_挑战杯_互联网/大学生创新创业计划/大创实现/其他资料/models
+engine: scripts/run_dayahead_p1_walkforward.py
+python: D:/computer_download/environment/conda/epf-2/python.exe
+output_root: outputs/p1_dayahead
+exports_root: exports/efm3_candidates/dayahead
+
+# --- runs / scope (压缩版：4 个月对比实验，目标 < 1h) ---
+rich_run_id: run_full_rich_v4          # rich candidates 4-month run (外部启动, daemon 等待)
+base24_run_id: run_full_v3             # 24f candidates 11-month run (已完成的参考基线)
+test_months: 2025-11,2025-12,2026-01,2026-02
+
+# --- Phase E ablation grid (rich-frame window search, 轻量: 1 模型 x 2 窗口) ---
+# 报告口径: 365d 受数据覆盖(2022-01 起)与 2026-06 仅 19 天限制，结论以 90/180d 为准
+ablation_windows: 90,180
+ablation_models: cfg05
+num_boost_round: 500                   # 快速对比实验: 覆盖各 rich 模型轮数(忠实为 2000/1500)
+
+# --- CPU/GPU 并发 ---
+# 注：本机 GPU 路径不稳定（cfg05 的 lightgbm GPU 死锁 + catboost GPU 崩溃 rc=1073807364，
+# 且笔记本睡眠会杀死带 CUDA context 的进程），故 daemon_state.json 已置 gpu_disabled:true，
+# 全部引擎调用强制 --cpu-only 回退 CPU。环境固定为 conda epf-2（见上方 python: 字段）。
+concurrent: true
+gpu_models: [catboost_rich]
+cpu_models: [cfg05, xgboost_rich]
+
+# --- 看门狗：子进程超过该秒数未退出则强杀并重试（CPU 长跑可靠，放宽到 1h 防误杀）---
+watchdog_s: 3600
+# rich_full 连续失败达到该次数 -> 禁用 GPU，全部回退 CPU（保证不无限卡死循环）
+max_rich_full_retries: 2
+
