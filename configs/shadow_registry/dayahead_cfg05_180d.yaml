@@ -1,0 +1,48 @@
+candidate_id: dayahead_cfg05_rich_180d
+task: dayahead
+status: shadow
+promotion_level: shadow_only
+source_repo: disdorqin/epf-sota-experiment
+source_commit: 35782290350a6f318e251b9ee952bc2edb44ceb6
+source_package: models/exports/efm3_candidates/dayahead/efm3_candidates_20260707_gatefix
+model_name: cfg05
+model_version: gatefix_v1_180
+feature_frame: rich
+window_days: 180
+test_months:
+  - 2025-11
+  - 2025-12
+  - 2026-01
+  - 2026-02
+n_days: 120
+metric: sMAPE_floor50
+overall_smape_floor50: 14.2512
+baseline_name: trusted_champion_best_two_average_same_window
+baseline_smape_floor50: 15.0436
+delta_vs_baseline: -0.7924
+period_metrics:
+  1_8: 13.97
+  9_16: 15.33
+  17_24: 13.45
+spike_smape: 13.64
+normal_smape: 14.32
+negative_hit_rate: 77.11
+cpu_only: true
+gpu_disabled: true
+leakage_check: PASS
+nan_check: PASS
+hour_completeness_check: PASS
+shadow_rules:
+  writes_submission_ready: false
+  replaces_champion: false
+  modifies_final_outputs: false
+  requires_manual_enable: true
+known_risks:
+  - "Only shadow; not production champion."
+  - "Longer window (180d) improves stability but adds ~3x training time vs 90d."
+  - "Must be observed in 3.0 full delivery context before promotion."
+  - "Rich feature builder must be ported carefully if future runtime integration is requested."
+required_followup:
+  - "Create a runtime adapter only after total-chain integration review."
+  - "Compare against official 3.0 delivery outputs in shadow mode."
+  - "Keep CPU-only default."
