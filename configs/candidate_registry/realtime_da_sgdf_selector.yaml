@@ -1,40 +1,70 @@
 candidate_id: realtime_da_sgdf_selector
-# P2.10 registry entry based on P2.9 DA-aware realtime gate.
-# This is registry-only and must not be interpreted as a production replacement.
+# P2.13 update: P2.12 winter hard-window stress test shows WINTER_NO_GO.
+# This selector remains registry/shadow-only and must not be promoted for winter.
 task: realtime
-status: candidate
+status: seasonal_candidate
 promotion_level: registry_only
 selection_role: da_primary_with_sgdf_auxiliary_gate
 source_repo: disdorqin/electricity_forecast_deep_sgdf_delta
 source_commit: 0c0b59f5c6859b85bd95f12acade3dd360209156
 source_package: exports/efm3_candidates/realtime_da_aware_gate/p2_9_da_aware_gate
+winter_stress_source_commit: b8360647b14757443121b389af719249c78e80cd
+winter_stress_package: exports/efm3_candidates/realtime_winter_shadow/p2_12_winter_stress
 model_name: conservative_gate
-model_version: p2_9_da_aware_gate
+model_version: p2_11_shadow_adapter
 test_windows:
-  - "2025-03"
-  - "2025-04"
-  - "2025-05"
-  - "2025-06"
-  - "2025-09"
-  - "2025-10"
-  - "2026-03"
-  - "2026-04"
-  - "2026-05"
-  - "2026-06"
+  non_winter_canonical:
+    - "2025-03"
+    - "2025-04"
+    - "2025-05"
+    - "2025-06"
+    - "2025-09"
+    - "2025-10"
+    - "2026-03"
+    - "2026-04"
+    - "2026-05"
+    - "2026-06"
+  winter_hard:
+    - "2025-11"
+    - "2025-12"
+    - "2026-01"
+    - "2026-02"
 metric: sMAPE_floor50
 canonical_hour_mapping: true
 cutoff: D14
 baseline_name: DA_anchor
-baseline_smape_floor50: 19.30
-sgdfnet_smape_floor50: 19.95
-selector_smape_floor50: 19.23
-delta_vs_da_anchor: -0.07
-delta_vs_sgdfnet: -0.72
-best_gate: conservative_gate
-best_static_blend: static_blend_80DA_20SGD
-best_static_blend_smape_floor50: 19.23
-da_hours: 7102
-sgdfnet_hours: 147
+non_winter_metrics:
+  baseline_smape_floor50: 19.30
+  sgdfnet_smape_floor50: 19.95
+  selector_smape_floor50: 19.23
+  delta_vs_da_anchor: -0.07
+  delta_vs_sgdfnet: -0.72
+  best_gate: conservative_gate
+  da_hours: 7102
+  sgdfnet_hours: 147
+winter_metrics:
+  recommendation: WINTER_NO_GO
+  result: PASS
+  days_tested: 120
+  da_anchor_overall: 24.35
+  sgdfnet_overall: 25.83
+  selector_avg_sgdf_pct: 2.9
+  monthly:
+    "2025-11": {DA_anchor: 15.86, SGDFNet: 17.34, selector_shadow: 15.63, winner: DA_anchor}
+    "2025-12": {DA_anchor: 22.84, SGDFNet: 24.29, selector_shadow: 22.28, winner: DA_anchor}
+    "2026-01": {DA_anchor: 31.98, SGDFNet: 34.05, selector_shadow: 32.41, winner: DA_anchor}
+    "2026-02": {DA_anchor: 26.70, SGDFNet: 27.63, selector_shadow: 26.55, winner: DA_anchor}
+season_policy:
+  winter_months:
+    - 11
+    - 12
+    - 1
+    - 2
+  winter_runtime_policy: DA_ONLY_DEFAULT
+  winter_selector_promotion_allowed: false
+  winter_shadow_allowed: diagnostic_only
+  non_winter_shadow_allowed: true
+  production_replacement_allowed: false
 selector_policy:
   default_model: DA_anchor
   auxiliary_model: SGDFNet
@@ -42,6 +72,7 @@ selector_policy:
   rule_summary:
     - "Use DA_anchor by default."
     - "Switch to SGDFNet only in high-confidence auxiliary windows."
+    - "Winter hard windows are DA-only by policy unless explicitly running diagnostic shadow."
     - "Never rely on RT916 or TimeMixer."
     - "Use P3 risk only as shadow/diagnostic until separately promoted."
 scene_metrics:
@@ -72,12 +103,15 @@ candidate_rules:
   requires_shadow_adapter: true
   default_enabled: false
   champion_allowed: false
+  winter_promotion_blocked: true
+  production_replacement_allowed: false
 known_risks:
-  - "Selector gain over DA_anchor is tiny (-0.07pp) and must be treated as candidate-level only."
+  - "P2.12 winter stress test is WINTER_NO_GO: DA_anchor dominates 4/4 winter months."
+  - "Selector gain over DA_anchor is tiny in non-winter (-0.07pp) and candidate-level only."
   - "Complex ML gates did not outperform DA in LOMO/time-split validation."
-  - "Conservative gate mostly falls back to DA, selecting SGDFNet for only 147 hours."
-  - "Needs 3.0 shadow adapter before any runtime integration."
+  - "Conservative gate mostly falls back to DA; winter must remain DA-only by policy."
+  - "P3 shadow was not available in the P2.12 simulation and requires separate winter full-chain validation."
 required_followup:
-  - "Implement a default-off realtime DA-SGDF selector shadow adapter in 3.0."
-  - "Verify selector output never overwrites final realtime or submission_ready.csv."
-  - "Monitor negative/normal-hour benefit and spike/17_24 fallback behaviour."
+  - "Run P3 winter extreme shadow full-chain validation separately."
+  - "Keep realtime DA-SGDF selector as diagnostic/default-off shadow only."
+  - "Do not promote selector for winter production or champion use."
