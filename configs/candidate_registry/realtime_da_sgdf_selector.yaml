@@ -1,0 +1,83 @@
+candidate_id: realtime_da_sgdf_selector
+# P2.10 registry entry based on P2.9 DA-aware realtime gate.
+# This is registry-only and must not be interpreted as a production replacement.
+task: realtime
+status: candidate
+promotion_level: registry_only
+selection_role: da_primary_with_sgdf_auxiliary_gate
+source_repo: disdorqin/electricity_forecast_deep_sgdf_delta
+source_commit: 0c0b59f5c6859b85bd95f12acade3dd360209156
+source_package: exports/efm3_candidates/realtime_da_aware_gate/p2_9_da_aware_gate
+model_name: conservative_gate
+model_version: p2_9_da_aware_gate
+test_windows:
+  - "2025-03"
+  - "2025-04"
+  - "2025-05"
+  - "2025-06"
+  - "2025-09"
+  - "2025-10"
+  - "2026-03"
+  - "2026-04"
+  - "2026-05"
+  - "2026-06"
+metric: sMAPE_floor50
+canonical_hour_mapping: true
+cutoff: D14
+baseline_name: DA_anchor
+baseline_smape_floor50: 19.30
+sgdfnet_smape_floor50: 19.95
+selector_smape_floor50: 19.23
+delta_vs_da_anchor: -0.07
+delta_vs_sgdfnet: -0.72
+best_gate: conservative_gate
+best_static_blend: static_blend_80DA_20SGD
+best_static_blend_smape_floor50: 19.23
+da_hours: 7102
+sgdfnet_hours: 147
+selector_policy:
+  default_model: DA_anchor
+  auxiliary_model: SGDFNet
+  fallback_model: DA_anchor
+  rule_summary:
+    - "Use DA_anchor by default."
+    - "Switch to SGDFNet only in high-confidence auxiliary windows."
+    - "Never rely on RT916 or TimeMixer."
+    - "Use P3 risk only as shadow/diagnostic until separately promoted."
+scene_metrics:
+  spike: {DA_anchor: 17.57, SGDFNet: 19.26, winner: DA_anchor}
+  negative: {DA_anchor: 13.12, SGDFNet: 11.04, winner: SGDFNet}
+  normal: {DA_anchor: 59.55, SGDFNet: 56.65, winner: SGDFNet}
+  period_17_24: {DA_anchor: 15.04, SGDFNet: 16.79, winner: DA_anchor}
+validation:
+  lomo_ml_beats_da_months: 0
+  time_split_train: "2025 windows"
+  time_split_test: "2026 windows"
+  time_split_da: 23.58
+  time_split_logistic: 23.96
+  time_split_tree: 23.58
+  ml_gate_decision: DROP_FOR_PRODUCTION_CRITICAL_PATH
+production_feasibility:
+  cpu_only: true
+  no_rt916_dependency: true
+  no_timemixer_dependency: true
+  fallback_to_da: true
+  no_nan: PASS
+  hour_completeness_check: PASS
+  leakage_check: PASS
+candidate_rules:
+  writes_submission_ready: false
+  replaces_champion: false
+  modifies_final_outputs: false
+  requires_shadow_adapter: true
+  default_enabled: false
+  champion_allowed: false
+known_risks:
+  - "Selector gain over DA_anchor is tiny (-0.07pp) and must be treated as candidate-level only."
+  - "Complex ML gates did not outperform DA in LOMO/time-split validation."
+  - "Conservative gate mostly falls back to DA, selecting SGDFNet for only 147 hours."
+  - "Needs 3.0 shadow adapter before any runtime integration."
+required_followup:
+  - "Implement a default-off realtime DA-SGDF selector shadow adapter in 3.0."
+  - "Verify selector output never overwrites final realtime or submission_ready.csv."
+  - "Monitor negative/normal-hour benefit and spike/17_24 fallback behaviour."
