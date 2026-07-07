@@ -63,6 +63,7 @@ def _run_selector_shadow_if_enabled(args, pipeline_result) -> None:
             target_date=target_date,
             runs_root=getattr(args, "runs_root", "outputs/runs"),
             data_path=getattr(args, "data_path", "data/shandong_pmos_hourly.xlsx"),
+            config_path=getattr(args, "realtime_selector_shadow_config", None),
         )
         print(f"[shadow-selector] manifest: status={manifest.get('status')}", flush=True)
     except Exception as e:

@@ -82,13 +82,36 @@ def run_realtime_da_sgdf_selector_shadow(
     runs_root: str = "outputs/runs",
     data_path: str = "data/shandong_pmos_hourly.xlsx",
     config: Optional[dict] = None,
+    config_path: Optional[str] = None,
 ) -> dict:
     """Run the selector shadow and return a manifest dict.
 
     Returns manifest with status, output paths, and diagnostics.
     Never raises — failures result in degraded manifest.
+
+    Args:
+        target_date: YYYY-MM-DD
+        runs_root: root for run output directories
+        data_path: path to xlsx with DA anchor prices
+        config: optional dict of selector config (overrides defaults)
+        config_path: optional path to YAML config file (loaded if provided)
     """
-    cfg = {**DEFAULT_CONFIG, **(config or {})}
+    # Load config from path if provided
+    cfg = {**DEFAULT_CONFIG}
+    if config_path:
+        cfg_path = Path(config_path)
+        if cfg_path.exists():
+            try:
+                import yaml
+                with open(cfg_path, encoding="utf-8") as f:
+                    yaml_cfg = yaml.safe_load(f) or {}
+                if "shadow" in yaml_cfg:
+                    yaml_cfg = yaml_cfg["shadow"]
+                cfg.update({k: v for k, v in yaml_cfg.items() if k in DEFAULT_CONFIG})
+            except Exception as e:
+                _log(f"Warning: failed to load config from {config_path}: {e}")
+    if config:
+        cfg.update(config)
     run_dir = Path(runs_root) / target_date
     shadow_dir = run_dir / cfg["output_dir_suffix"]
     manifest: dict[str, Any] = {
