@@ -1,0 +1,28 @@
+{
+  "negative": {
+    "hours": 584,
+    "original_smape": 88.3561,
+    "corrected_smape": 75.5596,
+    "delta": 12.7965
+  },
+  "spike": {
+    "hours": 109,
+    "original_smape": 35.8116,
+    "corrected_smape": 35.222,
+    "delta": 0.5896
+  },
+  "normal": {
+    "hours": 2187,
+    "original_smape": 32.9087,
+    "corrected_smape": 33.846,
+    "delta": -0.9373
+  },
+  "correction_behavior": {
+    "total_applied": 466,
+    "total_rollbacks": 2880,
+    "total_caps": 0,
+    "total_fp": 166,
+    "total_fn_neg": 58,
+    "total_fn_spk": 23
+  }
+}

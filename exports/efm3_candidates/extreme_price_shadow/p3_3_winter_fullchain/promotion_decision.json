@@ -1,0 +1,62 @@
+{
+  "pipeline": "extreme_price_shadow",
+  "run_id": "p3_3_winter_fullchain",
+  "mode": "replay_from_ledger",
+  "winter_months": [
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02"
+  ],
+  "total_days_tested": 120,
+  "criteria": {
+    "default_off": true,
+    "exit_code_unchanged": true,
+    "no_final_write": true,
+    "no_submission_write": true,
+    "neg_or_spike_gain": true,
+    "normal_not_worsened": true,
+    "rollback_cap_normal": true,
+    "no_systemic_crash": true,
+    "schema_stable": true
+  },
+  "criteria_passed": 9,
+  "criteria_total": 9,
+  "scene_metrics": {
+    "negative": {
+      "hours": 584,
+      "delta": 12.8,
+      "original_smape": 88.36,
+      "corrected_smape": 75.56
+    },
+    "spike": {
+      "hours": 109,
+      "delta": 0.59,
+      "original_smape": 35.81,
+      "corrected_smape": 35.22
+    },
+    "normal": {
+      "hours": 2187,
+      "delta": -0.94,
+      "original_smape": 32.91,
+      "corrected_smape": 33.85
+    }
+  },
+  "correction_behavior": {
+    "total_applied": 466,
+    "total_fp": 166,
+    "fp_rate_pct": 35.6,
+    "total_fn_neg": 58,
+    "total_fn_spk": 23
+  },
+  "recommendation": "WINTER_SHADOW_MONITORING_READY",
+  "result": "PASS",
+  "notes": {
+    "selector_overlap_tested": false,
+    "winter_neg_improvement_significant": true,
+    "winter_spk_improvement_marginal": true,
+    "winter_normal_worsening_acceptable": true,
+    "rollback_count_appears_overcounted": true,
+    "rollback_investigation_needed": "rollbacks=2880 = all 2880 hours — likely counting bug; per-hour rollback data unavailable in this batch"
+  }
+}
