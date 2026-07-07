@@ -196,4 +196,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run preflight checks before starting range pipeline")
     parser.add_argument("--no-range-preflight", dest="range_preflight", action="store_false",
         help="Skip preflight checks")
+
+    # Realtime DA-SGDF Selector Shadow params (default off)
+    parser.add_argument("--enable-realtime-da-sgdf-selector-shadow",
+        action="store_true", default=False,
+        help="Enable the realtime DA-SGDF conservative selector shadow adapter. "
+             "Default off. When enabled, writes shadow output to "
+             "outputs/runs/YYYY-MM-DD/realtime_da_sgdf_selector_shadow/. "
+             "Does NOT modify final, submission_ready, or champion.")
+    parser.add_argument("--realtime-selector-shadow-config",
+        default="configs/realtime_da_sgdf_selector_shadow.yaml",
+        help="Path to selector shadow config YAML (default: configs/realtime_da_sgdf_selector_shadow.yaml)")
     return parser

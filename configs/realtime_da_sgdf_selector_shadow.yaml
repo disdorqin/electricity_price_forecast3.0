@@ -1,0 +1,13 @@
+# Realtime DA-SGDF Selector Shadow Configuration
+
+# DEFAULT OFF. Explicitly enabled via --enable-realtime-da-sgdf-selector-shadow.
+
+shadow:
+  enabled: false
+  gap_threshold: 50.0
+  avoid_17_24_switch: true
+  avoid_negative_switch: true
+  avoid_spike_switch: true
+  sgdfnet_max_hour_pct: 0.05
+  fallback_to_da_on_missing_sgdfnet: true
+  output_dir_suffix: "realtime_da_sgdf_selector_shadow"
