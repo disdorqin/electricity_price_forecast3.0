@@ -22,6 +22,10 @@ from pipelines.ledger_classifier import run_ledger_classifier
 from pipelines.ledger_full import run_ledger_full
 from pipelines.ledger_full_range import run_ledger_full_range
 from pipelines.ledger_smoke import run_ledger_smoke
+from pipelines.extreme_price_shadow import (
+    run_ledger_extreme_price_shadow,
+    run_extreme_price_shadow_safe,
+)
 
 
 def _delivery_exit_code(delivery_status: str, default: int = 1) -> int:
@@ -68,6 +72,33 @@ def main() -> int:
             args.data_path = synced_xlsx
         print(f"sync_dataset: OK (source={sync_result.get('source', '?')}, rows={sync_result.get('rows', 0)})", flush=True)
 
+    exit_code = _dispatch_pipeline(args)
+
+    # --- P3.2 controlled shadow post-step (default OFF) ---
+    # Runs only when --enable-extreme-price-shadow is explicitly passed. It reads
+    # realtime fused predictions from the 3.0 run + ledger and writes ONLY to
+    # outputs/runs/{date}/extreme_price_shadow/. It never writes final/ or
+    # submission_ready.csv, never replaces the original fused realtime prediction,
+    # and failures are caught here so the main chain is never affected.
+    if getattr(args, "enable_extreme_price_shadow", False):
+        try:
+            shadow_manifest = run_extreme_price_shadow_safe(args)
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"[extreme_price_shadow] status={shadow_manifest.get('status')} | "
+                f"shadow_only={shadow_manifest.get('shadow_only')} | "
+                f"final_contaminated={shadow_manifest.get('final_contaminated', False)} | "
+                f"main_chain_affected={shadow_manifest.get('main_chain_affected', False)}"
+            )
+        except Exception as e:  # pragma: no cover - defensive
+            logging.getLogger(__name__).exception(
+                f"[extreme_price_shadow] hook error (main chain untouched): {e}"
+            )
+    return exit_code
+
+
+def _dispatch_pipeline(args) -> int:
+    """Dispatch to the selected pipeline. Returns the process exit code."""
     if args.pipeline == "evaluate":
         output_path = run_evaluate_pipeline(args)
         print(output_path)
@@ -125,6 +156,11 @@ def main() -> int:
     if args.pipeline == "ledger_smoke":
         result = run_ledger_smoke(args)
         print(f"ledger_smoke complete: {result}")
+        return 0
+    if args.pipeline == "extreme_price_shadow":
+        # P3.2 controlled shadow (default OFF; only reached when explicitly selected)
+        result = run_ledger_extreme_price_shadow(args)
+        print(f"extreme_price_shadow complete: {result}")
         return 0
     return 0
 
