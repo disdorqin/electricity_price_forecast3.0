@@ -1,12 +1,17 @@
 candidate_id: realtime_sgdfnet_lite
+# P2.8 corrective registry after P2.7 canonical ledger repair.
+# This entry is NOT a replacement for DA_anchor. Canonical alignment shows
+# DA_anchor narrowly beats SGDFNet overall, while SGDFNet still wins 3/10 months
+# and remains useful as an auxiliary candidate for a future DA-aware selector.
 task: realtime
 status: candidate
 promotion_level: registry_only
+selection_role: auxiliary_model_for_da_aware_selector
 source_repo: disdorqin/electricity_forecast_deep_sgdf_delta
-source_commit: b4dd9cc0ec9b1ef81469de5b004c59de6071dee7
-source_package: exports/efm3_candidates/realtime_lite/p2_3_sgdfnet_lite
+source_commit: d0d8b17ef4bd9ed82676403f7897bb886e5ddab1
+source_package: exports/efm3_candidates/realtime_lite_fusion/p2_7_canonical_3month
 model_name: sgdfnet
-model_version: p2_3_lite
+model_version: p2_7_canonical_lite
 test_windows:
   - "2025-03"
   - "2025-04"
@@ -21,10 +26,26 @@ test_windows:
 completed_days: 363
 expected_days: 363
 metric: sMAPE_floor50
+canonical_hour_mapping: true
+canonical_mapping_rule: "hour_business=1..23 maps to 01:00..23:00; hour_business=24 maps to 00:00 same business_day"
 overall_smape_floor50: 20.20
 baseline_name: DA_anchor
-baseline_smape_floor50: 26.95
-delta_vs_baseline: -6.75
+baseline_smape_floor50: 19.52
+delta_vs_baseline: 0.68
+beats_baseline: false
+monthly_wins_vs_da: 3
+monthly_losses_vs_da: 7
+month_metrics:
+  "2025-03": {DA_anchor: 20.60, SGDFNet: 22.89, winner: DA_anchor}
+  "2025-04": {DA_anchor: 15.68, SGDFNet: 16.44, winner: DA_anchor}
+  "2025-05": {DA_anchor: 16.58, SGDFNet: 17.21, winner: DA_anchor}
+  "2025-06": {DA_anchor: 16.89, SGDFNet: 16.82, winner: SGDFNet}
+  "2025-09": {DA_anchor: 13.30, SGDFNet: 13.75, winner: DA_anchor}
+  "2025-10": {DA_anchor: 15.90, SGDFNet: 16.69, winner: DA_anchor}
+  "2026-03": {DA_anchor: 26.44, SGDFNet: 27.73, winner: DA_anchor}
+  "2026-04": {DA_anchor: 18.96, SGDFNet: 18.87, winner: SGDFNet}
+  "2026-05": {DA_anchor: 20.37, SGDFNet: 20.30, winner: SGDFNet}
+  "2026-06": {DA_anchor: 30.44, SGDFNet: 31.29, winner: DA_anchor}
 runtime_sec_per_day: 40
 cpu_only: true
 gpu_required: false
@@ -38,11 +59,13 @@ candidate_rules:
   replaces_champion: false
   modifies_final_outputs: false
   requires_future_shadow_adapter: true
+  requires_da_aware_gate: true
 known_risks:
-  - "Not yet compared as a 3.0 shadow output."
+  - "P2.3 registry was superseded by P2.7 canonical audit: SGDFNet no longer claims to beat DA_anchor overall."
+  - "SGDFNet wins only 3/10 canonical windows; it should be used as an auxiliary model, not a standalone replacement."
+  - "A DA-aware selector is required before any runtime integration."
   - "Does not represent the full 2.5 four-model fusion."
-  - "Needs production adapter review before runtime integration."
 required_followup:
-  - "Implement 3.0 realtime lite shadow adapter."
-  - "Compare SGDFNet lite against official 3.0 realtime output in shadow mode."
-  - "Optionally add TimesFM as lite ensemble partner after scheduler review."
+  - "Build DA-aware realtime gate that chooses DA_anchor, SGDFNet, or a blend by scene/window."
+  - "Compare selector against official 3.0 realtime output in shadow mode."
+  - "Keep DA_anchor as primary fallback; do not force SGDFNet when DA dominates."
