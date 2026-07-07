@@ -1,0 +1,79 @@
+candidate_id: system_shadow_selector_p3_coexistence
+# P3.5 registry entry based on Selector + P3 Coexistence Validation Report.
+# This records shadow coexistence safety only. It is NOT production and NOT champion.
+task: system_shadow
+status: coexistence_safe
+promotion_level: shadow_monitoring_only
+source_report: P3.5 Selector + P3 Coexistence Validation Report
+source_branch: test/p3.5-coexistence
+source_commit: not_pushed_remote
+source_package: exports/efm3_candidates/system_shadow/p3_5_selector_p3_coexistence
+modules:
+  - realtime_da_sgdf_selector_shadow
+  - extreme_price_shadow
+windows:
+  - "2025-11"
+  - "2025-12"
+  - "2026-01"
+  - "2026-02"
+days_tested: 20
+hours_tested: 480
+mode: replay_from_ledger
+recommendation: COEXISTENCE_SAFE
+result: PASS
+shadow_execution:
+  selector:
+    status: COMPLETE
+    complete_days: 20
+    total_days: 20
+  p3_extreme_price_shadow:
+    ok_days: 6
+    degraded_days: 14
+    degradation_reason: insufficient_history_for_classifier_training
+  simultaneous_execution:
+    runtime_conflict: false
+    shared_state_conflict: false
+    output_collision: false
+contamination_audit:
+  submission_ready_written_days: 0
+  final_dir_written_days: 0
+  exit_code_affected: false
+  delivery_status_changed: false
+  default_off_verified: true
+selector_p3_overlap:
+  selector_sgdf_hours: 14
+  selector_da_hours: 466
+  selector_sgdf_pct: 2.9
+  p3_corrected_hours: 30
+  overlap_hours: 0
+  conflict_hours: 0
+interpretation:
+  - "Both shadow modules can run together without runtime conflict."
+  - "Both modules write to separate shadow directories."
+  - "No final/submission contamination was observed."
+  - "Selector remains DA-dominant in winter, consistent with P2.13 winter no-go."
+  - "P3 degraded for early winter dates due to insufficient history; this is expected and should be monitored."
+known_limits:
+  - "Test branch test/p3.5-coexistence was not pushed to remote."
+  - "Run mode was replay_from_ledger, not full production delivery."
+  - "Overlap hours were zero, so same-hour dual-action behavior was not empirically observed."
+  - "P3 degraded 14/20 dates due to insufficient history; monitoring must track this."
+monitoring_policy:
+  default_enabled: false
+  shadow_only: true
+  production_replacement_allowed: false
+  champion_allowed: false
+  winter_monitoring_allowed: true
+  requires_full_post_merge_validation: true
+candidate_rules:
+  writes_submission_ready: false
+  replaces_champion: false
+  modifies_final_outputs: false
+  default_enabled: false
+  shadow_only: true
+  champion_allowed: false
+  production_replacement_allowed: false
+required_followup:
+  - "Run 3.0 Post-Merge Validation v1 on current main."
+  - "If validation passes, create Shadow Monitoring Pack with operational commands and stop/go gates."
+  - "Do not promote either shadow module to production before extended monitoring."
