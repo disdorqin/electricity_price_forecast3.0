@@ -64,9 +64,9 @@ class TestDbUrlRedaction:
 
     def test_db_url_password_redacted_in_logs(self):
         """A full DB URL with a plain password must have the password replaced."""
-        url = "mysql+pymysql://root:Zlt20060313#@127.0.0.1:3306/efm3"
+        url = "mysql+pymysql://root:SuperSecret123#@127.0.0.1:3306/efm3"
         redacted = _redact_db_url(url)
-        assert "Zlt20060313" not in redacted, (
+        assert "SuperSecret123" not in redacted, (
             f"Password leaked in redacted URL: {redacted}"
         )
         assert "****" in redacted, (

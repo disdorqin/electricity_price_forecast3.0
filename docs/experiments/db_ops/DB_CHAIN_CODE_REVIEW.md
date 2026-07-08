@@ -42,7 +42,7 @@ Diff: **43 files changed, 6777 insertions**
 
 | File | Issue | Fix |
 |------|-------|-----|
-| `pipelines/data_update_pipeline.py` | Password `Zlt20060313#` hardcoded in source | Replaced with DB URL parser from `--db-url` arg |
+| `pipelines/data_update_pipeline.py` | Hardcoded DB credential in source (example `SuperSecret123#`) | Replaced with DB URL parser from `--db-url` arg |
 
 ## Verdict
 
