@@ -1,0 +1,16 @@
+# Local MySQL ledger configuration for the EFM3 Control Plane.
+# This file is read by documentation/tooling; the running services read
+# EFM3_DB_URL from the environment (see .env.example).
+
+db:
+  # The environment variable that holds the full SQLAlchemy URL.
+  url_env: EFM3_DB_URL
+  # Formal runs REQUIRE the DB ledger to be reachable.
+  formal_requires_db: true
+  # Connection tuning.
+  connect_timeout: 10
+  pool_size: 5
+  # Never log the raw URL; redact credentials in all logs/outputs.
+  redact_url_in_logs: true
+  # Driver / dialect used by EFM3.
+  dialect: mysql+pymysql

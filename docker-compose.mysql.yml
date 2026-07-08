@@ -1,0 +1,32 @@
+# Local MySQL ledger for EFM3 development / demo.
+# The root password is read from the MYSQL_ROOT_PASSWORD environment variable
+# (never hardcode a real password here). Example:
+#   MYSQL_ROOT_PASSWORD='SuperSecret123#' docker compose -f docker-compose.mysql.yml up -d
+# If your password contains `#`, pass it single-quoted and URL-encode as `%23`
+# in EFM3_DB_URL.
+
+services:
+  efm3-mysql:
+    image: mysql:8.0
+    container_name: efm3-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD (e.g. MYSQL_ROOT_PASSWORD='SuperSecret123#' docker compose up -d)}
+      MYSQL_DATABASE: efm3
+      MYSQL_TCP_PORT: "3306"
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - efm3-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  efm3-mysql-data:

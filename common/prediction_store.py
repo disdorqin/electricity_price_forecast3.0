@@ -537,7 +537,29 @@ class MySQLPredictionStore(PredictionStore):
                 )
                 insert_fusion_decision(conn, fdr)
 
-                # 2. Mark the corresponding prediction as selected (final)
+                # 2. Persist the final-selected prediction row itself so that
+                #    downstream consumers (postflight, lineage, API) can read
+                #    is_selected=TRUE rows directly from efm_predictions.
+                #    (mark_selected_prediction only UPDATEs existing rows, so we
+                #    must INSERT the final_selected row first.)
+                sel_rec = PredictionRecord(
+                    run_id=run_id,
+                    target_date=target_date,
+                    hour_business=hb,
+                    task="final",
+                    stage="final_selected",
+                    model_name=selected_model,
+                    model_version="final",
+                    pred_price=pred_price,
+                    is_shadow=False,
+                    is_selected=True,
+                    selected_reason=decision_reason or policy_name,
+                    cutoff_time=None,
+                    quality_flags=None,
+                )
+                insert_prediction(conn, sel_rec)
+
+                # 3. Mark any matching prediction as selected (idempotent safety)
                 mark_selected_prediction(
                     conn,
                     run_id,

@@ -47,6 +47,7 @@ from common.db.repositories import (
     fetch_run_summary,
 )
 from common.db.models import RunRecord, RunEventRecord
+from common.fallback_policy import evaluate_db_failure
 from pipelines.seasonal_da_router import run_seasonal_da_router
 from pipelines.db_postflight import run_db_postflight
 from pipelines.db_exporter import export_submission_ready
@@ -219,36 +220,74 @@ def _step_feature_snapshot(
     target_date: str,
     store: PredictionStore,
 ) -> str:
-    """Read features from the input xlsx and persist a snapshot via the store."""
+    """Read features from the input xlsx and persist a snapshot via the store.
+
+    This is a non-critical diagnostic step. If the input workbook is missing
+    or uses an unexpected schema (e.g. localized Chinese column names), we
+    skip gracefully instead of failing the whole run — the chain still
+    delivers day-ahead / final-selected predictions via the other steps.
+    """
     import pandas as pd
 
     if not INPUT_XLSX.exists():
-        raise FileNotFoundError(f"Cannot read features — {INPUT_XLSX} not found.")
+        msg = f"feature_snapshot skipped: {INPUT_XLSX.name} not found"
+        logger.warning("[%s] %s", run_id[:16], msg)
+        return msg
 
-    df = pd.read_excel(INPUT_XLSX)
-    required_cols = {"hour_business", "ds"}
-    missing = required_cols - set(df.columns)
-    if missing:
-        raise ValueError(
-            f"Input xlsx missing required columns: {missing}. "
-            f"Available columns: {list(df.columns)}"
+    try:
+        df = pd.read_excel(INPUT_XLSX)
+    except Exception as exc:  # pragma: no cover - defensive
+        msg = f"feature_snapshot skipped: cannot read xlsx ({exc})"
+        logger.warning("[%s] %s", run_id[:16], msg)
+        return msg
+
+    # Resolve column names (English first, then common localized fallbacks).
+    col_hour = (
+        "hour_business" if "hour_business" in df.columns
+        else "时刻" if "时刻" in df.columns
+        else None
+    )
+    col_ds = (
+        "ds" if "ds" in df.columns
+        else "日期" if "日期" in df.columns
+        else "timestamp" if "timestamp" in df.columns
+        else None
+    )
+    col_price = None
+    for c in ("price", "pred_price", "日前电价", "价格", "电价"):
+        if c in df.columns:
+            col_price = c
+            break
+
+    if col_hour is None or col_ds is None or col_price is None:
+        msg = (
+            f"feature_snapshot skipped: incompatible columns "
+            f"{list(df.columns)} (need hour/day/price)"
         )
+        logger.warning("[%s] %s", run_id[:16], msg)
+        return msg
 
     rows: list[dict[str, Any]] = []
     for _, row in df.iterrows():
-        pred_row = {
-            "hour_business": int(row.get("hour_business", 0)),
-            "task": "feature_snapshot",
-            "stage": "input_features",
-            "model_name": "passthrough",
-            "model_version": "raw",
-            "pred_price": float(row.get("price", row.get("pred_price", 0.0))),
-            "is_shadow": False,
-            "is_selected": False,
-            "selected_reason": None,
-            "quality_flags": None,
-        }
-        rows.append(pred_row)
+        try:
+            pred_row = {
+                "hour_business": int(row.get(col_hour, 0)),
+                "task": "dayahead",  # valid ENUM; stage distinguishes the snapshot
+                "stage": "input_features",
+                "model_name": "passthrough",
+                "model_version": "raw",
+                "pred_price": float(row.get(col_price, 0.0)),
+                "is_shadow": False,
+                "is_selected": False,
+                "selected_reason": None,
+                "quality_flags": None,
+            }
+            rows.append(pred_row)
+        except (ValueError, TypeError):
+            continue
+
+    if not rows:
+        return "feature_snapshot skipped: no usable rows"
 
     count = store.write_predictions(run_id, target_date, rows)
     return f"Wrote {count} feature rows from {INPUT_XLSX.name}"
@@ -274,8 +313,12 @@ def _step_dayahead_prediction(
         )
         return "No DA predictions found for target date"
 
-    # Map ledger columns → store prediction format
-    preds = _ledger_df_to_predictions(target_rows, task="dayahead")
+    # Map ledger columns → store prediction format.
+    # Day-ahead ledger predictions are the `da_anchor` source consumed by the
+    # seasonal DA router (winter policy). Tag them as stage="da_anchor" so the
+    # router can find them; otherwise winter months produce zero final-selected
+    # decisions.
+    preds = _ledger_df_to_predictions(target_rows, task="dayahead", stage="da_anchor")
     count = store.write_predictions(run_id, target_date, preds)
     return f"Wrote {count} DA predictions from ledger (total target rows: {len(target_rows)})"
 
@@ -637,8 +680,40 @@ def run_full_chain(
             "use_db=True but no db_url provided and EFM3_DB_URL not set — "
             "falling back to file store"
         )
+        # Formal mode MUST have the ledger; without a URL it cannot proceed.
+        if mode == "formal":
+            decision = evaluate_db_failure("formal")
+            logger.error("Formal run aborted: %s", decision.message)
+            return {
+                "run_id": _step_generate_run_id(target_date),
+                "target_date": target_date,
+                "mode": mode,
+                "status": decision.status,
+                "delivery_status": decision.delivery_status,
+                "exit_code": decision.exit_code,
+                "steps": {"db_resolution": {"status": "failed", "detail": decision.message}},
+                "runtime_s": round(time.monotonic() - overall_start, 3),
+                "fallback": decision.as_dict(),
+            }
     else:
         logger.info("DB mode disabled — using file-based store")
+
+    # Formal mode requires the MySQL ledger. If DB resolution failed, abort
+    # explicitly via the fallback policy (row 1 of the matrix).
+    if mode == "formal" and db_mgr is None:
+        decision = evaluate_db_failure("formal")
+        logger.error("Formal run aborted: %s", decision.message)
+        return {
+            "run_id": _step_generate_run_id(target_date),
+            "target_date": target_date,
+            "mode": mode,
+            "status": decision.status,
+            "delivery_status": decision.delivery_status,
+            "exit_code": decision.exit_code,
+            "steps": {"db_resolution": {"status": "failed", "detail": decision.message}},
+            "runtime_s": round(time.monotonic() - overall_start, 3),
+            "fallback": decision.as_dict(),
+        }
 
     # ── Generate run_id ───────────────────────────────────────────────────
     run_id = _step_generate_run_id(target_date)

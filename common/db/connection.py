@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import logging
+import urllib.parse
 from typing import Optional
 
 import pymysql
@@ -58,12 +59,17 @@ class DbConnectionManager:
         host_port, database = host_part.split("/", 1) if "/" in host_part else (host_part, "efm3")
         host, port_str = host_port.split(":", 1) if ":" in host_port else (host_port, "3306")
 
+        # URL-decode credentials/components so that a password containing
+        # special characters (e.g. '#' encoded as '%23' per the config docs)
+        # is passed to pymysql correctly. This keeps the documented
+        # `mysql+pymysql://user:PASS%23@host:3306/db` form working for both
+        # the legacy raw-pymysql chain and SQLAlchemy-based backends.
         return {
-            "host": host,
+            "host": urllib.parse.unquote(host),
             "port": int(port_str),
-            "user": user,
-            "password": password,
-            "database": database,
+            "user": urllib.parse.unquote(user),
+            "password": urllib.parse.unquote(password),
+            "database": urllib.parse.unquote(database),
             "connect_timeout": self._connect_timeout,
             "charset": "utf8mb4",
         }
