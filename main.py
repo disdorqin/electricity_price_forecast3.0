@@ -153,6 +153,28 @@ def main() -> int:
             print(f"ERROR --init-db: {e}")
             return 1
 
+    # --- Data update (default OFF) ---
+    update_data = getattr(args, "update_data", False)
+    if update_data and (use_db or mode != "dry_run"):
+        try:
+            from pipelines.data_update_pipeline import run_data_update
+            target_date = getattr(args, "date", None)
+            if not target_date:
+                target_date = getattr(args, "pos_date", None)
+            update_result = run_data_update(
+                target_date=target_date,
+                source=getattr(args, "data_source", "all"),
+                scan_only=getattr(args, "scan_only", False),
+                full_refresh=getattr(args, "full_refresh", False),
+                data_root=getattr(args, "data_root", None),
+                db_url=db_url,
+            )
+            print(f"data_update: status={update_result.get('status')} files={update_result.get('files_detected', 0)}")
+        except Exception as e:
+            logging.getLogger(__name__).exception(f"[data_update] error: {e}")
+            if mode == "formal":
+                return 1
+
     if use_db or mode != "dry_run":
         try:
             target_date = getattr(args, "date", None)

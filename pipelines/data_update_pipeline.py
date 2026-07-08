@@ -64,9 +64,18 @@ def run_data_update(
     if not db_url:
         return {"status": "FAIL", "message": "No DB URL provided. Use --db-url or EFM3_DB_URL env var.", "update_run_id": update_run_id}
 
+    # Parse DB URL — must not contain raw password in code
+    from urllib.parse import unquote
+    raw = db_url.replace("mysql+pymysql://", "").replace("mysql://", "")
+    user_pass, rest = raw.split("@", 1) if "@" in raw else ("root", raw)
+    user, password = user_pass.split(":", 1) if ":" in user_pass else (user_pass, "")
+    password = unquote(password)  # decode %23 → #
+    host_port, database = rest.split("/", 1) if "/" in rest else (rest, "efm3")
+    host, port_str = host_port.split(":", 1) if ":" in host_port else (host_port, "3306")
+
     conn = pymysql.connect(
-        host="127.0.0.1", port=3306, user="root",
-        password="Zlt20060313#", database="efm3",
+        host=host, port=int(port_str), user=user,
+        password=password, database=database,
         connect_timeout=10, charset="utf8mb4",
     )
 
