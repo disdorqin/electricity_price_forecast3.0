@@ -1,0 +1,8 @@
+# EFM3 3.0 DB Ledger Configuration
+
+db:
+  enabled: false                    # Default OFF — must be explicitly enabled
+  url_env: EFM3_DB_URL              # Environment variable for DB URL
+  formal_requires_db: true          # Formal mode MUST have DB
+  pool_size: 5
+  connect_timeout: 10

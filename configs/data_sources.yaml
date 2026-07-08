@@ -1,0 +1,43 @@
+# EFM3 3.0 Data Source Configuration
+#
+# Defines data source directories that the file scanner searches.
+# The data ingestion pipeline imports data from these sources into
+# efm_market_data_hourly and efm_actual_prices tables.
+#
+# WARNING: NEVER store database passwords here. DB credentials come
+# from --db-url CLI flag or EFM3_DB_URL environment variable only.
+
+data_sources:
+  two_five_reference:
+    enabled: true
+    source_type: directory
+    market: shandong
+    root_env: EFM2_5_ROOT
+    default_root: "D:/作业/大创_挑战杯_互联网/大学生创新创业计划/大创实现/其他资料/electricity_forecast_model2.5"
+    include_patterns:
+      - "**/*.csv"
+      - "**/*.xlsx"
+      - "**/*.xls"
+      - "**/*.parquet"
+    exclude_patterns:
+      - "**/.git/**"
+      - "**/__pycache__/**"
+      - "**/models/**"
+      - "**/outputs/runs/**"
+      - "**/.venv/**"
+      - "**/env/**"
+      - "**/node_modules/**"
+
+  efm3_local_data:
+    enabled: true
+    source_type: directory
+    market: shandong
+    root_env: EFM3_DATA_ROOT
+    default_root: "data"
+    include_patterns:
+      - "**/*.csv"
+      - "**/*.xlsx"
+      - "**/*.parquet"
+    exclude_patterns:
+      - "**/__pycache__/**"
+      - "**/.git/**"

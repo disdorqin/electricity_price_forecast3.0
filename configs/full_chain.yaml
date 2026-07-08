@@ -1,0 +1,9 @@
+# EFM3 3.0 Full Chain Configuration
+
+chain:
+  version: "3.0-db-ledger-v1"
+  policy: seasonal_da_router
+  winter_months: [11, 12, 1, 2]
+  enable_p3_shadow: false
+  enable_selector_shadow: false
+  export_submission: false

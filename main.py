@@ -125,6 +125,85 @@ def main() -> int:
             logging.getLogger(__name__).exception(
                 f"[extreme_price_shadow] hook error (main chain untouched): {e}"
             )
+
+    # --- DB-ledger full-chain (default OFF) ---
+    use_db = getattr(args, "use_db", False)
+    mode = getattr(args, "mode", "dry_run")
+    init_db = getattr(args, "init_db", False)
+    db_url = getattr(args, "db_url", None) or os.environ.get("EFM3_DB_URL", "")
+
+    if init_db:
+        try:
+            from common.db.connection import DbConnectionManager
+            from common.db.schema import init_schema, list_tables
+            mgr = DbConnectionManager(db_url=db_url)
+            conn = mgr.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("CREATE DATABASE IF NOT EXISTS efm3 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            cursor.execute("USE efm3")
+            cursor.close()
+            conn.commit()
+            result = init_schema(conn)
+            tables = list_tables(conn)
+            print(f"Schema init: {result['status']} ({result['statements_executed']} statements)")
+            print(f"Tables ({len(tables)}): {', '.join(tables)}")
+            mgr.close()
+            return 0 if result["status"] == "ok" else 1
+        except Exception as e:
+            print(f"ERROR --init-db: {e}")
+            return 1
+
+    # --- Data update (default OFF) ---
+    update_data = getattr(args, "update_data", False)
+    if update_data and (use_db or mode != "dry_run"):
+        try:
+            from pipelines.data_update_pipeline import run_data_update
+            target_date = getattr(args, "date", None)
+            if not target_date:
+                target_date = getattr(args, "pos_date", None)
+            update_result = run_data_update(
+                target_date=target_date,
+                source=getattr(args, "data_source", "all"),
+                scan_only=getattr(args, "scan_only", False),
+                full_refresh=getattr(args, "full_refresh", False),
+                data_root=getattr(args, "data_root", None),
+                db_url=db_url,
+            )
+            print(f"data_update: status={update_result.get('status')} files={update_result.get('files_detected', 0)}")
+        except Exception as e:
+            logging.getLogger(__name__).exception(f"[data_update] error: {e}")
+            if mode == "formal":
+                return 1
+
+    if use_db or mode != "dry_run":
+        try:
+            target_date = getattr(args, "date", None)
+            if not target_date:
+                target_date = getattr(args, "pos_date", None)
+            if not target_date:
+                print("ERROR: --date required for DB-ledger chain")
+                return 1
+
+            from pipelines.full_chain_orchestrator import run_full_chain
+            config = {
+                "enable_p3_shadow": getattr(args, "enable_extreme_price_shadow", False),
+                "enable_selector_shadow": getattr(args, "enable_realtime_da_sgdf_selector_shadow", False),
+            }
+            chain_result = run_full_chain(
+                target_date=target_date,
+                mode=mode,
+                use_db=use_db,
+                db_url=db_url,
+                export_submission=getattr(args, "export_submission", False),
+                export_report=getattr(args, "export_report", False),
+                config=config,
+            )
+            print(f"full_chain: run_id={chain_result.get('run_id')} status={chain_result.get('status')} exit={chain_result.get('exit_code')}")
+            return chain_result.get("exit_code", 0)
+        except Exception as e:
+            logging.getLogger(__name__).exception(f"[db_chain] error: {e}")
+            return 1
+
     return exit_code
 
 
