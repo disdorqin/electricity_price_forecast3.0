@@ -236,9 +236,10 @@ def build_parser() -> argparse.ArgumentParser:
              "Can also set EFM3_DB_URL env var. Required for --mode formal.")
     parser.add_argument("--init-db", action="store_true", default=False,
         help="Initialize EFM3 database schema and exit.")
-    parser.add_argument("--mode", default="dry_run", choices=["dry_run", "shadow", "formal"],
+    parser.add_argument("--mode", default="dry_run", choices=["dry_run", "shadow", "formal", "formal_sim"],
         help="Run mode: dry_run (file ledger, no submission), "
-             "shadow (DB with diagnostics), formal (DB + submission export). "
+             "shadow (DB with diagnostics), formal (DB + submission export), "
+             "formal_sim (formal strict guards, no submission export). "
              "Default: dry_run.")
     parser.add_argument("--chain", default="official",
         choices=["official", "seasonal_da_router"],
@@ -248,6 +249,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Export submission_ready.csv after run. Only effective in formal mode.")
     parser.add_argument("--export-report", action="store_true", default=False,
         help="Generate delivery report after run.")
+    parser.add_argument("--allow-router-fallback", action="store_true", default=False,
+        help="Allow router to fallback when DA anchor missing (default OFF). "
+             "Only relevant in formal/formal_sim modes.")
 
     # ── Data update flags (all default-off) ──
     parser.add_argument("--update-data", action="store_true", default=False,

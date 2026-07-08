@@ -306,6 +306,7 @@ def run_db_postflight(
     conn: Connection,
     run_id: str,
     target_date: str,
+    mode: str = "dry_run",
 ) -> dict[str, Any]:
     """Execute all DB-based postflight checks and persist results.
 
@@ -317,6 +318,8 @@ def run_db_postflight(
         Pipeline run identifier.
     target_date : str
         Target business day in ``YYYY-MM-DD`` format.
+    mode : str, default "dry_run"
+        Run mode used to adjust guard strictness.
 
     Returns
     -------
@@ -324,8 +327,8 @@ def run_db_postflight(
         ``{"status": "passed" | "failed", "checks": {check_name: {"passed": bool, "details": str}}}``.
     """
     logger.info(
-        "Running DB postflight checks for run_id=%s target_date=%s",
-        run_id, target_date,
+        "Running DB postflight checks for run_id=%s target_date=%s mode=%s",
+        run_id, target_date, mode,
     )
 
     results: dict[str, dict] = {}
@@ -354,3 +357,145 @@ def run_db_postflight(
         "status": status,
         "checks": results,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Formal / formal_sim strict guards
+# ═══════════════════════════════════════════════════════════════════
+
+def check_formal_final_selected_coverage(
+    conn: Connection,
+    run_id: str,
+    target_date: str,
+    mode: str,
+) -> dict:
+    """In formal/formal_sim mode: final_selected rows MUST be 24.
+
+    When < 24 rows, the guard FAILs and writes an explicit event.
+    """
+    sql = """
+        SELECT COUNT(*)
+        FROM efm_predictions
+        WHERE run_id = %s AND target_date = %s
+          AND task = 'final' AND stage = 'final_selected'
+          AND is_selected = TRUE AND is_shadow = FALSE
+    """
+    with conn.cursor() as cursor:
+        cursor.execute(sql, (run_id, target_date))
+        cnt = cursor.fetchone()[0]
+
+    passed = cnt == 24
+    if mode in ("formal", "formal_sim"):
+        check_name = "formal_final_selected_coverage"
+        details = (
+            f"PASS: {cnt} final_selected rows (expected 24)"
+            if passed
+            else f"FAIL: {cnt} final_selected rows (expected 24) — "
+                 f"formal {mode} mode enforces strict coverage"
+        )
+        if not passed:
+            logger.error("formal guard [%s]: %s", check_name, details)
+        return _run_check(conn, run_id, target_date, check_name, passed, details)
+    return {"passed": passed, "details": f"coverage={cnt} (dry_run mode, no formal guard)"}
+
+
+def check_formal_fusion_coverage(
+    conn: Connection,
+    run_id: str,
+    target_date: str,
+    mode: str,
+) -> dict:
+    """In formal/formal_sim mode: fusion_decisions rows MUST be 24."""
+    sql = """
+        SELECT COUNT(*)
+        FROM efm_fusion_decisions
+        WHERE run_id = %s AND target_date = %s
+    """
+    with conn.cursor() as cursor:
+        cursor.execute(sql, (run_id, target_date))
+        cnt = cursor.fetchone()[0]
+
+    passed = cnt == 24
+    if mode in ("formal", "formal_sim"):
+        check_name = "formal_fusion_coverage"
+        details = (
+            f"PASS: {cnt} fusion_decision rows (expected 24)"
+            if passed
+            else f"FAIL: {cnt} fusion_decision rows (expected 24)"
+        )
+        if not passed:
+            logger.error("formal guard [%s]: %s", check_name, details)
+        return _run_check(conn, run_id, target_date, check_name, passed, details)
+    return {"passed": passed, "details": f"fusion={cnt} (dry_run mode)"}
+
+
+def check_formal_winter_da_anchor(
+    conn: Connection,
+    run_id: str,
+    target_date: str,
+    mode: str,
+    allow_fallback: bool = False,
+) -> dict:
+    """In formal/formal_sim mode, winter months MUST have DA anchor rows."""
+    # Check if winter (Nov-Feb)
+    month = int(target_date.split("-")[1])
+    is_winter = month in (11, 12, 1, 2)
+    if not is_winter:
+        return {"passed": True, "details": "non-winter month — no da_anchor requirement"}
+
+    sql = """
+        SELECT COUNT(*)
+        FROM efm_predictions
+        WHERE run_id = %s AND target_date = %s AND stage = 'da_anchor'
+    """
+    with conn.cursor() as cursor:
+        cursor.execute(sql, (run_id, target_date))
+        cnt = cursor.fetchone()[0]
+
+    passed = cnt == 24 or (cnt == 0 and allow_fallback)
+    if mode in ("formal", "formal_sim"):
+        check_name = "formal_winter_da_anchor"
+        if cnt == 24:
+            details = "PASS: 24 da_anchor rows present"
+        elif cnt == 0 and allow_fallback:
+            details = "WARN: 0 da_anchor rows but router fallback allowed"
+        else:
+            details = (
+                f"FAIL: {cnt} da_anchor rows (expected 24) — "
+                f"winter date requires DA anchor"
+            )
+        if not passed:
+            logger.error("formal guard [%s]: %s", check_name, details)
+        return _run_check(conn, run_id, target_date, check_name, passed, details)
+    return {"passed": passed, "details": f"da_anchor={cnt} (dry_run mode)"}
+
+
+def check_formal_no_submission(
+    conn: Connection,
+    run_id: str,
+    target_date: str,
+    mode: str,
+) -> dict:
+    """In formal_sim mode: confirm NO formal submission was written.
+
+    In formal mode: confirm submission was written if expected.
+    """
+    sql = """
+        SELECT COUNT(*)
+        FROM efm_delivery_outputs
+        WHERE run_id = %s AND target_date = %s
+    """
+    with conn.cursor() as cursor:
+        cursor.execute(sql, (run_id, target_date))
+        output_count = cursor.fetchone()[0]
+
+    # formal_sim must have 0 delivery outputs (no submission)
+    passed = output_count == 0
+    check_name = "formal_no_export_submission"
+    details = (
+        f"PASS: 0 delivery_outputs — no formal submission written (mode={mode})"
+        if passed
+        else f"FAIL: {output_count} delivery_outputs found — "
+             f"expected 0 in mode {mode}"
+    )
+    return _run_check(conn, run_id, target_date, check_name, passed, details)

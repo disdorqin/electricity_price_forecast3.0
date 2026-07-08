@@ -59,7 +59,7 @@ def daterange(start: str, end: str):
         yield (s + timedelta(n)).isoformat()
 
 
-def run_date(target_date: str, db_url: str, chain: str, update_data: bool) -> DayResult:
+def run_date(target_date: str, db_url: str, chain: str, mode: str, update_data: bool) -> DayResult:
     result = DayResult(date=target_date)
     try:
         from pipelines.full_chain_orchestrator import run_full_chain
@@ -68,12 +68,16 @@ def run_date(target_date: str, db_url: str, chain: str, update_data: bool) -> Da
         if chain:
             config["chain"] = chain
 
+        # formal_sim: strict guards but no submission export
+        is_formal = mode in ("formal", "formal_sim")
+        export_sub = mode == "formal" and update_data  # only formal+update exports
+
         chain_result = run_full_chain(
             target_date=target_date,
-            mode="dry_run",
+            mode=mode,
             use_db=True,
             db_url=db_url,
-            export_submission=False,
+            export_submission=export_sub,
             export_report=False,
             config=config,
         )
@@ -160,6 +164,8 @@ def main():
     ap.add_argument("--end-date", required=True)
     ap.add_argument("--db-url", default=DB_URL, help="MySQL URL (default $EFM3_DB_URL)")
     ap.add_argument("--chain", default="seasonal_da_router")
+    ap.add_argument("--mode", default="dry_run", choices=["dry_run", "shadow", "formal", "formal_sim"],
+        help="Run mode for each date (default: dry_run).")
     ap.add_argument("--update-data", action="store_true", help="Pass --update-data to main.py (not used with run_full_chain)")
     ap.add_argument("--continue-on-fail", action="store_true", help="Continue on per-day failure")
     ap.add_argument("--report-dir", default="outputs/db_monthly_dry_run")
@@ -174,7 +180,7 @@ def main():
 
     for i, d in enumerate(dates, 1):
         logger.info("[%d/%d] %s ...", i, len(dates), d)
-        r = run_date(d, args.db_url, args.chain, args.update_data)
+        r = run_date(d, args.db_url, args.chain, args.mode, args.update_data)
         results.append(r)
         if r.status == "FAIL" and not args.continue_on_fail:
             logger.error("Aborting at %s (--continue-on-fail not set)", d)

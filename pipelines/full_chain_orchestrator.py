@@ -506,6 +506,7 @@ def _step_postflight(
     run_id: str,
     target_date: str,
     db_mgr: DbConnectionManager | None,
+    mode: str = "dry_run",
 ) -> str:
     """Run DB-based postflight checks if DB is available."""
     if db_mgr is None:
@@ -515,7 +516,7 @@ def _step_postflight(
 
     try:
         conn = db_mgr.get_connection()
-        pf_result = run_db_postflight(conn, run_id, target_date)
+        pf_result = run_db_postflight(conn, run_id, target_date, mode=mode)
         conn.close()
         status = pf_result.get("status", "unknown")
         checks = pf_result.get("checks", {})
@@ -562,8 +563,106 @@ def _step_export(
     return f"Exported {row_count} rows to {out_path} (status={result.get('status')})"
 
 
-def _determine_delivery_status(steps: dict[str, dict]) -> tuple[int, str]:
+def _step_formal_guard(
+    run_id: str,
+    target_date: str,
+    mode: str,
+    db_mgr: DbConnectionManager | None,
+    allow_router_fallback: bool = False,
+) -> str:
+    """Run formal-mode guard checks and persist results to DB.
+
+    Only active for formal/formal_sim modes. Checks:
+    - final_selected rows == 24
+    - fusion_decisions rows == 24
+    - winter: da_anchor rows == 24 (unless allow_router_fallback)
+    - no formal submission written (formal_sim only)
+    """
+    if mode not in ("formal", "formal_sim"):
+        return "skipped (not formal/formal_sim mode)"
+
+    if db_mgr is None:
+        return "skipped (DB not available — guards skipped)"
+
+    from pipelines.db_postflight import (
+        check_formal_final_selected_coverage,
+        check_formal_fusion_coverage,
+        check_formal_winter_da_anchor,
+        check_formal_no_submission,
+    )
+    from common.db.repositories import insert_run_event
+    from common.db.models import RunEventRecord
+
+    conn = db_mgr.get_connection()
+    failures: list[str] = []
+
+    # 1) final_selected coverage
+    r1 = check_formal_final_selected_coverage(conn, run_id, target_date, mode)
+    if not r1["passed"]:
+        failures.append(f"final_selected_coverage: {r1['details']}")
+        _write_formal_event(conn, run_id, "formal_no_final_selected_fail", r1["details"])
+
+    # 2) fusion coverage
+    r2 = check_formal_fusion_coverage(conn, run_id, target_date, mode)
+    if not r2["passed"]:
+        failures.append(f"fusion_coverage: {r2['details']}")
+        _write_formal_event(conn, run_id, "formal_fusion_coverage_fail", r2["details"])
+
+    # 3) winter da_anchor
+    r3 = check_formal_winter_da_anchor(conn, run_id, target_date, mode, allow_router_fallback)
+    if not r3["passed"]:
+        failures.append(f"winter_da_anchor: {r3['details']}")
+        _write_formal_event(conn, run_id, "formal_winter_da_anchor_fail", r3["details"])
+
+    # 4) no submission check (formal_sim: must be 0 delivery_outputs)
+    if mode == "formal_sim":
+        r4 = check_formal_no_submission(conn, run_id, target_date, mode)
+        if not r4["passed"]:
+            failures.append(f"no_export_submission: {r4['details']}")
+
+    conn.close()
+
+    if failures:
+        summary = "; ".join(failures)
+        logger.error("[%s] Formal guard FAILED: %s", run_id[:16], summary)
+        raise RuntimeError(f"Formal guard failed: {summary}")
+
+    return "PASS — all formal guards passed"
+
+
+def _write_formal_event(
+    conn: Connection,
+    run_id: str,
+    event_name: str,
+    detail: str,
+) -> None:
+    """Write a formal guard event to efm_run_events."""
+    try:
+        record = RunEventRecord(
+            run_id=run_id,
+            event_type="formal_guard",
+            event_name=event_name,
+            event_detail=detail[:500],
+            event_json=None,
+        )
+        insert_run_event(conn, record)
+    except Exception:
+        logger.exception("Failed to write formal guard event (non-fatal)")
+
+
+def _determine_delivery_status(
+    steps: dict[str, dict],
+    mode: str = "dry_run",
+) -> tuple[int, str]:
     """Determine the overall run status and delivery status from step results.
+
+    Parameters
+    ----------
+    steps : dict
+        Step results dict.
+    mode : str, default "dry_run"
+        Run mode. In formal/formal_sim modes, formal_guard is treated as
+        a critical step (failure → FAILED_NO_DELIVERY).
 
     Returns (exit_code, delivery_status).
     """
@@ -578,6 +677,10 @@ def _determine_delivery_status(steps: dict[str, dict]) -> tuple[int, str]:
         "seasonal_da_router",
         "final_selection",
     ]
+    # In formal/formal_sim modes, formal_guard is critical
+    if mode in ("formal", "formal_sim"):
+        critical_steps.append("formal_guard")
+
     critical_ok = all(steps.get(s, {}).get("status") == "ok" for s in critical_steps)
 
     if all_failed:
@@ -629,7 +732,9 @@ def run_full_chain(
     target_date : str
         Target business day in ``YYYY-MM-DD`` format.
     mode : str, default "dry_run"
-        Execution mode (``"dry_run"`` or ``"production"``).
+        Execution mode (``"dry_run"``, ``"formal"``, or ``"formal_sim"``).
+        ``formal`` requires DB + writes submission_ready. ``formal_sim`` applies
+        formal strict guards but does NOT write submission_ready.
     use_db : bool, default False
         Whether to persist results to the MySQL database.
     db_url : str, default ""
@@ -680,9 +785,9 @@ def run_full_chain(
             "use_db=True but no db_url provided and EFM3_DB_URL not set — "
             "falling back to file store"
         )
-        # Formal mode MUST have the ledger; without a URL it cannot proceed.
-        if mode == "formal":
-            decision = evaluate_db_failure("formal")
+        # Formal/formal_sim mode MUST have the ledger; without a URL it cannot proceed.
+        if mode in ("formal", "formal_sim"):
+            decision = evaluate_db_failure(mode)
             logger.error("Formal run aborted: %s", decision.message)
             return {
                 "run_id": _step_generate_run_id(target_date),
@@ -698,10 +803,10 @@ def run_full_chain(
     else:
         logger.info("DB mode disabled — using file-based store")
 
-    # Formal mode requires the MySQL ledger. If DB resolution failed, abort
+    # Formal/formal_sim mode requires the MySQL ledger. If DB resolution failed, abort
     # explicitly via the fallback policy (row 1 of the matrix).
-    if mode == "formal" and db_mgr is None:
-        decision = evaluate_db_failure("formal")
+    if mode in ("formal", "formal_sim") and db_mgr is None:
+        decision = evaluate_db_failure(mode)
         logger.error("Formal run aborted: %s", decision.message)
         return {
             "run_id": _step_generate_run_id(target_date),
@@ -817,7 +922,7 @@ def run_full_chain(
     # ── Step 9: postflight ────────────────────────────────────────────────
     steps["postflight"] = _step_wrapper(
         "postflight", db_mgr, run_id,
-        _step_postflight, run_id, target_date, db_mgr,
+        _step_postflight, run_id, target_date, db_mgr, mode,
     )
 
     # ── Step 10: export ───────────────────────────────────────────────────
@@ -829,8 +934,15 @@ def run_full_chain(
     else:
         steps["export"] = {"status": "ok", "detail": "skipped (export_submission=False)"}
 
+    # ── Step 11: formal guard (only in formal/formal_sim) ─────────────────
+    allow_fallback = cfg.get("allow_router_fallback", False)
+    steps["formal_guard"] = _step_wrapper(
+        "formal_guard", db_mgr, run_id,
+        _step_formal_guard, run_id, target_date, mode, db_mgr, allow_fallback,
+    )
+
     # ── Determine exit / delivery status ──────────────────────────────────
-    exit_code, delivery_status = _determine_delivery_status(steps)
+    exit_code, delivery_status = _determine_delivery_status(steps, mode=mode)
     run_status = _compute_status_summary(steps, delivery_status)
     runtime_s = round(time.monotonic() - overall_start, 3)
 

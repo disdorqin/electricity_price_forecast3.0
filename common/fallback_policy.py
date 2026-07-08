@@ -67,13 +67,13 @@ def evaluate_db_failure(mode: str, *, allow_router_fallback: bool = False) -> Fa
     dry_run : fall back to FilePredictionStore, status=PARTIAL, db_enabled=false.
     formal  : FAIL with exit_code=1 (formal requires the ledger).
     """
-    if mode == "formal":
+    if mode in ("formal", "formal_sim"):
         return _decide(
             "db_unavailable", mode,
             formal_action="fail", dry_action="continue_file_store",
             status="FAIL", delivery_status="FAILED_NO_DELIVERY",
             exit_code=1, db_enabled=False,
-            message="Formal run requires MySQL; unavailable -> FAIL (exit 1).",
+            message="Formal/formal_sim run requires MySQL; unavailable -> FAIL (exit 1).",
         )
     return _decide(
         "db_unavailable", mode,
@@ -93,13 +93,13 @@ def evaluate_dataset_failure(
     dry_run : if a READY dataset_version already exists -> DEGRADED_DELIVERED;
               otherwise PARTIAL.
     """
-    if mode == "formal":
+    if mode in ("formal", "formal_sim"):
         return _decide(
             "dataset_not_ready", mode,
             formal_action="fail", dry_action="continue_degraded",
             status="FAIL", delivery_status="FAILED_NO_DELIVERY",
             exit_code=1, db_enabled=True,
-            message="Formal run requires a READY dataset; not available -> FAIL (exit 1).",
+            message="Formal/formal_sim run requires a READY dataset; not available -> FAIL (exit 1).",
         )
     if ready_dataset_exists:
         return _decide(
@@ -132,13 +132,13 @@ def evaluate_router_failure(
       * dry_run: selected-prediction check fails (PARTIAL)
     """
     if da_anchor_missing:
-        if is_winter and mode == "formal" and not allow_router_fallback:
+        if is_winter and mode in ("formal", "formal_sim") and not allow_router_fallback:
             return _decide(
                 "da_anchor_missing", mode,
                 formal_action="fail", dry_action="fallback_official_baseline_warn",
                 status="FAIL", delivery_status="FAILED_NO_DELIVERY",
                 exit_code=1, db_enabled=True,
-                message="Winter formal with no DA anchor and no --allow-router-fallback -> FAIL (exit 1).",
+                message="Winter formal/formal_sim with no DA anchor and no --allow-router-fallback -> FAIL (exit 1).",
             )
         return _decide(
             "da_anchor_missing", mode,
@@ -148,13 +148,13 @@ def evaluate_router_failure(
             message="DA anchor missing -> fallback to official_baseline (WARN in winter).",
         )
     if official_baseline_missing:
-        if mode == "formal":
+        if mode in ("formal", "formal_sim"):
             return _decide(
                 "official_baseline_missing", mode,
                 formal_action="fail", dry_action="fail_selected_check",
                 status="FAIL", delivery_status="FAILED_NO_DELIVERY",
                 exit_code=1, db_enabled=True,
-                message="Official baseline missing -> formal FAILED_NO_DELIVERY (exit 1).",
+                message="Official baseline missing -> formal/formal_sim FAILED_NO_DELIVERY (exit 1).",
             )
         return _decide(
             "official_baseline_missing", mode,
@@ -177,13 +177,13 @@ def evaluate_postflight_failure(mode: str) -> FallbackDecision:
 
     dry_run : PARTIAL.  formal : FAILED_NO_DELIVERY(1).
     """
-    if mode == "formal":
+    if mode in ("formal", "formal_sim"):
         return _decide(
             "postflight_failed", mode,
             formal_action="fail", dry_action="partial",
             status="FAIL", delivery_status="FAILED_NO_DELIVERY",
             exit_code=1, db_enabled=True,
-            message="Postflight failed in formal -> FAILED_NO_DELIVERY (exit 1).",
+            message="Postflight failed in formal/formal_sim -> FAILED_NO_DELIVERY (exit 1).",
         )
     return _decide(
         "postflight_failed", mode,
