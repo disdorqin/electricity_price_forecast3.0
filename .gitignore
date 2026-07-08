@@ -60,3 +60,23 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Sensitive config / env
+.env
+.env.local
+*.env
+
+# DB-ledger / data ingestion outputs
+outputs/prediction_store/
+outputs/db_dry_run/
+outputs/db_shadow_monitoring/
+
+# ── EFM3 Platform (backend / frontend) ──
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+*.tsbuildinfo
+backend/.venv/
+.venv/
+venv/

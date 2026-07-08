@@ -1,0 +1,10 @@
+# EFM3 Backend — Control Plane
+# FastAPI + Pydantic + SQLAlchemy (via common/db) + uvicorn
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+pydantic-settings>=2.2
+SQLAlchemy>=2.0
+pymysql>=1.1
+python-dotenv>=1.0
+python-multipart>=0.0.9

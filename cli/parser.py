@@ -227,4 +227,42 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--realtime-selector-shadow-config",
         default="configs/realtime_da_sgdf_selector_shadow.yaml",
         help="Path to selector shadow config YAML (default: configs/realtime_da_sgdf_selector_shadow.yaml)")
+
+    # ── DB-ledger / Full-chain flags (all default-off) ──
+    parser.add_argument("--use-db", action="store_true", default=False,
+        help="Enable MySQL ledger backend for predictions (default OFF).")
+    parser.add_argument("--db-url", default=None,
+        help="MySQL connection URL: mysql+pymysql://USER:PASS@HOST:PORT/DB. "
+             "Can also set EFM3_DB_URL env var. Required for --mode formal.")
+    parser.add_argument("--init-db", action="store_true", default=False,
+        help="Initialize EFM3 database schema and exit.")
+    parser.add_argument("--mode", default="dry_run", choices=["dry_run", "shadow", "formal"],
+        help="Run mode: dry_run (file ledger, no submission), "
+             "shadow (DB with diagnostics), formal (DB + submission export). "
+             "Default: dry_run.")
+    parser.add_argument("--chain", default="official",
+        choices=["official", "seasonal_da_router"],
+        help="Prediction chain to use. 'official' = 3.0 default, "
+             "'seasonal_da_router' = seasonal DA policy router. Default: official.")
+    parser.add_argument("--export-submission", action="store_true", default=False,
+        help="Export submission_ready.csv after run. Only effective in formal mode.")
+    parser.add_argument("--export-report", action="store_true", default=False,
+        help="Generate delivery report after run.")
+
+    # ── Data update flags (all default-off) ──
+    parser.add_argument("--update-data", action="store_true", default=False,
+        help="Run data update/import before the main chain (default OFF).")
+    parser.add_argument("--data-root", default=None,
+        help="Override data source root path.")
+    parser.add_argument("--data-source", default="all",
+        choices=["all", "two_five_reference", "efm3_local_data"],
+        help="Data source to scan/import: all, two_five_reference, or efm3_local_data. Default: all.")
+    parser.add_argument("--scan-only", action="store_true", default=False,
+        help="Scan data sources and register files without importing (default OFF).")
+    parser.add_argument("--full-refresh", action="store_true", default=False,
+        help="Re-import all files even if already imported (default OFF).")
+    parser.add_argument("--target-start-date", default=None,
+        help="Start date for data update range filter (YYYY-MM-DD).")
+    parser.add_argument("--target-end-date", default=None,
+        help="End date for data update range filter (YYYY-MM-DD).")
     return parser
