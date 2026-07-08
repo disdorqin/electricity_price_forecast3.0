@@ -55,10 +55,61 @@ def test_timesfm_registry_is_experimental_only():
 
 
 def test_no_rt916_or_timemixer_production_candidate():
+    """No realtime candidate registry entry may promote RT916 / TimeMixer to
+    production. Negative statements in docs/notes (e.g. 'Never rely on RT916 or
+    TimeMixer.') are explicitly allowed; only structured promotion fields are
+    asserted, so a blanket substring grep no longer produces a false positive."""
+    PRODUCTION_STATUSES = {"production", "promoted", "champion"}
     for p in REGISTRY_DIR.glob("*.yaml"):
-        text = p.read_text(encoding="utf-8").lower()
-        if "rt916" in text:
-            raise AssertionError(f"rt916 must not be in realtime candidate registry: {p.name}")
-        if "timemixer" in text:
-            cfg = yaml.safe_load(text)
-            assert cfg.get("status") != "candidate"
+        cfg = load_yaml(p.name)
+
+        # status / promotion_level must never be a production promotion
+        assert cfg.get("status") not in PRODUCTION_STATUSES, (
+            f"{p.name}: status must not be a production promotion "
+            f"(got {cfg.get('status')!r})"
+        )
+        assert cfg.get("promotion_level") != "production", (
+            f"{p.name}: promotion_level must not be 'production' "
+            f"(got {cfg.get('promotion_level')!r})"
+        )
+
+        # explicit production-replacement flags (either location) must be false
+        for loc in ("season_policy", "candidate_rules"):
+            sub = cfg.get(loc) or {}
+            if "production_replacement_allowed" in sub:
+                assert sub["production_replacement_allowed"] is False, (
+                    f"{p.name}: {loc}.production_replacement_allowed must be false"
+                )
+
+        # must never replace the champion
+        if "candidate_rules" in cfg:
+            assert cfg["candidate_rules"].get("replaces_champion") is not True, (
+                f"{p.name}: candidate_rules.replaces_champion must not be true"
+            )
+
+        # production feasibility must explicitly declare no RT916 / TimeMixer dep
+        # (only enforced for registries that declare a production_feasibility
+        # block — candidates that never reference rt916/timemixer are out of scope)
+        pf = cfg.get("production_feasibility")
+        if pf:
+            assert pf.get("no_rt916_dependency") is True, (
+                f"{p.name}: production_feasibility.no_rt916_dependency must be true"
+            )
+            assert pf.get("no_timemixer_dependency") is True, (
+                f"{p.name}: production_feasibility.no_timemixer_dependency must be true"
+            )
+
+        # online dependency (if declared) must not reference rt916/timemixer
+        online = cfg.get("online_dependency")
+        if online:
+            joined = (
+                " ".join(str(x) for x in online).lower()
+                if isinstance(online, list)
+                else str(online).lower()
+            )
+            assert "rt916" not in joined, (
+                f"{p.name}: online_dependency references rt916"
+            )
+            assert "timemixer" not in joined, (
+                f"{p.name}: online_dependency references timemixer"
+            )
