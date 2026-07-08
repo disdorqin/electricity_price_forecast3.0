@@ -60,3 +60,12 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Sensitive config / env
+.env
+.env.local
+*.env
+
+# DB-ledger / data ingestion outputs
+outputs/prediction_store/
+outputs/db_dry_run/

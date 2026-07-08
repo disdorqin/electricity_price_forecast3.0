@@ -248,4 +248,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Export submission_ready.csv after run. Only effective in formal mode.")
     parser.add_argument("--export-report", action="store_true", default=False,
         help="Generate delivery report after run.")
+
+    # ── Data update flags (all default-off) ──
+    parser.add_argument("--update-data", action="store_true", default=False,
+        help="Run data update/import before the main chain (default OFF).")
+    parser.add_argument("--data-root", default=None,
+        help="Override data source root path.")
+    parser.add_argument("--data-source", default="all",
+        choices=["all", "two_five_reference", "efm3_local_data"],
+        help="Data source to scan/import: all, two_five_reference, or efm3_local_data. Default: all.")
+    parser.add_argument("--scan-only", action="store_true", default=False,
+        help="Scan data sources and register files without importing (default OFF).")
+    parser.add_argument("--full-refresh", action="store_true", default=False,
+        help="Re-import all files even if already imported (default OFF).")
+    parser.add_argument("--target-start-date", default=None,
+        help="Start date for data update range filter (YYYY-MM-DD).")
+    parser.add_argument("--target-end-date", default=None,
+        help="End date for data update range filter (YYYY-MM-DD).")
     return parser
