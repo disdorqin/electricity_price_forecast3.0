@@ -130,6 +130,7 @@ class TestPolicyRegistry:
             "selected_model": [""] * 24,
             "selection_reason": [""] * 24,
             "confidence": [0.0] * 24,
+            "period": ["1_8"] * 24,
         })
         
         for vname, builder in POLICY_BUILDERS.items():

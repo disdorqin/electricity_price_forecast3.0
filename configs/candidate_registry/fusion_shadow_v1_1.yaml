@@ -1,0 +1,48 @@
+# Fusion Shadow v1.1 — Candidate Registry
+#
+# EFM3 Fusion Chain v1.1 Seasonal DA Policy Router
+# Status: shadow_monitoring_ready
+# Promotion: shadow_monitoring_only — NOT production, NOT champion, NOT final
+#
+# Core insight: This is a seasonal DA policy router, not a complex fusion system.
+# The 0.20pp improvement comes from Winter DA anchor, not from P3/selector overlays.
+
+candidate_id: fusion_shadow_v1_1
+status: shadow_monitoring_ready
+promotion_level: shadow_monitoring_only
+true_policy_name: seasonal_da_policy_router
+recommendation: SHADOW_MONITORING_READY
+result: PASS
+
+# ── Evaluation metrics ──
+metrics:
+  validation:
+    official_baseline_smape: 25.84
+    conservative_fusion_v1_smape: 25.64
+    fusion_delta_vs_official: -0.20
+    da_anchor_smape: 25.59
+    da_anchor_delta_vs_official: -0.25
+    realtime_selector_smape: 25.99
+    realtime_selector_delta_vs_official: +0.15
+  runtime_s: 6.7
+  tests_passed: 27
+
+# ── Source ──
+source:
+  branch: agent/fusion-chain-v1.1-targeted-policy
+  base_sha: 247d48e2d9709b61cee617ccdf9cdf23feabe4b4
+  commit_sha: 421ed8234f46eea657bcf340429f96b2e96a45f6
+
+# ── Improvement attribution ──
+improvement_source: winter_da_anchor_policy
+p3_overlay_effective_coverage: low
+p3_identical_to_original_hours_pct: 87
+selector_not_main_improvement_source: true
+oracle_analysis_only: true
+
+# ── Production safeguards — ALL must be true ──
+production_replacement_allowed: false
+champion_allowed: false
+writes_submission_ready: false
+modifies_final_outputs: false
+default_enabled: false
