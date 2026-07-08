@@ -29,13 +29,34 @@ Examples:
 | Scenario | URL |
 | -------- | --- |
 | Local Docker MySQL | `mysql+pymysql://root:password@127.0.0.1:3306/efm3` |
-| External MySQL | `mysql+pymysql://deploy:p@ss@db.example.com:3306/efm3` |
+| External MySQL | `mysql+pymysql://deploy:p%40ss@db.example.com:3306/efm3` |
 | Password with `#` | `mysql+pymysql://root:pass%23word@127.0.0.1:3306/efm3` |
 
 Requirements:
 - The URL is read **only** from `EFM3_DB_URL` env variable or `--db-url` CLI flag.
 - No host/user/password is ever hardcoded in the codebase.
 - Passwords containing `#` must be URL-encoded as `%23`.
+
+### URL Encoding for Special Characters
+
+When a password or username contains special characters, they must be
+URL-encoded in the connection string:
+
+| Character | Encoded |
+| --------- | ------- |
+| `#`       | `%23`   |
+| `@`       | `%40`   |
+| `:`       | `%3A`   |
+| `/`       | `%2F`   |
+| `?`       | `%3F`   |
+| `&`       | `%26`   |
+
+Example: a password of `p@ss#1:2/3?4&5` would be written as
+`mysql+pymysql://user:p%40ss%231%3A2%2F3%3F4%265@host:3306/db`.
+
+The backend's `_parse_url` method on `common/db/connection.py` fully URL-decodes
+the host, user, password, and database components before passing them to pymysql,
+so encoded passwords work correctly.
 
 ---
 
