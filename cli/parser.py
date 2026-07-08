@@ -227,4 +227,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--realtime-selector-shadow-config",
         default="configs/realtime_da_sgdf_selector_shadow.yaml",
         help="Path to selector shadow config YAML (default: configs/realtime_da_sgdf_selector_shadow.yaml)")
+
+    # ── DB-ledger / Full-chain flags (all default-off) ──
+    parser.add_argument("--use-db", action="store_true", default=False,
+        help="Enable MySQL ledger backend for predictions (default OFF).")
+    parser.add_argument("--db-url", default=None,
+        help="MySQL connection URL: mysql+pymysql://USER:PASS@HOST:PORT/DB. "
+             "Can also set EFM3_DB_URL env var. Required for --mode formal.")
+    parser.add_argument("--init-db", action="store_true", default=False,
+        help="Initialize EFM3 database schema and exit.")
+    parser.add_argument("--mode", default="dry_run", choices=["dry_run", "shadow", "formal"],
+        help="Run mode: dry_run (file ledger, no submission), "
+             "shadow (DB with diagnostics), formal (DB + submission export). "
+             "Default: dry_run.")
+    parser.add_argument("--chain", default="official",
+        choices=["official", "seasonal_da_router"],
+        help="Prediction chain to use. 'official' = 3.0 default, "
+             "'seasonal_da_router' = seasonal DA policy router. Default: official.")
+    parser.add_argument("--export-submission", action="store_true", default=False,
+        help="Export submission_ready.csv after run. Only effective in formal mode.")
+    parser.add_argument("--export-report", action="store_true", default=False,
+        help="Generate delivery report after run.")
     return parser
