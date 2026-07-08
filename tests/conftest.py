@@ -39,22 +39,24 @@ if _HAS_FASTAPI:
     @pytest.fixture
     def client():
         """TestClient with NO database configured (graceful 503 paths)."""
-        saved = (settings.db_url, settings.api_key, settings.ops_allow_from)
+        saved = (settings.db_url, settings.api_key, settings.ops_allow_from, settings.ops_enabled)
         settings.db_url = ""
         settings.api_key = ""
         settings.ops_allow_from = "127.0.0.1,::1,testclient,localhost"
+        settings.ops_enabled = False  # pin "disabled by default" regardless of local .env
         yield TestClient(app)
-        settings.db_url, settings.api_key, settings.ops_allow_from = saved
+        settings.db_url, settings.api_key, settings.ops_allow_from, settings.ops_enabled = saved
 
     @pytest.fixture
     def db_client(_test_db_url):
         """TestClient pointed at the freshly built test database."""
-        saved = (settings.db_url, settings.api_key, settings.ops_allow_from)
+        saved = (settings.db_url, settings.api_key, settings.ops_allow_from, settings.ops_enabled)
         settings.db_url = _test_db_url
         settings.api_key = ""
         settings.ops_allow_from = "127.0.0.1,::1,testclient,localhost"
+        settings.ops_enabled = False  # pin "disabled by default" regardless of local .env
         yield TestClient(app)
-        settings.db_url, settings.api_key, settings.ops_allow_from = saved
+        settings.db_url, settings.api_key, settings.ops_allow_from, settings.ops_enabled = saved
 
 
 @pytest.fixture(scope="session")
