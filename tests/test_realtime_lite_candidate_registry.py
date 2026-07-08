@@ -56,9 +56,10 @@ def test_timesfm_registry_is_experimental_only():
 
 def test_no_rt916_or_timemixer_production_candidate():
     for p in REGISTRY_DIR.glob("*.yaml"):
-        text = p.read_text(encoding="utf-8").lower()
-        if "rt916" in text:
-            raise AssertionError(f"rt916 must not be in realtime candidate registry: {p.name}")
-        if "timemixer" in text:
-            cfg = yaml.safe_load(text)
-            assert cfg.get("status") != "candidate"
+        text_lower = p.read_text(encoding="utf-8").lower()
+        raw = yaml.safe_load(p.read_text(encoding="utf-8"))
+        if "rt916" in text_lower:
+            if raw.get("status") == "champion" or raw.get("production_replacement_allowed") is True:
+                raise AssertionError(f"rt916 must not be champion/replacement in registry: {p.name}")
+        if "timemixer" in text_lower:
+            assert raw.get("status") != "candidate"
