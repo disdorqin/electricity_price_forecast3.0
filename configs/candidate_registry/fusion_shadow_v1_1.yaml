@@ -1,0 +1,62 @@
+# Fusion Shadow v1.1 — Candidate Registry
+#
+# EFM3 Fusion Chain v1.1 Seasonal DA Policy Router
+# Status: shadow_monitoring_ready
+# Promotion: shadow_monitoring_only — NOT production, NOT champion, NOT final
+#
+# Core insight: this is a seasonal DA policy router, not a complex fusion system.
+# The 0.20pp validation improvement comes from Winter DA anchor, not from P3/selector overlays.
+
+candidate_id: fusion_shadow_v1_1
+status: shadow_monitoring_ready
+promotion_level: shadow_monitoring_only
+true_policy_name: seasonal_da_policy_router
+recommendation: SHADOW_MONITORING_READY
+result: PASS
+metrics:
+  validation:
+    official_baseline_smape: 25.84
+    conservative_fusion_v1_smape: 25.64
+    fusion_delta_vs_official: -0.20
+    da_anchor_smape: 25.59
+    da_anchor_delta_vs_official: -0.25
+    realtime_selector_smape: 25.99
+    realtime_selector_delta_vs_official: 0.15
+  comparison_sample:
+    official_baseline_smape: 24.22
+    da_anchor_smape: 24.02
+    conservative_fusion_v1_smape: 24.05
+    oracle_upper_bound_smape: 21.67
+    two_five_status: unavailable_or_cached_only
+  runtime_s: 6.7
+  comparison_runtime_s: 5.3
+  tests_passed: 60
+source:
+  branch: agent/fusion-chain-v1.1-targeted-policy
+  finalization_commit: 952caff0f32fc66d8d26e6796c0f62570ab67fda
+improvement_source: winter_da_anchor_policy
+p3_overlay_effective_coverage: low
+p3_identical_to_original_hours_pct: 87
+selector_not_main_improvement_source: true
+oracle_analysis_only: true
+policy:
+  winter_months: [11, 12, 1, 2]
+  winter_action: use_da_anchor
+  non_winter_action: use_official_baseline
+  selector_role: diagnostic_only
+  p3_role: winter_negative_shadow_monitoring_only
+production_replacement_allowed: false
+champion_allowed: false
+writes_submission_ready: false
+modifies_final_outputs: false
+default_enabled: false
+known_limits:
+  - "Threshold-level validation gain only (-0.20pp). Do not overstate."
+  - "DA anchor alone is stronger than fusion on validation (25.59 vs 25.64)."
+  - "P3 overlay does not materially drive v1.1 improvement at current thresholds."
+  - "Realtime selector is worse than official on validation."
+  - "2.5 baseline is unavailable_or_cached_only in the final comparison."
+required_followup:
+  - "Monitor seasonal DA router in shadow mode before any production decision."
+  - "Backfill true 2.5 comparison only if cached 2.5 outputs become available."
+  - "Do not merge fusion runtime without a separate default-off runtime review."
