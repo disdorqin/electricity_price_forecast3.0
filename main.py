@@ -188,6 +188,7 @@ def main() -> int:
             config = {
                 "enable_p3_shadow": getattr(args, "enable_extreme_price_shadow", False),
                 "enable_selector_shadow": getattr(args, "enable_realtime_da_sgdf_selector_shadow", False),
+                "allow_router_fallback": getattr(args, "allow_router_fallback", False),
             }
             chain_result = run_full_chain(
                 target_date=target_date,

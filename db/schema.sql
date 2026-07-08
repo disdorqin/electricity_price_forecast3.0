@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS efm_runs (
     run_id              VARCHAR(64)     NOT NULL PRIMARY KEY,
     target_date         DATE            NOT NULL,
     chain_version       VARCHAR(32)     NOT NULL DEFAULT '3.0-db-ledger-v1',
-    mode                ENUM('dry_run','shadow','formal') NOT NULL DEFAULT 'dry_run',
+    mode                ENUM('dry_run','shadow','formal','formal_sim') NOT NULL DEFAULT 'dry_run',
     git_sha             VARCHAR(40)     DEFAULT NULL,
     config_hash         VARCHAR(64)     DEFAULT NULL,
     status              ENUM('PENDING','RUNNING','COMPLETE','PARTIAL','FAIL','CANCELLED') NOT NULL DEFAULT 'PENDING',
