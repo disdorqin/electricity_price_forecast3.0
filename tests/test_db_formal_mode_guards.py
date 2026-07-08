@@ -55,62 +55,76 @@ class TestFormalModeGuards:
         assert result["status"] == "PARTIAL"
         mock_build.assert_called_once()
 
-    # ── 3. Export requires explicit flag ─────────────────────────────────
+    # ── 3. Export path depends on is_formal flag ─────────────────────────
 
-    @patch("pipelines.db_exporter.Path.mkdir")
-    @patch("pipelines.db_exporter.pd.DataFrame.to_csv")
-    @patch("pipelines.db_exporter.DbConnectionManager.is_configured", new_callable=lambda: False)
-    def test_export_requires_explicit_flag(self, mock_cfg, mock_to_csv, mock_mkdir):
+    @staticmethod
+    def _make_mock_store(predictions: list | None = None):
+        """Build a MagicMock PredictionStore that accepts ``is_selected`` kwarg.
+
+        The real ``AbstractBase.read_predictions`` does not accept
+        ``is_selected``, but ``db_exporter.py`` passes it — so we test
+        against a mock that matches the exporter's calling convention.
+        """
+        from common.prediction_store import PredictionStore
+        store = MagicMock(spec=PredictionStore)
+        if predictions is not None:
+            store.read_predictions.return_value = predictions
+        else:
+            store.read_predictions.return_value = []
+        return store
+
+    def test_export_requires_explicit_flag(self):
+        """The function always returns output; the orchestrator gates the call."""
         from pipelines.db_exporter import export_submission_ready
-        from common.prediction_store import MySQLPredictionStore
 
-        store = MySQLPredictionStore(db_url="mysql+pymysql://u:p@h:3306/d")
-        result = export_submission_ready(
-            run_id="test_run_id",
-            target_date="2026-07-03",
-            prediction_store=store,
-            output_dir="outputs",
-            is_formal=False,
-        )
+        store = self._make_mock_store()
+
+        with patch("pipelines.db_exporter.Path.mkdir"), \
+             patch("pipelines.db_exporter.pd.DataFrame.to_csv"):
+            result = export_submission_ready(
+                run_id="test_run_id",
+                target_date="2026-07-03",
+                prediction_store=store,
+                output_dir="outputs",
+                is_formal=False,
+            )
         assert "output_path" in result
         assert result["is_formal"] is False
 
-    # ── 4. Dry-run export path ───────────────────────────────────────────
-
-    @patch("pipelines.db_exporter.Path.mkdir")
-    @patch("pipelines.db_exporter.pd.DataFrame.to_csv")
-    def test_dry_run_export_writes_to_dry_run_dir(self, mock_to_csv, mock_mkdir):
+    def test_dry_run_export_writes_to_dry_run_dir(self):
+        """Dry-run export writes to ``{output_dir}/db_dry_run/{target_date}/``."""
         from pipelines.db_exporter import export_submission_ready
-        from common.prediction_store import MySQLPredictionStore
 
-        store = MySQLPredictionStore(db_url="mysql+pymysql://u:p@h:3306/d")
-        result = export_submission_ready(
-            run_id="test_run_id",
-            target_date="2026-07-03",
-            prediction_store=store,
-            output_dir="outputs",
-            is_formal=False,
-        )
+        store = self._make_mock_store()
+
+        with patch("pipelines.db_exporter.Path.mkdir"), \
+             patch("pipelines.db_exporter.pd.DataFrame.to_csv"):
+            result = export_submission_ready(
+                run_id="test_run_id",
+                target_date="2026-07-03",
+                prediction_store=store,
+                output_dir="outputs",
+                is_formal=False,
+            )
         output_path = result.get("output_path", "")
         assert "db_dry_run" in output_path
         assert "2026-07-03" in output_path
 
-    # ── 5. Formal export path (bonus) ────────────────────────────────────
-
-    @patch("pipelines.db_exporter.Path.mkdir")
-    @patch("pipelines.db_exporter.pd.DataFrame.to_csv")
-    def test_formal_export_writes_to_final_dir(self, mock_to_csv, mock_mkdir):
+    def test_formal_export_writes_to_final_dir(self):
+        """Formal export writes to ``{output_dir}/final/submission_ready.csv``."""
         from pipelines.db_exporter import export_submission_ready
-        from common.prediction_store import MySQLPredictionStore
 
-        store = MySQLPredictionStore(db_url="mysql+pymysql://u:p@h:3306/d")
-        result = export_submission_ready(
-            run_id="test_run_id",
-            target_date="2026-07-03",
-            prediction_store=store,
-            output_dir="outputs",
-            is_formal=True,
-        )
+        store = self._make_mock_store()
+
+        with patch("pipelines.db_exporter.Path.mkdir"), \
+             patch("pipelines.db_exporter.pd.DataFrame.to_csv"):
+            result = export_submission_ready(
+                run_id="test_run_id",
+                target_date="2026-07-03",
+                prediction_store=store,
+                output_dir="outputs",
+                is_formal=True,
+            )
         output_path = result.get("output_path", "")
         assert "final" in output_path
         assert result["is_formal"] is True

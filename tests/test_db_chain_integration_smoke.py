@@ -281,42 +281,49 @@ class TestSeasonalRouterIntegration:
 
 
 class TestPostflightIntegration:
-    """DB postflight checks with a mock connection."""
+    """DB postflight checks with a mock connection.
+
+    !!! Warning about mock cursor side-effect sequencing.
+
+    All 8 postflight checks run sequentially against a single shared mock
+    cursor. The ``fetchone.side_effect`` list below is consumed in the exact
+    order the checks call them:
+
+        1. row_count_24:       fetchone → (24,)
+        2. no_nan:             fetchone → (0,)
+        3. no_duplicates:      fetchone → (24, 24)    ← 2-element tuple
+        4. price_range:        fetchone → (30.0, 80.0) ← 2-element tuple
+        5. selected_source:    fetchone → (0,)
+        6. shadow_not_final:   fetchone → (0,)
+        7. submission_row_count: fetchone → (24,)
+
+    ``_check_hour_range`` uses ``fetchall()`` (not fetchone), so a separate
+    ``fetchall.return_value`` is provided for that.
+    """
 
     def test_postflight_all_checks_pass(self):
         """All postflight checks pass with well-formed mock data."""
         from pipelines.db_postflight import run_db_postflight
 
         conn = _make_mock_connection()
-        # row_count_24 → count=24
-        # hour_range → 24 rows, hours 1..24
-        # no_nan → 0 nulls
-        # no_duplicates → total=24, distinct=24
-        # price_range → min/ max OK
-        # selected_source → 0 bad
-        # shadow_not_final → 0 shadow
-        # submission_row_count → distinct=24
-        conn.cursor.return_value.fetchone.side_effect = [
-            (24,),    # row_count_24: cnt
-            (None,),  # used for hour_range cursor (fetchone ignored below)
-        ]
 
-        # We need to handle the varying fetch expectations per check
-        # Set up fetchone and fetchall to return appropriate values per call sequence
-        fetchone_responses = [
-            (24,),    # row_count_24
-            (0,),     # no_nan: null_count = 0
-            (1,),     # price_range min_price (overwritten below)
-            (1,),     # (other fetchone call)
+        # ---- fetchone side-effects in execution order ----
+        # Each tuple carries the columns expected by the SQL SELECT clause.
+        fetchone_values = [
+            (24,),         # row_count_24:       COUNT(*) → 24
+            (0,),          # no_nan:             COUNT(*) null_count → 0
+            (24, 24),      # no_duplicates:      total, distinct → 24, 24
+            (30.0, 80.0),  # price_range:        MIN, MAX → within [-500, 2000]
+            (0,),          # selected_source:    COUNT(*) bad → 0
+            (0,),          # shadow_not_final:   COUNT(*) shadow → 0
+            (24,),         # submission_row_count: COUNT(DISTINCT) → 24
         ]
-        conn.cursor.return_value.fetchone.side_effect = fetchone_responses
-        # fetchall for hour_range: list of 24 tuples
+        conn.cursor.return_value.fetchone.side_effect = fetchone_values
+
+        # ---- fetchall for hour_range (each row is a single-column tuple) ----
         conn.cursor.return_value.fetchall.return_value = [
             (i,) for i in range(1, 25)
         ]
-
-        # Override the cursor property to dynamically respond to each execute
-        from unittest.mock import call
 
         result = run_db_postflight(
             conn=conn,
@@ -337,11 +344,19 @@ class TestPostflightIntegration:
 
         conn = _make_mock_connection()
 
-        # Simulate row_count_24 → 0 (failure)
-        conn.cursor.return_value.fetchone.side_effect = [
-            (0,),     # row_count_24: cnt = 0
-            (0,),     # no_nan: null_count = 0 (vacuously true)
+        # Simulate row_count_24 → 0 (failure cascades to many checks)
+        fetchone_values = [
+            (0,),          # row_count_24:       COUNT(*) → 0 (FAIL)
+            (0,),          # no_nan:             null_count → 0 (vacuously true)
+            (0, 0),        # no_duplicates:      total=0, distinct=0 (passes vacuously)
+            (None, None),  # price_range:        NULL → FAIL
+            (0,),          # selected_source:    bad_count → 0
+            (0,),          # shadow_not_final:   shadow_count → 0
+            (0,),          # submission_row_count: distinct → 0 (FAIL)
         ]
+        conn.cursor.return_value.fetchone.side_effect = fetchone_values
+
+        # hour_range returns empty list (no rows → FAIL)
         conn.cursor.return_value.fetchall.return_value = []
 
         result = run_db_postflight(
