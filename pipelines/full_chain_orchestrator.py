@@ -47,6 +47,7 @@ from common.db.repositories import (
     fetch_run_summary,
 )
 from common.db.models import RunRecord, RunEventRecord
+from common.fallback_policy import evaluate_db_failure
 from pipelines.seasonal_da_router import run_seasonal_da_router
 from pipelines.db_postflight import run_db_postflight
 from pipelines.db_exporter import export_submission_ready
@@ -637,8 +638,40 @@ def run_full_chain(
             "use_db=True but no db_url provided and EFM3_DB_URL not set — "
             "falling back to file store"
         )
+        # Formal mode MUST have the ledger; without a URL it cannot proceed.
+        if mode == "formal":
+            decision = evaluate_db_failure("formal")
+            logger.error("Formal run aborted: %s", decision.message)
+            return {
+                "run_id": _step_generate_run_id(target_date),
+                "target_date": target_date,
+                "mode": mode,
+                "status": decision.status,
+                "delivery_status": decision.delivery_status,
+                "exit_code": decision.exit_code,
+                "steps": {"db_resolution": {"status": "failed", "detail": decision.message}},
+                "runtime_s": round(time.monotonic() - overall_start, 3),
+                "fallback": decision.as_dict(),
+            }
     else:
         logger.info("DB mode disabled — using file-based store")
+
+    # Formal mode requires the MySQL ledger. If DB resolution failed, abort
+    # explicitly via the fallback policy (row 1 of the matrix).
+    if mode == "formal" and db_mgr is None:
+        decision = evaluate_db_failure("formal")
+        logger.error("Formal run aborted: %s", decision.message)
+        return {
+            "run_id": _step_generate_run_id(target_date),
+            "target_date": target_date,
+            "mode": mode,
+            "status": decision.status,
+            "delivery_status": decision.delivery_status,
+            "exit_code": decision.exit_code,
+            "steps": {"db_resolution": {"status": "failed", "detail": decision.message}},
+            "runtime_s": round(time.monotonic() - overall_start, 3),
+            "fallback": decision.as_dict(),
+        }
 
     # ── Generate run_id ───────────────────────────────────────────────────
     run_id = _step_generate_run_id(target_date)

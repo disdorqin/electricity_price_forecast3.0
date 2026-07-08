@@ -1,0 +1,15 @@
+# Local filesystem paths for the EFM3 Control Plane + one-click chain.
+# Paths are resolved from environment variables so the same config works
+# locally and in CI without hardcoding absolute paths.
+
+paths:
+  # Root of the raw/local data tree (env var name, not the value).
+  efm3_data_root_env: EFM3_DATA_ROOT
+  # Root of the 2.5 reference implementation (for reverse-engineered ingestion).
+  efm2_5_root_env: EFM2_5_ROOT
+  # Where the chain writes all artifacts.
+  outputs_root: outputs
+  # Dry-run artifacts (DB-backed, status PARTIAL/DEGRADED when DB unavailable).
+  dry_run_output_root: outputs/db_dry_run
+  # Shadow monitoring artifacts.
+  shadow_monitoring_root: outputs/db_shadow_monitoring
