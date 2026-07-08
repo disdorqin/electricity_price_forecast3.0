@@ -70,3 +70,5 @@ Thumbs.db
 outputs/prediction_store/
 outputs/db_dry_run/
 outputs/db_shadow_monitoring/
+outputs/db_monthly_dry_run/
+outputs/db_failure_drill/
