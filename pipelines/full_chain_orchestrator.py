@@ -297,8 +297,17 @@ def _step_dayahead_prediction(
     run_id: str,
     target_date: str,
     store: PredictionStore,
+    db_mgr: Optional[DbConnectionManager] = None,
 ) -> str:
-    """Read existing DA predictions from the ledger CSV."""
+    """Read existing DA predictions from the ledger CSV, falling back to the
+    MySQL ``efm_market_data_hourly`` (data_type='da_price') for any hours the
+    ledger CSV does not cover (e.g. after a CSV backfill of historical data).
+
+    The day-ahead anchor is the ``da_anchor`` source consumed by the seasonal DA
+    router (winter policy). Predictions are tagged ``stage="da_anchor"`` so the
+    router can find them; otherwise winter months produce zero final-selected
+    decisions.
+    """
     da_ledger_dir = LEDGER_DIR / "dayahead" / "prediction"
     csv_path = da_ledger_dir / "prediction_ledger.csv"
     parquet_path = da_ledger_dir / "prediction_ledger.parquet"
@@ -306,21 +315,97 @@ def _step_dayahead_prediction(
     df = _load_ledger_dataframe(csv_path, parquet_path)
     target_rows = df[df["target_day"] == target_date].copy() if not df.empty else df
 
-    if target_rows.empty:
+    # Index ledger hours (hour_business -> row), preferring the ledger when present.
+    ledger_by_hour: dict[int, Any] = {}
+    if not target_rows.empty:
+        for _, row in target_rows.iterrows():
+            hb = int(row.get("hour_business", row.get("hb", 0)))
+            ledger_by_hour[hb] = row
+
+    # Fallback: pull da_price from efm_market_data_hourly for any missing hours.
+    db_by_hour: dict[int, float] = {}
+    if db_mgr is not None and len(ledger_by_hour) < 24:
+        db_by_hour = _load_da_anchor_from_market_hourly(db_mgr, target_date)
+        if db_by_hour:
+            logger.info(
+                "[%s] Filled %d/%d DA anchor hours from efm_market_data_hourly "
+                "(ledger covered %d) for %s",
+                run_id[:16], len(db_by_hour), 24, len(ledger_by_hour), target_date,
+            )
+
+    preds: list[dict[str, Any]] = []
+    missing = 0
+    for hb in range(1, 25):
+        if hb in ledger_by_hour:
+            row = ledger_by_hour[hb]
+            pred_price = float(row.get("y_pred", row.get("pred_price", 0.0)))
+            model_name = str(row.get("model_name", "ledger"))
+            model_version = str(row.get("model_version", "unknown"))
+        elif hb in db_by_hour:
+            pred_price = float(db_by_hour[hb])
+            model_name = "da_anchor_db"
+            model_version = "shandong_pmos_hourly_csv"
+        else:
+            missing += 1
+            continue
+        preds.append({
+            "hour_business": hb,
+            "task": "dayahead",
+            "stage": "da_anchor",
+            "model_name": model_name,
+            "model_version": model_version,
+            "pred_price": pred_price,
+            "is_shadow": False,
+            "is_selected": False,
+            "selected_reason": None,
+            "quality_flags": None,
+        })
+
+    if not preds:
         logger.warning(
-            "No DA ledger predictions found for target_date=%s in %s",
-            target_date, da_ledger_dir,
+            "No DA anchor available for target_date=%s (ledger=%d, db=%d)",
+            target_date, len(ledger_by_hour), len(db_by_hour),
         )
         return "No DA predictions found for target date"
 
-    # Map ledger columns → store prediction format.
-    # Day-ahead ledger predictions are the `da_anchor` source consumed by the
-    # seasonal DA router (winter policy). Tag them as stage="da_anchor" so the
-    # router can find them; otherwise winter months produce zero final-selected
-    # decisions.
-    preds = _ledger_df_to_predictions(target_rows, task="dayahead", stage="da_anchor")
     count = store.write_predictions(run_id, target_date, preds)
-    return f"Wrote {count} DA predictions from ledger (total target rows: {len(target_rows)})"
+    src = "ledger" if ledger_by_hour and not db_by_hour else (
+        "ledger+db" if ledger_by_hour else "db_market_hourly"
+    )
+    return (
+        f"Wrote {count} DA predictions from {src} "
+        f"(ledger={len(ledger_by_hour)}, db_filled={len(db_by_hour)}, missing={missing})"
+    )
+
+
+def _load_da_anchor_from_market_hourly(
+    db_mgr: DbConnectionManager,
+    target_date: str,
+) -> dict[int, float]:
+    """Read ``da_price`` values for *target_date* from ``efm_market_data_hourly``.
+
+    Returns a mapping ``{hour_business: value}``. Used as a fallback source for
+    the day-ahead anchor when the local ledger CSV does not cover the date.
+    """
+    try:
+        conn = db_mgr.get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT hour_business, value FROM efm_market_data_hourly "
+                "WHERE market='shandong' AND data_type='da_price' AND trade_date=%s",
+                (target_date,),
+            )
+            rows = cur.fetchall()
+            return {int(h): float(v) for h, v in rows}
+        finally:
+            conn.close()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(
+            "Could not read da_price from efm_market_data_hourly for %s: %s",
+            target_date, exc,
+        )
+        return {}
 
 
 def _load_ledger_dataframe(csv_path: Path, parquet_path: Path) -> "pd.DataFrame":
@@ -886,7 +971,7 @@ def run_full_chain(
     # ── Step 4: day-ahead prediction ──────────────────────────────────────
     steps["dayahead_prediction"] = _step_wrapper(
         "dayahead_prediction", db_mgr, run_id,
-        _step_dayahead_prediction, run_id, target_date, store,
+        _step_dayahead_prediction, run_id, target_date, store, db_mgr,
     )
 
     # ── Step 5: realtime prediction ───────────────────────────────────────
