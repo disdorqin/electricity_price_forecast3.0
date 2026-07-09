@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS efm_prediction_lineage_edges (
     target_date     DATE            NOT NULL,
     parent_prediction_id BIGINT     DEFAULT NULL,
     child_prediction_id  BIGINT     DEFAULT NULL,
-    relation_type   ENUM('repair','weight','fuse','select','fallback','classifier_adjust','separator_adjust') NOT NULL,
+    relation_type   ENUM('repair','weight','fuse','select','fallback','classifier_adjust','separator_adjust','negative_fix') NOT NULL,
     relation_json   JSON            DEFAULT NULL,
     created_at      DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (run_id) REFERENCES efm_runs(run_id) ON DELETE CASCADE,

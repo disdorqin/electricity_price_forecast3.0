@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS efm_predictions (
     created_at          DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (run_id) REFERENCES efm_runs(run_id) ON DELETE CASCADE,
     -- One prediction per run×date×hour×stage (upsert key)
-    UNIQUE KEY uk_run_date_hour_stage (run_id, target_date, hour_business, stage),
+    -- One prediction per run×date×hour×stage×model_name (upsert key;
+    -- model_name added so multi-model fusion rows don't collide).
+    UNIQUE KEY uk_run_date_hour_stage (run_id, target_date, hour_business, stage, model_name),
     INDEX idx_run_id (run_id),
     INDEX idx_run_selected (run_id, is_selected, task),
     INDEX idx_run_stage (run_id, target_date, stage)
