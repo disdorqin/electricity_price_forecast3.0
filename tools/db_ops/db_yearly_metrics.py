@@ -129,10 +129,82 @@ def load_predictions(cur, run_id: str) -> dict[int, float]:
     return preds
 
 
+# ── Scope-aware prediction / actual loaders (metric scope semantics) ──
+
+def load_predictions_by_scope(cur, run_id: str, scope: str) -> dict[int, float]:
+    """Load predictions for a given metric scope.
+
+    benchmark : da_anchor / benchmark_da_anchor (day-ahead clearing price)
+    dayahead  : efm_task_finals WHERE task='dayahead' (a REAL model final)
+    realtime  : efm_task_finals WHERE task='realtime' (a REAL model final)
+    delivery  : efm_delivery_finals delivery_price
+    """
+    preds: dict[int, float] = {}
+    if scope == "benchmark":
+        cur.execute(
+            "SELECT hour_business, pred_price FROM efm_predictions "
+            "WHERE run_id=%s AND stage IN ('da_anchor','benchmark_da_anchor') "
+            "ORDER BY hour_business",
+            (run_id,),
+        )
+        for hb, p in cur.fetchall():
+            if p is not None:
+                preds[int(hb)] = float(p)
+    elif scope == "dayahead":
+        cur.execute(
+            "SELECT hour_business, final_price FROM efm_task_finals "
+            "WHERE run_id=%s AND task='dayahead' ORDER BY hour_business",
+            (run_id,),
+        )
+        for hb, p in cur.fetchall():
+            if p is not None:
+                preds[int(hb)] = float(p)
+    elif scope == "realtime":
+        cur.execute(
+            "SELECT hour_business, final_price FROM efm_task_finals "
+            "WHERE run_id=%s AND task='realtime' ORDER BY hour_business",
+            (run_id,),
+        )
+        for hb, p in cur.fetchall():
+            if p is not None:
+                preds[int(hb)] = float(p)
+    elif scope == "delivery":
+        cur.execute(
+            "SELECT hour_business, delivery_price FROM efm_delivery_finals "
+            "WHERE run_id=%s ORDER BY hour_business",
+            (run_id,),
+        )
+        for hb, p in cur.fetchall():
+            if p is not None:
+                preds[int(hb)] = float(p)
+    return preds
+
+
+def load_actuals_by_scope(cur, target_date: str, scope: str) -> dict[int, float]:
+    """Load actual prices for a given metric scope.
+
+    benchmark : rt_actual  (DA clearing vs RT actual = cross-product spread)
+    dayahead  : da_anchor  (model pred vs SAME product actual)
+    realtime  : rt_actual
+    delivery  : rt_actual
+    """
+    col = "rt_actual" if scope in ("benchmark", "realtime", "delivery") else "da_anchor"
+    cur.execute(
+        f"SELECT hour_business, {col} FROM efm_actual_prices "
+        f"WHERE target_date=%s AND {col} IS NOT NULL ORDER BY hour_business",
+        (target_date,),
+    )
+    return {int(hb): float(v) for hb, v in cur.fetchall()}
+
+
 # ── Metrics computation ───────────────────────────────────────────
 
 def compute_metrics(preds: dict[int, float], actuals: dict[int, float]) -> dict:
-    """Compute SMAPE, MAE, RMSE, MAPE, WMAPE for matched (pred, actual) hours."""
+    """Compute SMAPE, MAE, RMSE, MAPE, WMAPE for matched (pred, actual) hours.
+
+    Uses the legacy (no floor) SMAPE. Prefer compute_metrics_floor50 for the
+    official 2.5-aligned floor(50) metric.
+    """
     common_hours = sorted(set(preds.keys()) & set(actuals.keys()))
     if not common_hours:
         return {"n_hours": 0, "smape": None, "mae": None, "rmse": None,
@@ -188,6 +260,159 @@ def compute_metrics(preds: dict[int, float], actuals: dict[int, float]) -> dict:
         "skipped_smape": skipped_smape,
         "skipped_mape": skipped_mape,
     }
+
+
+def compute_metrics_floor50(preds: dict[int, float], actuals: dict[int, float]) -> dict:
+    """Compute SMAPE with the official floor(50) clipping (2.5-aligned).
+
+    Each value is clamped to max(value, 50) before the SMAPE denominator, then
+    pooled (mean over matched hours). This matches docs/metrics_calculation.md.
+    """
+    common_hours = sorted(set(preds.keys()) & set(actuals.keys()))
+    if not common_hours:
+        return {"n_hours": 0, "smape": None, "mae": None, "rmse": None,
+                "mape": None, "wmape": None, "skipped_smape": 0, "skipped_mape": 0}
+
+    smape_values: list[float] = []
+    mae_values: list[float] = []
+    mape_values: list[float] = []
+    abs_errors: list[float] = []
+    abs_actuals: list[float] = []
+    sq_errors: list[float] = []
+    skipped_mape = 0
+
+    for hb in common_hours:
+        p = float(preds[hb])
+        a = float(actuals[hb])
+        abs_err = abs(p - a)
+        abs_errors.append(abs_err)
+        mae_values.append(abs_err)
+        sq_errors.append(abs_err ** 2)
+        abs_actuals.append(abs(a))
+        pc, ac = max(p, 50.0), max(a, 50.0)
+        denom = abs(pc) + abs(ac)
+        smape_values.append(200.0 * abs(pc - ac) / denom if denom > 0 else 0.0)
+        if a == 0:
+            skipped_mape += 1
+        else:
+            mape_values.append(100.0 * abs_err / abs(a))
+
+    n = len(common_hours)
+    smape = sum(smape_values) / n
+    mae = sum(mae_values) / n
+    rmse = math.sqrt(sum(sq_errors) / n)
+    mape = sum(mape_values) / len(mape_values) if mape_values else 0.0
+    wmape = (sum(abs_errors) / sum(abs_actuals) * 100.0) if sum(abs_actuals) > 0 else 0.0
+    return {
+        "n_hours": n,
+        "smape": round(smape, 4),
+        "mae": round(mae, 4),
+        "rmse": round(rmse, 4),
+        "mape": round(mape, 4),
+        "wmape": round(wmape, 4),
+        "skipped_smape": 0,
+        "skipped_mape": skipped_mape,
+    }
+
+
+# ── Scope-aware metric run (persisted to efm_metric_runs) ──────────────
+
+def run_scope_metric(
+    cur, run_id: str, target_date: str, scope: str, floor50: bool = True,
+) -> dict:
+    """Compute a single day's metric for a given scope and persist it.
+
+    Returns a result dict with keys: result, smape, ... and writes a row to
+    efm_metric_runs. Critical semantic guards:
+      * benchmark scope is ALWAYS labeled benchmark (never reported as model).
+      * dayahead/realtime scopes are ONLY computed when a REAL model final
+        exists in efm_task_finals; otherwise result='UNCLEAR'/no computation.
+      * realtime scope with no realtime final is NEVER fabricated.
+    """
+    preds = load_predictions_by_scope(cur, run_id, scope)
+    actuals = load_actuals_by_scope(cur, target_date, scope)
+
+    pred_stage = {
+        "benchmark": "benchmark_da_anchor",
+        "dayahead": "dayahead_task_final",
+        "realtime": "realtime_task_final",
+        "delivery": "delivery_final",
+    }[scope]
+    actual_source = {
+        "benchmark": "rt_actual",
+        "dayahead": "da_anchor",
+        "realtime": "rt_actual",
+        "delivery": "rt_actual",
+    }[scope]
+
+    # Guard: production scopes require a REAL model final present.
+    if scope in ("dayahead", "realtime") and not preds:
+        res = {"result": "UNCLEAR", "reason": f"no {scope} model final (NEEDS_MODEL_OUTPUT)"}
+        _persist_scope(cur, run_id, target_date, scope, pred_stage, actual_source,
+                       res, floor50)
+        return res
+    if scope == "delivery" and not preds:
+        res = {"result": "NO_DELIVERY", "reason": "no delivery_final rows"}
+        _persist_scope(cur, run_id, target_date, scope, pred_stage, actual_source,
+                       res, floor50)
+        return res
+
+    common = sorted(set(preds) & set(actuals))
+    if not common:
+        res = {"result": "NO_DATA", "reason": "no overlapping (pred, actual) hours"}
+        _persist_scope(cur, run_id, target_date, scope, pred_stage, actual_source,
+                       res, floor50)
+        return res
+
+    metrics = (compute_metrics_floor50(preds, actuals) if floor50
+               else compute_metrics(preds, actuals))
+    res = {
+        "result": "OK",
+        "smape": metrics["smape"],
+        "mae": metrics["mae"],
+        "rmse": metrics["rmse"],
+        "mape": metrics["mape"],
+        "wmape": metrics["wmape"],
+        "n_hours": metrics["n_hours"],
+    }
+    _persist_scope(cur, run_id, target_date, scope, pred_stage, actual_source,
+                   res, floor50, smape=metrics["smape"], mae=metrics["mae"],
+                   rmse=metrics["rmse"], mape=metrics["mape"], wmape=metrics["wmape"],
+                   n_hours=metrics["n_hours"])
+    return res
+
+
+def _persist_scope(cur, run_id, target_date, scope, pred_stage, actual_source,
+                   res, floor50, smape=None, mae=None, rmse=None, mape=None,
+                   wmape=None, n_hours=None):
+    """Write (upsert) a row into efm_metric_runs for this scope/day."""
+    try:
+        metric_run_id = f"{scope}_{run_id}_{target_date}"
+        cur.execute(
+            """
+            INSERT INTO efm_metric_runs
+              (metric_run_id, run_id, target_date_start, target_date_end,
+               metric_scope, pred_stage, actual_source, smape, mae, rmse, mape,
+               wmape, evaluable_days, evaluable_hours, config_json)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s)
+            ON DUPLICATE KEY UPDATE
+              id = LAST_INSERT_ID(id),
+              smape = VALUES(smape), mae = VALUES(mae), rmse = VALUES(rmse),
+              mape = VALUES(mape), wmape = VALUES(wmape),
+              evaluable_hours = VALUES(evaluable_hours),
+              config_json = VALUES(config_json)
+            """,
+            (
+                metric_run_id, run_id, target_date, target_date, scope,
+                pred_stage, actual_source, smape, mae, rmse, mape, wmape,
+                1 if smape is not None else 0, n_hours,
+                json.dumps({"floor50": floor50, "result": res.get("result"),
+                            "reason": res.get("reason")}, ensure_ascii=False),
+            ),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("failed to persist metric_run for scope=%s: %s", scope, exc)
 
 
 # ── DB query ──────────────────────────────────────────────────────
@@ -471,13 +696,74 @@ def main():
     ap.add_argument("--db-url", default=DB_URL)
     ap.add_argument("--output-md", type=Path, default=None)
     ap.add_argument("--output-json", type=Path, default=None)
+    ap.add_argument("--metric-scope", default=None,
+                    choices=["benchmark", "dayahead", "realtime", "delivery"],
+                    help="Restrict the metric to a single scope. benchmark = "
+                         "da_anchor vs rt_actual (cross-product spread, NOT a model "
+                         "metric). dayahead/realtime = efm_task_finals vs same-product "
+                         "actual (only when a REAL model final exists). delivery = "
+                         "efm_delivery_finals vs rt_actual. When omitted, the legacy "
+                         "final_selected vs rt_actual metric is computed for parity.")
+    ap.add_argument("--no-floor50", action="store_true", default=False,
+                    help="Disable floor(50) SMAPE clipping (official formula uses it).")
     args = ap.parse_args()
 
     if not args.db_url:
         ap.error("EFM3_DB_URL not set")
 
+    floor50 = not args.no_floor50
     conn = _connect(args.db_url)
     cur = conn.cursor()
+
+    if args.metric_scope:
+        # Scope-restricted, persisted metric run.
+        logger.info("Computing metric_scope=%s (floor50=%s) for %s..%s",
+                    args.metric_scope, floor50, args.start_date, args.end_date)
+        s = date.fromisoformat(args.start_date)
+        e = date.fromisoformat(args.end_date)
+        scope_rows = []
+        for n in range((e - s).days + 1):
+            d = (s + timedelta(n)).isoformat()
+            # Find latest run for this date (any chain) to attribute predictions.
+            cur.execute(
+                "SELECT run_id FROM efm_runs WHERE target_date=%s "
+                "ORDER BY started_at DESC LIMIT 1", (d,))
+            row = cur.fetchone()
+            if not row:
+                scope_rows.append({"date": d, "result": "NO_RUN"})
+                continue
+            rid = row[0]
+            res = run_scope_metric(cur, rid, d, args.metric_scope, floor50=floor50)
+            scope_rows.append({"date": d, "run_id": rid, **res})
+        conn.commit()
+        conn.close()
+        # Console summary
+        ok = [r for r in scope_rows if r.get("result") == "OK"]
+        unclear = [r for r in scope_rows if r.get("result") in ("UNCLEAR", "NO_DATA", "NO_DELIVERY")]
+        avg = (sum(r["smape"] for r in ok) / len(ok)) if ok else None
+        logger.info("scope=%s: %d OK, %d unclear/skipped, avg SMAPE(floor50)=%s",
+                    args.metric_scope, len(ok), len(unclear),
+                    f"{avg:.2f}" if avg is not None else "n/a")
+        if args.output_json:
+            args.output_json.parent.mkdir(parents=True, exist_ok=True)
+            args.output_json.write_text(
+                json.dumps({"scope": args.metric_scope, "floor50": floor50,
+                            "daily": scope_rows}, indent=2, default=str),
+                encoding="utf-8")
+        if args.output_md:
+            lines = [f"# Metric scope: {args.metric_scope} (floor50={floor50})", ""]
+            lines.append("| Date | Result | SMAPE | MAE | RMSE | Note |")
+            lines.append("| ---- | ------ | ----: | --: | ---: | ---- |")
+            for r in scope_rows:
+                lines.append(
+                    f"| {r['date']} | {r.get('result')} | "
+                    f"{r.get('smape', '').__str__() if r.get('smape') is not None else '-'} | "
+                    f"{r.get('mae', '-')} | {r.get('rmse', '-')} | "
+                    f"{r.get('reason', '')} |")
+            args.output_md.parent.mkdir(parents=True, exist_ok=True)
+            args.output_md.write_text("\n".join(lines), encoding="utf-8")
+        return
+
     logger.info("Querying daily data from %s to %s...", args.start_date, args.end_date)
     daily = query_daily_data(cur, args.start_date, args.end_date)
     conn.close()
