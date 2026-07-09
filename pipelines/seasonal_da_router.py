@@ -84,7 +84,7 @@ def run_seasonal_da_router(
         source_label = "da_anchor"
         decision_reason = "winter_da_anchor_policy"
     else:
-        # ── Non-winter: use official_baseline, fallback sgdfnet ────
+        # ── Non-winter: use official_baseline, fallback sgdfnet, then da_anchor ────
         raw_preds = prediction_store.read_predictions(
             run_id=run_id,
             target_date=target_date,
@@ -103,8 +103,30 @@ def run_seasonal_da_router(
                 stage="raw_model",
             )
             raw_preds = [p for p in all_raw if p.get("model_name") == "sgdfnet"]
-            source_label = "sgdfnet"
-            decision_reason = "non_winter_official_baseline_fallback_sgdfnet"
+            if raw_preds:
+                source_label = "sgdfnet"
+                decision_reason = "non_winter_official_baseline_fallback_sgdfnet"
+            else:
+                # Final fallback: day-ahead anchor (day-ahead clearing price).
+                # In a backfilled historical simulation there is no realtime
+                # baseline, so the day-ahead clearing price serves as the
+                # benchmark "forecast" against the real-time actual.
+                da_preds = prediction_store.read_predictions(
+                    run_id=run_id,
+                    target_date=target_date,
+                    stage="da_anchor",
+                )
+                if da_preds:
+                    raw_preds = da_preds
+                    source_label = "da_anchor"
+                    decision_reason = "non_winter_da_anchor_fallback"
+                    logger.info(
+                        "[SeasonalDARouter] non-winter falling back to da_anchor "
+                        "for %s (%d hours)", target_date, len(da_preds),
+                    )
+                else:
+                    source_label = "none"
+                    decision_reason = "non_winter_no_source"
         else:
             source_label = "official_baseline"
             decision_reason = "non_winter_official_baseline"

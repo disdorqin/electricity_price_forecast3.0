@@ -323,11 +323,6 @@ def aggregate_monthly(daily: list[dict]) -> list[dict]:
             mae = sum(d["mae"] for d in valid) / n
             rmse = math.sqrt(sum(d["rmse"] ** 2 for d in valid) / n)
             mape = sum(d["mape"] for d in valid) / n if valid[0].get("mape") else 0.0
-            # WMAPE: total absolute error / total absolute actual
-            total_abs_err = sum(
-                sum(abs(d["smape"])) for d in valid
-            )  # approximate — real WMAPE needs per-row
-            total_abs_act = 1
             wmape = sum(d.get("wmape", 0) for d in valid) / n
         else:
             smape = mae = rmse = mape = wmape = 0.0
