@@ -242,9 +242,12 @@ def build_parser() -> argparse.ArgumentParser:
              "formal_sim (formal strict guards, no submission export). "
              "Default: dry_run.")
     parser.add_argument("--chain", default="official",
-        choices=["official", "seasonal_da_router"],
+        choices=["official", "seasonal_da_router", "production_circuit"],
         help="Prediction chain to use. 'official' = 3.0 default, "
-             "'seasonal_da_router' = seasonal DA policy router. Default: official.")
+             "'seasonal_da_router' = seasonal DA policy router, "
+             "'production_circuit' = NEW full production circuit (DB Ledger V2: "
+             "dayahead+realtime sub-chains, repair, fusion, classifier, "
+             "task finals, delivery final; every step recorded). Default: official.")
     parser.add_argument("--export-submission", action="store_true", default=False,
         help="Export submission_ready.csv after run. Only effective in formal mode.")
     parser.add_argument("--export-report", action="store_true", default=False,

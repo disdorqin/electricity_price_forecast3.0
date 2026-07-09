@@ -88,6 +88,21 @@ class DbConnectionManager:
         self._conn = pymysql.connect(**params)
         return self._conn
 
+    def new_connection(self) -> Connection:
+        """Open a brand-new, independent MySQL connection.
+
+        Unlike :meth:`get_connection` (which returns the shared singleton),
+        this never reuses a cached connection. Every caller receives its own
+        connection and is responsible for closing it.
+
+        Use this when several code paths need isolated connections — e.g. one
+        per pipeline step — to avoid the double-close hazard of the shared
+        singleton (closing it in one place silently invalidates another
+        caller's handle to the same object).
+        """
+        params = self._parse_url()
+        return pymysql.connect(**params)
+
     def close(self):
         if self._conn is not None and self._conn.open:
             try:

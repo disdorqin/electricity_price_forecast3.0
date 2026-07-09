@@ -87,6 +87,43 @@ def main() -> int:
 
     set_global_seed(args.seed, args.deterministic)
 
+    # --- Production Circuit (DB Ledger V2) dedicated entry point ---
+    # When --chain production_circuit is requested we MUST NOT run the legacy
+    # ledger_full pipeline first (it trains/predicts models and would hang or
+    # overlap with the circuit). Route straight to the circuit and return.
+    chain = getattr(args, "chain", "official")
+    if chain == "production_circuit":
+        use_db = getattr(args, "use_db", False)
+        mode = getattr(args, "mode", "dry_run")
+        db_url = getattr(args, "db_url", None) or os.environ.get("EFM3_DB_URL", "")
+        if not use_db:
+            print("ERROR: --chain production_circuit requires --use-db", flush=True)
+            return 1
+        try:
+            from pipelines.production_circuit import run_production_circuit
+            target_date = getattr(args, "date", None) or getattr(args, "pos_date", None)
+            if not target_date:
+                print("ERROR: --date required for production_circuit", flush=True)
+                return 1
+            config = {
+                "enable_p3_shadow": getattr(args, "enable_extreme_price_shadow", False),
+                "enable_selector_shadow": getattr(args, "enable_realtime_da_sgdf_selector_shadow", False),
+                "allow_router_fallback": getattr(args, "allow_router_fallback", False),
+            }
+            circ_result = run_production_circuit(
+                target_date=target_date, mode=mode, use_db=use_db,
+                db_url=db_url, config=config,
+            )
+            print(
+                f"production_circuit: run_id={circ_result.get('run_id')} "
+                f"status={circ_result.get('status')} "
+                f"recommendation={circ_result.get('recommendation')} "
+                f"smoke={circ_result.get('smoke_result')}", flush=True)
+            return 0 if circ_result.get("status") == "COMPLETE" else 1
+        except Exception as e:
+            logging.getLogger(__name__).exception(f"[production_circuit] error: {e}")
+            return 1
+
     # --- Optional data sync before main pipeline ---
     sync_before = getattr(args, "sync_data_before_run", False)
     if sync_before and args.pipeline in ("ledger_full", "ledger_full_range"):
@@ -185,11 +222,32 @@ def main() -> int:
                 return 1
 
             from pipelines.full_chain_orchestrator import run_full_chain
+            chain = getattr(args, "chain", "official")
             config = {
                 "enable_p3_shadow": getattr(args, "enable_extreme_price_shadow", False),
                 "enable_selector_shadow": getattr(args, "enable_realtime_da_sgdf_selector_shadow", False),
                 "allow_router_fallback": getattr(args, "allow_router_fallback", False),
             }
+            if chain == "production_circuit":
+                # NEW full production circuit (DB Ledger V2). Additive; the
+                # old seasonal_da_router chain is preserved (selected via
+                # --chain seasonal_da_router / official).
+                from pipelines.production_circuit import run_production_circuit
+                circ_result = run_production_circuit(
+                    target_date=target_date,
+                    mode=mode,
+                    use_db=use_db,
+                    db_url=db_url,
+                    config=config,
+                )
+                print(
+                    f"production_circuit: run_id={circ_result.get('run_id')} "
+                    f"status={circ_result.get('status')} "
+                    f"recommendation={circ_result.get('recommendation')} "
+                    f"smoke={circ_result.get('smoke_result')}"
+                )
+                # PARTIAL (realtime model missing) -> exit 1; COMPLETE -> 0.
+                return 0 if circ_result.get("status") == "COMPLETE" else 1
             chain_result = run_full_chain(
                 target_date=target_date,
                 mode=mode,
