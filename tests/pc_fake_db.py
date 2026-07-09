@@ -99,22 +99,37 @@ class FakeCursor:
     def _select(self, flat: str, params: list) -> list[tuple]:
         if "LAST_INSERT_ID()" in flat.upper():
             return [(self.lastrowid or 0,)]
+        # Split off trailing ORDER BY / LIMIT clauses FIRST so the WHERE
+        # clause can never swallow them (the optional ORDER BY in the old
+        # single-regex let the lazy WHERE group consume it via the end-anchor).
+        rest = flat
+        order = None
+        limit = None
+        m_lim = re.search(r"\s+LIMIT\s+(\d+)\s*$", rest, re.IGNORECASE)
+        if m_lim:
+            limit = int(m_lim.group(1))
+            rest = rest[: m_lim.start()]
+        m_ord = re.search(r"\s+ORDER BY\s+([\w,\s]+)\s*$", rest, re.IGNORECASE)
+        if m_ord:
+            order = m_ord.group(1).strip()
+            rest = rest[: m_ord.start()]
         m = re.match(
-            r"SELECT (.+?) FROM (\w+)(?:\s+WHERE\s+(.+?))?"
-            r"(?:\s+ORDER BY\s+(\w+))?(?:\s+LIMIT\s+(\d+))?$",
-            flat, re.IGNORECASE | re.DOTALL,
+            r"SELECT (.+?) FROM (\w+)(?:\s+WHERE\s+(.+))?$",
+            rest, re.IGNORECASE | re.DOTALL,
         )
         if not m:
             return []
         cols = [c.strip() for c in m.group(1).split(",")]
         table = m.group(2)
         where = m.group(3)
-        order = m.group(4)
         rows = list(self.conn.tables.get(table, []))
         if where:
             rows = [r for r in rows if self._where(r, where, params)]
         if order:
-            rows = sorted(rows, key=lambda r: r.get(order, 0) or 0)
+            order_cols = [c.strip() for c in order.split(",")]
+            rows = sorted(rows, key=lambda r: tuple(r.get(c, 0) or 0 for c in order_cols))
+        if limit is not None:
+            rows = rows[:limit]
         # Aggregation: COUNT(*) -> a single row with the row count.
         if len(cols) == 1 and re.match(r"COUNT\(\*\)", cols[0], re.IGNORECASE):
             return [(len(rows),)]
@@ -135,7 +150,14 @@ class FakeCursor:
             if "IN (" in up:
                 cm = re.match(r"(\w+)\s+IN\s*\((.*)\)", cond, re.IGNORECASE)
                 col = cm.group(1)
-                vals = [v.strip().strip("'") for v in cm.group(2).split(",")]
+                raw_vals = [v.strip() for v in cm.group(2).split(",")]
+                vals = []
+                for v in raw_vals:
+                    if v == "%s":
+                        # bind the next positional param (mirrors real MySQL)
+                        vals.append(str(next(piter, None)))
+                    else:
+                        vals.append(v.strip().strip("'"))
                 if str(row.get(col)) not in vals:
                     return False
                 continue

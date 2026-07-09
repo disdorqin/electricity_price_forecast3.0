@@ -138,12 +138,12 @@ def test_fusion_chain():
                      CircuitStage.DAYAHEAD_FUSED, 5, "dayahead_fusion")
     assert res.status == StepStatus.COMPLETE
     assert mgr.count_rows("efm_fusion_candidates") == 24
-    # One model, 24 source hours => 24 candidates, each weight 1/24, all
-    # selected (single-model fusion; weight 1.0 only when n_candidates == 1).
+    # One candidate per hour => per-hour weight normalises to 1.0 (single
+    # candidate fusion). All candidates selected.
     conn = mgr.get_connection(); cur = conn.cursor()
     cur.execute("SELECT weight_value, selected FROM efm_fusion_candidates LIMIT 1")
     w, sel = cur.fetchone()
-    assert abs(float(w) - 1.0 / 24) < 1e-9 and sel == 1
+    assert abs(float(w) - 1.0) < 1e-9 and sel == 1
     assert mgr.count_rows("efm_predictions") >= 24  # fused stage written
 
     # SKIPPED when no source rows
@@ -198,9 +198,23 @@ def test_separator_chain():
     assert res2.status == StepStatus.SKIPPED
 
 
-# ── T7: day-ahead chain writes benchmark (NOT model) ────────────────────
-def test_dayahead_chain_benchmark():
+# ── T7: day-ahead chain honest default = NEEDS_MODEL_OUTPUT (no da_anchor) ─
+def test_dayahead_chain_no_models_needs_output():
     mgr, ctx = make_ctx(RUN_ID, TARGET)
+    # Default config: benchmark fallback DISABLED -> stale da_anchor can
+    # NEVER leak in as a fake day-ahead model.
+    res = run_day_ahead_chain(ctx)
+    assert res.status == StepStatus.NEEDS_MODEL_OUTPUT
+    assert res.artifacts["model_available"] is False
+    assert res.artifacts["stage"] is None
+    conn = mgr.get_connection(); cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM efm_predictions WHERE task=%s", ("dayahead",))
+    assert cur.fetchone()[0] == 0
+
+
+def test_dayahead_chain_benchmark_optin():
+    mgr, ctx = make_ctx(RUN_ID, TARGET)
+    ctx.config = {"allow_benchmark_fallback": True}  # explicit opt-in only
     _seed_actuals(mgr, da=300.0)
     res = run_day_ahead_chain(ctx)
     assert res.status == StepStatus.COMPLETE
@@ -228,26 +242,44 @@ def test_realtime_chain_honest():
     assert res2.artifacts["realtime_final_present"] is False
 
 
-# ── T9: full day-ahead tail lands efm_task_finals (separated) ───────────
+# ── T9: full day-ahead tail with OUR 3 models -> multi-model fusion ─────
+RAW_RUN = "efm3_raw_2026-02-14_dayahead"
+
+
 def test_dayahead_task_final_separated():
     mgr, ctx = make_ctx(RUN_ID, TARGET)
-    _seed_actuals(mgr, da=300.0)
-    run_day_ahead_chain(ctx)
-    run_repair(ctx, CircuitTask.DAYAHEAD, CircuitStage.BENCHMARK_DA_ANCHOR,
+    # Simulate the external P1 engine + ingest_model_predictions.py: our 3
+    # day-ahead models land as dayahead_raw_model under a SEPARATE raw run_id.
+    for mname, base in [("cfg05", 300.0), ("xgboost_rich", 310.0), ("catboost_rich", 320.0)]:
+        rows = [{
+            "hour_business": h, "pred_price": float(base + h),
+            "model_name": mname, "model_version": "v1",
+            "is_shadow": False, "is_selected": False,
+            "selected_reason": None, "quality_flags": None,
+        } for h in range(1, 25)]
+        write_stage_predictions(mgr.get_connection(), RAW_RUN, TARGET,
+                                CircuitTask.DAYAHEAD, CircuitStage.DAYAHEAD_RAW_MODEL, rows)
+    res = run_day_ahead_chain(ctx)
+    assert res.status == StepStatus.COMPLETE
+    assert res.artifacts["model_available"] is True
+    run_repair(ctx, CircuitTask.DAYAHEAD, CircuitStage.DAYAHEAD_RAW_MODEL,
                CircuitStage.DAYAHEAD_MODULE_REPAIRED, 4, "dayahead_repair")
-    run_fusion(ctx, CircuitTask.DAYAHEAD, CircuitStage.DAYAHEAD_MODULE_REPAIRED,
+    res_f = run_fusion(ctx, CircuitTask.DAYAHEAD, CircuitStage.DAYAHEAD_MODULE_REPAIRED,
                CircuitStage.DAYAHEAD_FUSED, 5, "dayahead_fusion")
+    assert "multi_model" in res_f.artifacts["mode"]
     run_classifier(ctx, CircuitTask.DAYAHEAD, CircuitStage.DAYAHEAD_FUSED,
                    CircuitStage.DAYAHEAD_CLASSIFIER_ADJUSTED, 6,
                    "dayahead_classifier", is_placeholder=False)
-    res = run_day_ahead_task_final(ctx)
-    assert res.status == StepStatus.COMPLETE
+    res_tf = run_day_ahead_task_final(ctx)
+    assert res_tf.status == StepStatus.COMPLETE
     conn = mgr.get_connection(); cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM efm_task_finals WHERE task=%s", ("dayahead",))
     assert cur.fetchone()[0] == 24
     cur.execute("SELECT COUNT(*) FROM efm_predictions WHERE stage=%s",
                 ("dayahead_task_final",))
     assert cur.fetchone()[0] == 24
+    # 3 models x 24 hours = 72 fusion candidates recorded
+    assert mgr.count_rows("efm_fusion_candidates") == 72
 
 
 # ── T10: metric scope isolation (benchmark vs production) ────────────────
