@@ -1,16 +1,19 @@
 """
 dayahead_chain.py — Day-ahead sub-chain node (Circuit step 3).
 
-Minimal-but-correct implementation:
-  * If real 2.5 day-ahead MODEL outputs exist in the ledger, load them as
-    ``dayahead_raw_model`` (a genuine model candidate).
-  * Otherwise we MUST NOT invent a model. We record the ``da_anchor`` (the
-    day-ahead clearing price) strictly as a **benchmark candidate**
-    (``benchmark_da_anchor`` stage) and flag ``MISSING_MODEL_OUTPUT`` so it
-    can never be mistaken for a model prediction.
+Now wired to OUR 3.0 day-ahead models (cfg05 / xgboost_rich / catboost_rich by
+default, overridable via config["dayahead_models"]). Predictions are ingested
+into the ledger by tools/ingest_model_predictions.py and read back here via
+model_loader.load_model_outputs.
 
-No ML training happens here — this node only wires existing artifacts into the
-circuit ledger so the full DAG is observable end to end.
+Honest-status rule:
+  * If our model outputs exist -> load them as ``dayahead_raw_model`` (real
+    model candidates) and proceed.
+  * If they are MISSING, we must NOT invent a model. The legacy ``da_anchor``
+    benchmark fallback is now OPT-IN only (config["allow_benchmark_fallback"]);
+    by default it is DISABLED so a stale da_anchor can NEVER be mistaken for a
+    day-ahead model prediction. When disabled and models are absent we record
+    NEEDS_MODEL_OUTPUT (like realtime).
 """
 
 from __future__ import annotations
@@ -25,6 +28,10 @@ from pipelines.production_circuit.contracts import (
     StepStatus,
     TaskFinal,
 )
+from pipelines.production_circuit.model_loader import (
+    DEFAULT_DAYAHEAD_MODELS,
+    load_model_outputs,
+)
 from pipelines.production_circuit.step_recorder import write_stage_predictions
 
 logger = logging.getLogger(__name__)
@@ -33,21 +40,13 @@ STEP_ORDER = 3
 STEP_NAME = "dayahead_chain"
 
 
-def _load_2_5_dayahead_model_outputs(conn, target_date: str) -> list[dict[str, Any]]:
-    """Attempt to load genuine 2.5 day-ahead model predictions.
-
-    Returns [] when none exist (the expected state for this skeleton — the
-    2.5 model outputs have not been migrated yet). This function is the
-    integration point for the future migration.
-    """
-    # Intentionally returns [] until 2.5 day-ahead outputs are migrated.
-    # When available, they would be read from a model-outputs ledger and
-    # mapped to rows with stage=dayahead_raw_model.
-    return []
-
-
 def _load_da_anchor(conn, target_date: str) -> list[dict[str, Any]]:
-    """Load the day-ahead clearing price as a BENCHMARK candidate only."""
+    """Load the day-ahead clearing price as a BENCHMARK candidate only.
+
+    NOTE: only ever called when config["allow_benchmark_fallback"] is True
+    (explicit opt-in). Otherwise the day-ahead sub-chain records
+    NEEDS_MODEL_OUTPUT instead of falling back to this.
+    """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT hour_business, da_anchor FROM efm_actual_prices "
@@ -73,24 +72,42 @@ def _load_da_anchor(conn, target_date: str) -> list[dict[str, Any]]:
 def run_day_ahead_chain(ctx: Any) -> CircuitStepResult:
     run_id = ctx.run_id
     target_date = ctx.target_date
+    da_models: list[str] = ctx.config.get("dayahead_models") or DEFAULT_DAYAHEAD_MODELS
+    allow_benchmark = bool(ctx.config.get("allow_benchmark_fallback", False))
     conn = ctx.db_mgr.new_connection()
     try:
-        model_rows = _load_2_5_dayahead_model_outputs(conn, target_date)
+        model_rows = load_model_outputs(conn, run_id, target_date,
+                                        CircuitTask.DAYAHEAD, da_models)
         if model_rows:
             stage = CircuitStage.DAYAHEAD_RAW_MODEL
             status = StepStatus.COMPLETE
-            msg = f"day-ahead raw model outputs loaded ({len(model_rows)} rows)"
+            present = sorted(set(r["model_name"] for r in model_rows))
+            msg = (f"day-ahead model outputs loaded ({len(model_rows)} rows from "
+                   f"{len(present)} model(s): {present})")
             model_available = True
-        else:
+        elif allow_benchmark:
+            # Explicit opt-in benchmark fallback (e.g. a one-off baseline run).
             stage = CircuitStage.BENCHMARK_DA_ANCHOR
             model_rows = _load_da_anchor(conn, target_date)
             status = StepStatus.COMPLETE
-            msg = (
-                "MISSING_MODEL_OUTPUT: no 2.5 day-ahead model outputs available; "
-                "wrote benchmark_da_anchor as a BENCHMARK candidate only "
-                "(explicitly NOT a model prediction)."
-            )
+            msg = ("BENCHMARK fallback (allow_benchmark_fallback=True): wrote "
+                   "da_anchor strictly as a BENCHMARK candidate (NOT a model).")
             model_available = False
+        else:
+            # No models AND fallback disabled -> cannot produce a day-ahead
+            # final. Record NEEDS_MODEL_OUTPUT and write nothing. This is the
+            # "clean residual" guarantee: da_anchor can NEVER sneak in.
+            msg = ("NEEDS_MODEL_OUTPUT: no day-ahead model outputs for "
+                   f"{da_models} and benchmark fallback is disabled. "
+                   "Day-ahead sub-chain cannot produce a final.")
+            ctx.recorder.record(run_id, target_date, "dayahead", STEP_NAME,
+                                STEP_ORDER, StepStatus.NEEDS_MODEL_OUTPUT.value,
+                                input_count=24, output_count=0, message=msg,
+                                metrics_json={"model_available": False})
+            return CircuitStepResult(STEP_NAME, StepStatus.NEEDS_MODEL_OUTPUT, msg,
+                                     input_count=24, output_count=0,
+                                     artifacts={"model_available": False,
+                                                "stage": None})
 
         ids = write_stage_predictions(
             conn, run_id, target_date, CircuitTask.DAYAHEAD, stage, model_rows,
@@ -99,7 +116,8 @@ def run_day_ahead_chain(ctx: Any) -> CircuitStepResult:
         ctx.recorder.record(
             run_id, target_date, "dayahead", STEP_NAME, STEP_ORDER, status.value,
             input_count=24, output_count=len(ids), message=msg,
-            metrics_json={"stage": stage.value, "model_available": model_available},
+            metrics_json={"stage": stage.value, "model_available": model_available,
+                          "n_models": len(set(r["model_name"] for r in model_rows))},
         )
         return CircuitStepResult(
             STEP_NAME, status, msg, input_count=24, output_count=len(ids),

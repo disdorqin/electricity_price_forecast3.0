@@ -125,7 +125,7 @@ def _read_separator_repaired(conn, run_id: str, target_date: str):
     with conn.cursor() as cur:
         cur.execute(
             "SELECT id, hour_business, pred_price FROM efm_predictions "
-            "WHERE run_id=%s AND target_date=%s AND task='fusion' "
+            "WHERE run_id=%s AND target_date=%s AND task='delivery' "
             "AND stage='separator_repaired' ORDER BY hour_business",
             (run_id, target_date),
         )
@@ -191,7 +191,7 @@ def run_delivery_final(ctx: Any) -> CircuitStepResult:
         # (dayahead/realtime/fusion/final/shadow) and efm_prediction_batches
         # is (dayahead/realtime/fusion/delivery); 'fusion' is the common value
         # that fits this stage (distinguished by stage='delivery_final').
-        write_stage_predictions(conn, run_id, target_date, CircuitTask.FUSION,
+        write_stage_predictions(conn, run_id, target_date, CircuitTask.DELIVERY,
                                 CircuitStage.DELIVERY_FINAL, rows,
                                 source_step=DELIVERY_NAME, is_final_candidate=True)
 

@@ -124,7 +124,7 @@ def run_separator_repair(ctx: Any) -> CircuitStepResult:
         # (dayahead/realtime/fusion/delivery); the only common value that
         # fits this intermediate stage is 'fusion' (distinguished by stage).
         out_ids = write_stage_predictions(
-            conn, run_id, target_date, CircuitTask.FUSION,
+            conn, run_id, target_date, CircuitTask.DELIVERY,
             CircuitStage.SEPARATOR_REPAIRED, out_rows,
             source_step=STEP_NAME, is_final_candidate=True)
         src_map = {hb: pid for pid, hb, _ in src}

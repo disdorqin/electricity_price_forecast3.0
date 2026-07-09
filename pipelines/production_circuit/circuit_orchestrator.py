@@ -39,6 +39,7 @@ from pipelines.production_circuit.realtime_chain import (
 from pipelines.production_circuit.repair_chain import run_repair
 from pipelines.production_circuit.fusion_chain import run_fusion
 from pipelines.production_circuit.classifier_chain import run_classifier
+from pipelines.production_circuit.negative_price_fixer import run_negative_price_fixer
 from pipelines.production_circuit.separator_chain import run_separator_repair
 from pipelines.production_circuit.delivery_chain import (
     run_cross_task_fusion, run_delivery_final,
@@ -90,18 +91,63 @@ def _smape_floor50(pred: float, actual: float) -> float:
 
 
 def _load_actual(conn, target_date: str):
-    """Return (da_anchor_map, rt_actual_map) keyed by hour_business."""
+    """Return (da_anchor_map, rt_actual_map) keyed by hour_business.
+
+    In the 3.0 ledger ``da_anchor`` IS the day-ahead clearing-price series —
+    the same product our day-ahead model predicts — so it serves as the
+    honest day-ahead *actual* for the day-ahead scope model metric. (No
+    separate ``da_actual`` column exists in the ledger schema.)
+    """
     da, rt = {}, {}
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT hour_business, da_anchor, rt_actual FROM efm_actual_prices "
-            "WHERE target_date=%s", (target_date,))
+            "SELECT hour_business, da_anchor, rt_actual "
+            "FROM efm_actual_prices WHERE target_date=%s", (target_date,))
         for hb, d, r in cur.fetchall():
             if d is not None:
                 da[int(hb)] = float(d)
             if r is not None:
                 rt[int(hb)] = float(r)
     return da, rt
+
+
+def _load_task_finals(conn, target_date: str, task: str) -> dict[int, float]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT hour_business, final_price FROM efm_task_finals "
+            "WHERE target_date=%s AND task=%s ORDER BY hour_business",
+            (target_date, task))
+        return {int(hb): float(p) for hb, p in cur.fetchall()}
+
+
+def _metric_pair(pred_map: dict, actual_map: dict):
+    """Return paired (pred, actual) lists over the common hours."""
+    common = sorted(set(pred_map) & set(actual_map))
+    if not common:
+        return [], [], []
+    preds = [pred_map[h] for h in common]
+    acts = [actual_map[h] for h in common]
+    return common, preds, acts
+
+
+def _smape_floor50_pair(preds, acts):
+    vals = []
+    for p, a in zip(preds, acts):
+        pc = max(p, 50.0); ac = max(a, 50.0)
+        denom = abs(pc) + abs(ac)
+        vals.append(0.0 if denom == 0 else 200.0 * abs(pc - ac) / denom)
+    return sum(vals) / len(vals) if vals else None
+
+
+def _mae_rmse_wmape(preds, acts):
+    if not preds:
+        return None, None, None
+    n = len(preds)
+    mae = sum(abs(p - a) for p, a in zip(preds, acts)) / n
+    rmse = (sum((p - a) ** 2 for p, a in zip(preds, acts)) / n) ** 0.5
+    denom = sum(abs(a) for a in acts) or 1.0
+    wmape = sum(abs(p - a) for p, a in zip(preds, acts)) / denom
+    return mae, rmse, wmape
 
 
 def run_production_circuit(
@@ -177,7 +223,19 @@ def run_production_circuit(
     # 3-7. Day-ahead sub-chain
     r = run_day_ahead_chain(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     da_model_available = r.artifacts.get("model_available", False)
-    r = run_repair(ctx, CircuitTask.DAYAHEAD, CircuitStage.BENCHMARK_DA_ANCHOR,
+    # Repair reads from the stage the day-ahead chain actually wrote
+    # (DAYAHEAD_RAW_MODEL if our models loaded, BENCHMARK_DA_ANCHOR only if
+    # the opt-in benchmark fallback was used; otherwise NEEDS_MODEL_OUTPUT
+    # and repair correctly SKIPs). This removes the old always-benchmark bug.
+    # run_day_ahead_chain returns artifacts["stage"] as a STRING (e.g.
+    # "dayahead_raw_model"); run_repair needs a CircuitStage enum (it calls
+    # .value). Convert here. If no models loaded (NEEDS_MODEL_OUTPUT) the
+    # artifacts stage is None -> fall back to BENCHMARK_DA_ANCHOR (repair then
+    # correctly SKIPs because no da_anchor rows exist for non-benchmark dates).
+    _stage_str = r.artifacts.get("stage")
+    da_source_stage = (CircuitStage(_stage_str)
+                       if _stage_str else CircuitStage.BENCHMARK_DA_ANCHOR)
+    r = run_repair(ctx, CircuitTask.DAYAHEAD, da_source_stage,
                    CircuitStage.DAYAHEAD_MODULE_REPAIRED, 4, "dayahead_repair"); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_fusion(ctx, CircuitTask.DAYAHEAD, CircuitStage.DAYAHEAD_MODULE_REPAIRED,
                    CircuitStage.DAYAHEAD_FUSED, 5, "dayahead_fusion"); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
@@ -186,15 +244,17 @@ def run_production_circuit(
                        is_placeholder=False); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_day_ahead_task_final(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
 
-    # 8-12. Real-time sub-chain (expected PARTIAL / NEEDS_MODEL_OUTPUT)
+    # 8-13. Real-time sub-chain
     r = run_real_time_chain(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     rt_model_available = r.artifacts.get("model_available", False)
     r = run_repair(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_RAW_MODEL,
                    CircuitStage.REALTIME_MODULE_REPAIRED, 9, "realtime_repair"); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_fusion(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_MODULE_REPAIRED,
                    CircuitStage.REALTIME_FUSED, 10, "realtime_fusion"); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
-    r = run_classifier(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_FUSED,
-                       CircuitStage.REALTIME_CLASSIFIER_ADJUSTED, 11, "realtime_classifier",
+    # 11. Negative-price / spike-residual fixer (the real-time "负电价修整器").
+    r = run_negative_price_fixer(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
+    r = run_classifier(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED,
+                       CircuitStage.REALTIME_CLASSIFIER_ADJUSTED, 12, "realtime_classifier",
                        is_placeholder=True); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_real_time_task_final(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     rt_final_present = r.artifacts.get("realtime_final_present", False)
@@ -230,12 +290,20 @@ def run_production_circuit(
 
     # 18. finish_run
     runtime_s = round(time.monotonic() - overall_start, 3)
-    overall = "PARTIAL" if (not rt_model_available) else "COMPLETE"
-    recommendation = "READY_TO_MIGRATE_2_5_MODEL_OUTPUTS" if (not rt_model_available) else "READY_FOR_FULL_E2E"
+    if da_model_available and rt_model_available:
+        overall = "COMPLETE"
+        recommendation = "READY_FOR_FULL_E2E"
+    elif da_model_available and not rt_model_available:
+        overall = "PARTIAL"
+        recommendation = "READY_TO_MIGRATE_RT_MODEL_OUTPUTS"
+    else:
+        overall = "NEEDS_MODEL_OUTPUT"
+        recommendation = "NEEDS_DAYAHEAD_MODEL_OUTPUTS"
     try:
         conn = db_mgr.new_connection()
         update_run_status(conn, run_id, status=overall,
-                          delivery_status="DEGRADED_DELIVERED" if overall == "PARTIAL" else "NORMAL",
+                          delivery_status="DEGRADED_DELIVERED" if overall == "PARTIAL"
+                          else "NORMAL" if overall == "COMPLETE" else "NOT_DELIVERED",
                           exit_code=0 if overall == "COMPLETE" else 1)
         conn.close()
     except Exception:
@@ -257,7 +325,8 @@ def run_production_circuit(
         "realtime_model_available": rt_model_available,
         "dayahead_model_available": da_model_available,
         "realtime_final_present": rt_final_present,
-        "smoke_result": "PARTIAL" if not rt_model_available else "PASS",
+        "smoke_result": ("PASS" if overall == "COMPLETE"
+                         else "PARTIAL" if overall == "PARTIAL" else "FAIL"),
     }
 
 
@@ -272,21 +341,30 @@ def _as_dict(r: CircuitStepResult) -> dict:
 
 
 def _run_metrics(ctx: CircuitContext, da_model_available: bool, rt_final_present: bool) -> None:
-    """Persist metrics with strict scope separation."""
+    """Persist metrics with strict scope separation.
+
+    * benchmark   : da_anchor (benchmark candidate) vs rt_actual — clearly
+                    labeled, NEVER a model metric.
+    * dayahead    : ONLY computed when a REAL model produced the day-ahead
+                    final; compares dayahead_task_final vs da_anchor
+                    (SAME product — da_anchor is the day-ahead clearing price,
+                    the honest model metric).
+    * realtime    : ONLY computed when a realtime final is present; compares
+                    realtime_task_final vs rt_actual (SAME product).
+    """
     run_id = ctx.run_id
     target_date = ctx.target_date
     conn = ctx.db_mgr.new_connection()
     try:
-        da, rt = _load_actual(conn, target_date)
+        da_anchor, rt_actual = _load_actual(conn, target_date)
 
-        # BENCHMARK scope: da_anchor (benchmark candidate) vs rt_actual.
-        # Clearly labeled as a BENCHMARK, never as a model metric.
-        if da and rt:
-            common = sorted(set(da) & set(rt))
+        # --- BENCHMARK scope (da_anchor vs rt_actual) ---
+        if da_anchor and rt_actual:
+            common = sorted(set(da_anchor) & set(rt_actual))
             if common:
-                smape_vals = [_smape_floor50(da[h], rt[h]) for h in common]
+                smape_vals = [_smape_floor50(da_anchor[h], rt_actual[h]) for h in common]
                 smape = sum(smape_vals) / len(smape_vals)
-                mae = sum(abs(da[h] - rt[h]) for h in common) / len(common)
+                mae = sum(abs(da_anchor[h] - rt_actual[h]) for h in common) / len(common)
                 insert_metric_run(conn, {
                     "metric_run_id": f"bm_{run_id}",
                     "run_id": run_id, "target_date_start": target_date,
@@ -298,16 +376,45 @@ def _run_metrics(ctx: CircuitContext, da_model_available: bool, rt_final_present
                     "config_json": {"note": "BENCHMARK da_anchor vs rt_actual, NOT model performance"},
                 })
 
-        # DAYAHEAD scope: only if a REAL model produced the day-ahead final.
-        if da_model_available and da:
-            # (future) compute vs da_anchor actual when real model outputs exist.
-            pass
-        # else: dayahead scope UNCLEAR (final is benchmark) → not computed.
+        # --- DAYAHEAD scope (dayahead_task_final vs da_anchor, SAME product) ---
+        # da_anchor is the day-ahead clearing price = the same product our
+        # day-ahead model predicts, so it is the honest day-ahead actual.
+        if da_model_available and da_anchor:
+            pred_map = _load_task_finals(conn, target_date, "dayahead")
+            _, preds, acts = _metric_pair(pred_map, da_anchor)
+            if preds:
+                smape = _smape_floor50_pair(preds, acts)
+                mae, rmse, wmape = _mae_rmse_wmape(preds, acts)
+                insert_metric_run(conn, {
+                    "metric_run_id": f"da_{run_id}",
+                    "run_id": run_id, "target_date_start": target_date,
+                    "target_date_end": target_date, "metric_scope": "dayahead",
+                    "pred_stage": "dayahead_task_final", "actual_source": "da_anchor",
+                    "smape": round(smape, 4), "mae": round(mae, 4),
+                    "rmse": round(rmse, 4), "mape": round(smape, 4),
+                    "wmape": round(wmape, 4), "evaluable_days": 1,
+                    "evaluable_hours": len(preds),
+                    "config_json": {"note": "REAL day-ahead model vs da_anchor (same product = day-ahead clearing price)"},
+                })
 
-        # REALTIME scope: only if realtime final present (real model).
-        if rt_final_present and rt:
-            pass  # (future) compute vs rt_actual when realtime model exists.
-        # else: realtime scope skipped → NEVER fabricated.
+        # --- REALTIME scope (realtime_task_final vs rt_actual, SAME product) ---
+        if rt_final_present and rt_actual:
+            pred_map = _load_task_finals(conn, target_date, "realtime")
+            _, preds, acts = _metric_pair(pred_map, rt_actual)
+            if preds:
+                smape = _smape_floor50_pair(preds, acts)
+                mae, rmse, wmape = _mae_rmse_wmape(preds, acts)
+                insert_metric_run(conn, {
+                    "metric_run_id": f"rt_{run_id}",
+                    "run_id": run_id, "target_date_start": target_date,
+                    "target_date_end": target_date, "metric_scope": "realtime",
+                    "pred_stage": "realtime_task_final", "actual_source": "rt_actual",
+                    "smape": round(smape, 4), "mae": round(mae, 4),
+                    "rmse": round(rmse, 4), "mape": round(smape, 4),
+                    "wmape": round(wmape, 4), "evaluable_days": 1,
+                    "evaluable_hours": len(preds),
+                    "config_json": {"note": "REAL realtime model vs rt_actual (same product)"},
+                })
     except Exception:
         logger.exception("[metrics] failed to persist metric runs")
     finally:

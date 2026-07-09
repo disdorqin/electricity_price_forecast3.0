@@ -39,12 +39,14 @@ MAX_PRICE = 2000.0
 def _read_source(conn, run_id: str, target_date: str, task: CircuitTask, stage: CircuitStage):
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, hour_business, pred_price FROM efm_predictions "
+            "SELECT id, hour_business, pred_price, model_name, model_version "
+            "FROM efm_predictions "
             "WHERE run_id=%s AND target_date=%s AND task=%s AND stage=%s "
-            "ORDER BY hour_business",
+            "ORDER BY model_name, hour_business",
             (run_id, target_date, task.value, stage.value),
         )
-        return [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]
+        return [(int(i), int(hb), float(p), str(m), str(v))
+                for i, hb, p, m, v in cur.fetchall()]
 
 
 def _safe_median(values: list[float]) -> float:
@@ -75,7 +77,7 @@ def run_repair(
             return CircuitStepResult(step_name, StepStatus.SKIPPED, msg,
                                      input_count=0, output_count=0)
 
-        prices = [p for _, _, p in src]
+        prices = [p for _, _, p, _, _ in src]
         med = _safe_median(prices)
         std = statistics.pstdev(prices) if len(prices) > 1 else 0.0
 
@@ -83,7 +85,7 @@ def run_repair(
         repaired_ids: list[int] = []
         decisions = 0
         changed_count = 0
-        for pid, hb, price in src:
+        for pid, hb, price, mname, mver in src:
             before = price
             after = price
             rule = "no_op"
@@ -111,9 +113,11 @@ def run_repair(
             # Always carry the (possibly adjusted) value forward so the chain
             # never starves downstream fusion/classifier/task_final. Unchanged
             # hours are carried as-is (no_op) and still logged for audit.
+            # Model identity (model_name/model_version) is PRESERVED so the
+            # later fusion step can weight each original model correctly.
             repaired_rows.append({
                 "hour_business": hb, "pred_price": after,
-                "model_name": f"{task.value}_repaired", "model_version": "repair_v1",
+                "model_name": mname, "model_version": mver,
                 "is_shadow": False, "is_selected": False,
                 "selected_reason": (f"{rule} repair" if changed
                                     else "no_op (carried forward)"),
@@ -139,7 +143,7 @@ def run_repair(
             conn, run_id, target_date, task, repaired_stage, repaired_rows,
             source_step=step_name, is_final_candidate=False)
         # Lineage: each source -> its repaired child.
-        src_map = {hb: pid for pid, hb, _ in src}
+        src_map = {hb: pid for pid, hb, _, _, _ in src}
         for row, rid in zip(repaired_rows, repaired_ids):
             pid = src_map.get(int(row["hour_business"]))
             insert_lineage_edge(conn, run_id, target_date, "repair", pid, rid,

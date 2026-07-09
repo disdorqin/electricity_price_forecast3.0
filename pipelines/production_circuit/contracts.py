@@ -44,6 +44,7 @@ class CircuitStage(str, Enum):
     REALTIME_MODULE_REPAIRED = "realtime_module_repaired"
     REALTIME_WEIGHTED = "realtime_weighted"
     REALTIME_FUSED = "realtime_fused"
+    REALTIME_NEGATIVE_PRICE_FIXED = "realtime_negative_price_fixed"
     REALTIME_CLASSIFIER_ADJUSTED = "realtime_classifier_adjusted"
     REALTIME_TASK_FINAL = "realtime_task_final"
 
@@ -60,6 +61,7 @@ class RepairStage(str, Enum):
     MODULE_REPAIR = "module_repair"
     WEIGHTED_REPAIR = "weighted_repair"
     SEPARATOR_REPAIR = "separator_repair"
+    NEGATIVE_PRICE = "negative_price"
     NO_OP = "no_op"
 
 
@@ -178,6 +180,7 @@ STAGE_TO_TASK: dict[CircuitStage, CircuitTask] = {
     CircuitStage.REALTIME_MODULE_REPAIRED: CircuitTask.REALTIME,
     CircuitStage.REALTIME_WEIGHTED: CircuitTask.REALTIME,
     CircuitStage.REALTIME_FUSED: CircuitTask.REALTIME,
+    CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED: CircuitTask.REALTIME,
     CircuitStage.REALTIME_CLASSIFIER_ADJUSTED: CircuitTask.REALTIME,
     CircuitStage.REALTIME_TASK_FINAL: CircuitTask.REALTIME,
     CircuitStage.CROSS_TASK_FUSION: CircuitTask.FUSION,

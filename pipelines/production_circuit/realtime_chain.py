@@ -1,14 +1,17 @@
 """
 realtime_chain.py — Real-time sub-chain node (Circuit step 8).
 
-CRITICAL RULE (per task spec):
-  * If genuine realtime model outputs exist, load them as ``realtime_raw_model``.
-  * If they DO NOT exist, this step MUST be recorded as SKIPPED / PARTIAL with
-    a ``NEEDS_MODEL_OUTPUT`` signal. It must NEVER fall back to ``da_anchor``
-    and pretend it is a realtime model prediction.
+Wired to OUR real-time fusion objects: SGDFNet + TimesFM, plus the derived
+``da_aware_sgdf_selector`` candidate (defaults to DA_anchor, switches to
+SGDFNet only at high-confidence non-winter windows — see
+configs/candidate_registry/realtime_da_sgdf_selector.yaml). RT916 / TimeMixer
+are intentionally EXCLUDED from the online critical path per 3.0 design.
 
-This skeleton expects NO realtime model outputs to be present yet, so the
-step reports PARTIAL (NEEDS_MODEL_OUTPUT) and produces zero realtime rows.
+Honest-status rule:
+  * If any realtime model output exists -> load them as ``realtime_raw_model``
+    and proceed (COMPLETE).
+  * If NONE exist -> record PARTIAL / NEEDS_MODEL_OUTPUT, produce ZERO rows,
+    and NEVER fall back to da_anchor as a fake realtime prediction.
 """
 
 from __future__ import annotations
@@ -23,6 +26,11 @@ from pipelines.production_circuit.contracts import (
     StepStatus,
     TaskFinal,
 )
+from pipelines.production_circuit.model_loader import (
+    DEFAULT_REALTIME_MODELS,
+    derive_da_aware_selector,
+    load_model_outputs,
+)
 from pipelines.production_circuit.step_recorder import write_stage_predictions
 
 logger = logging.getLogger(__name__)
@@ -31,24 +39,25 @@ STEP_ORDER = 8
 STEP_NAME = "realtime_chain"
 
 
-def _load_2_5_realtime_model_outputs(conn, target_date: str) -> list[dict[str, Any]]:
-    """Attempt to load genuine 2.5 realtime candidate predictions.
-
-    Returns [] when none exist (expected for this skeleton). This is the
-    integration point for the future 2.5 realtime model-output migration.
-    RT916 / TimeMixer are intentionally EXCLUDED from the online critical
-    path per 3.0 design (they are long-training models; only fast candidates
-    belong here).
-    """
-    return []
-
-
 def run_real_time_chain(ctx: Any) -> CircuitStepResult:
     run_id = ctx.run_id
     target_date = ctx.target_date
+    rt_models: list[str] = ctx.config.get("realtime_models") or DEFAULT_REALTIME_MODELS
+    # The selector is derived, not ingested; strip it from the DB load list.
+    db_models = [m for m in rt_models if m != "da_aware_sgdf_selector"]
     conn = ctx.db_mgr.new_connection()
     try:
-        model_rows = _load_2_5_realtime_model_outputs(conn, target_date)
+        model_rows = load_model_outputs(conn, run_id, target_date,
+                                        CircuitTask.REALTIME, db_models)
+        # Derive the DA-aware SGDFNet selector candidate from sgdfnet + da_anchor.
+        sgdfnet_by_hour: dict[int, float] = {
+            int(r["hour_business"]): float(r["pred_price"])
+            for r in model_rows if r["model_name"] == "sgdfnet"
+        }
+        if "da_aware_sgdf_selector" in rt_models:
+            selector_rows = derive_da_aware_selector(conn, target_date, sgdfnet_by_hour)
+            model_rows = model_rows + selector_rows
+
         if model_rows:
             ids = write_stage_predictions(
                 conn, run_id, target_date, CircuitTask.REALTIME,
@@ -56,7 +65,9 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
                 source_step=STEP_NAME, is_final_candidate=False,
             )
             status = StepStatus.COMPLETE
-            msg = f"realtime raw model outputs loaded ({len(ids)} rows)"
+            present = sorted(set(r["model_name"] for r in model_rows))
+            msg = (f"realtime model outputs loaded ({len(ids)} rows from "
+                   f"{len(present)} candidate(s): {present})")
             model_available = True
         else:
             # DO NOT fabricate. Record PARTIAL / NEEDS_MODEL_OUTPUT.
@@ -72,7 +83,8 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
         ctx.recorder.record(
             run_id, target_date, "realtime", STEP_NAME, STEP_ORDER, status.value,
             input_count=24, output_count=len(ids), message=msg,
-            metrics_json={"stage": "realtime_raw_model", "model_available": model_available},
+            metrics_json={"stage": "realtime_raw_model", "model_available": model_available,
+                          "n_models": len(set(r["model_name"] for r in model_rows))},
         )
         return CircuitStepResult(
             STEP_NAME, status, msg, input_count=24, output_count=len(ids),
@@ -91,7 +103,7 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
 
 # ── Real-time TASK FINAL (Circuit step 12) ─────────────────────────────
 
-TASK_FINAL_ORDER = 12
+TASK_FINAL_ORDER = 13
 TASK_FINAL_NAME = "realtime_task_final"
 
 
@@ -120,7 +132,6 @@ def run_real_time_task_final(ctx: Any) -> CircuitStepResult:
             src_stage = CircuitStage.REALTIME_FUSED
 
         if not rows:
-            # Realtime model output was missing → NO realtime final.
             msg = ("SKIPPED: no realtime fused/classifier_adjusted predictions. "
                    "Realtime task final is ABSENT (NEEDS_MODEL_OUTPUT). "
                    "Delivery will fallback to day-ahead final.")
