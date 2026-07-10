@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS efm_runs (
     mode                ENUM('dry_run','shadow','formal','formal_sim') NOT NULL DEFAULT 'dry_run',
     git_sha             VARCHAR(40)     DEFAULT NULL,
     config_hash         VARCHAR(64)     DEFAULT NULL,
-    status              ENUM('PENDING','RUNNING','COMPLETE','PARTIAL','FAIL','CANCELLED') NOT NULL DEFAULT 'PENDING',
+    status              ENUM('PENDING','RUNNING','COMPLETE','PARTIAL','FAIL','CANCELLED','NEEDS_MODEL_OUTPUT') NOT NULL DEFAULT 'PENDING',
     delivery_status     ENUM('NORMAL','DEGRADED_DELIVERED','FAILED_NO_DELIVERY','NOT_ATTEMPTED') NOT NULL DEFAULT 'NOT_ATTEMPTED',
     exit_code           INT             NOT NULL DEFAULT 0,
     started_at          DATETIME(3)     DEFAULT NULL,

@@ -303,7 +303,7 @@ def run_production_circuit(
         conn = db_mgr.new_connection()
         update_run_status(conn, run_id, status=overall,
                           delivery_status="DEGRADED_DELIVERED" if overall == "PARTIAL"
-                          else "NORMAL" if overall == "COMPLETE" else "NOT_DELIVERED",
+                          else "NORMAL" if overall == "COMPLETE" else "FAILED_NO_DELIVERY",
                           exit_code=0 if overall == "COMPLETE" else 1)
         conn.close()
     except Exception:

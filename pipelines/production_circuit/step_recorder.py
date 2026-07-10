@@ -115,7 +115,7 @@ def write_stage_predictions(
     for row in rows:
         cur.execute(
             """
-            INSERT INTO efm_predictions
+            INSERT IGNORE INTO efm_predictions
                 (run_id, target_date, task, stage, hour_business, model_name,
                  model_version, pred_price, is_shadow, is_selected,
                  selected_reason, quality_flags)
@@ -135,6 +135,19 @@ def write_stage_predictions(
             ),
         )
         ids.append(int(cur.lastrowid))
+
+    # Fallback: if lastrowid is 0 (duplicate skipped), query the existing id
+    for i, row in enumerate(rows):
+        if ids[i] == 0:
+            cur.execute(
+                "SELECT id FROM efm_predictions WHERE run_id=%s AND target_date=%s "
+                "AND hour_business=%s AND stage=%s AND model_name=%s",
+                (run_id, target_date, int(row.get("hour_business", 0)),
+                 stage_v, row.get("model_name")),
+            )
+            result = cur.fetchone()
+            if result:
+                ids[i] = int(result[0])
 
     # Batch bookkeeping (sha256 of the stage + row hours).
     if rows:
@@ -179,20 +192,24 @@ def insert_lineage_edge(
     relation_json: Optional[dict] = None,
 ) -> None:
     cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO efm_prediction_lineage_edges
-            (run_id, target_date, parent_prediction_id, child_prediction_id,
-             relation_type, relation_json)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """,
-        (
-            run_id, target_date, parent_prediction_id, child_prediction_id,
-            relation_type,
-            json.dumps(relation_json, ensure_ascii=False) if relation_json is not None else None,
-        ),
-    )
-    conn.commit()
+    try:
+        cur.execute(
+            """
+            INSERT IGNORE INTO efm_prediction_lineage_edges
+                (run_id, target_date, parent_prediction_id, child_prediction_id,
+                 relation_type, relation_json)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                run_id, target_date, parent_prediction_id, child_prediction_id,
+                relation_type,
+                json.dumps(relation_json, ensure_ascii=False) if relation_json is not None else None,
+            ),
+        )
+        conn.commit()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("insert_lineage_edge skipped (%s: pid=%s cid=%s): %s",
+                       relation_type, parent_prediction_id, child_prediction_id, exc)
 
 
 # ── Repair decisions ─────────────────────────────────────────────────────

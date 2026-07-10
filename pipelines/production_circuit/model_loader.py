@@ -68,12 +68,19 @@ def load_model_outputs(
     placeholders = ",".join(["%s"] * len(model_names))
     rows: list[dict[str, Any]] = []
     with conn.cursor() as cur:
+        # IMPORTANT: raw predictions are produced ONCE per trading day by the
+        # external ingest step into ``efm3_raw_<date>_<task>`` runs. The circuit
+        # re-persists them into its own ``efm3_pc_%`` run for provenance, but we
+        # MUST read only the canonical ingest runs here — otherwise a stale or
+        # the circuit's own write-back copy would be re-loaded and fused, which
+        # both contaminates the result and compounds duplicates on every run.
         cur.execute(
             f"""
             SELECT hour_business, pred_price, model_name, model_version
             FROM efm_predictions
             WHERE target_date=%s AND task=%s AND stage=%s
               AND model_name IN ({placeholders})
+              AND run_id NOT LIKE 'efm3_pc_%%'
             ORDER BY model_name, hour_business
             """,
             (target_date, task.value, stage.value, *model_names),
@@ -106,6 +113,11 @@ def derive_da_aware_selector(
     Policy (per realtime_da_sgdf_selector.yaml): DEFAULT to DA_anchor; only
     switch to SGDFNet at high-confidence, non-winter windows. This keeps the
     selector a *fusion object* that is conservative by construction.
+
+    The DA anchor normally comes from ``efm_actual_prices.da_anchor``. For a
+    *future* target date that column is not yet published (NULL), so we fall
+    back to the ingested day-ahead prediction (``efm3_raw_%`` dayahead run) so
+    the selector still contributes a conservative DA-proxy candidate.
     """
     month = int(target_date.split("-")[1])
     is_winter = month in WINTER_MONTHS
@@ -117,6 +129,18 @@ def derive_da_aware_selector(
             (target_date,),
         )
         da_map = {int(hb): float(v) for hb, v in cur.fetchall()}
+
+    # Fallback: future-date DA anchor not published yet -> use ingested DA pred.
+    if not da_map:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT hour_business, AVG(pred_price) FROM efm_predictions "
+                "WHERE target_date=%s AND task='dayahead' "
+                "AND stage='dayahead_raw_model' AND run_id NOT LIKE 'efm3_pc_%%' "
+                "GROUP BY hour_business ORDER BY hour_business",
+                (target_date,),
+            )
+            da_map = {int(hb): float(v) for hb, v in cur.fetchall()}
 
     rows: list[dict[str, Any]] = []
     for hb in range(1, 25):
