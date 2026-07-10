@@ -30,14 +30,21 @@ def lineage_run_summary(conn: Connection, run_id: str) -> Optional[Dict[str, Any
 
     decisions = q_all(
         conn,
-        "SELECT hour_business, policy_name, selected_model, decision_reason "
-        "FROM efm_fusion_decisions WHERE run_id=%s ORDER BY hour_business",
+        "SELECT fd.hour_business, pol.name AS policy_name, sm.name AS selected_model, "
+        "fd.decision_reason "
+        "FROM efm_fusion_decisions fd "
+        "JOIN efm_dim_policy pol ON fd.policy_id = pol.id "
+        "JOIN efm_dim_model sm ON fd.selected_model_id = sm.id "
+        "WHERE fd.run_id=%s ORDER BY fd.hour_business",
         (run_id,),
     )
     selected = q_all(
         conn,
-        "SELECT hour_business, stage, model_name, is_shadow FROM efm_predictions "
-        "WHERE run_id=%s AND is_selected=1 ORDER BY hour_business",
+        "SELECT p.hour_business, s.name AS stage, m.name AS model_name, p.is_shadow "
+        "FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "JOIN efm_dim_model m ON p.model_id = m.id "
+        "WHERE p.run_id=%s AND p.is_selected=1 ORDER BY p.hour_business",
         (run_id,),
     )
 
@@ -126,42 +133,62 @@ def get_lineage(conn: Connection, run_id: str, hour_business: int) -> Dict[str, 
     # 4. candidate predictions (non-shadow) + shadow candidates
     candidates = q_all(
         conn,
-        "SELECT stage, model_name, model_version, pred_price, is_shadow, is_selected, selected_reason "
-        "FROM efm_predictions WHERE run_id=%s AND hour_business=%s AND is_shadow=0 ORDER BY stage",
+        "SELECT s.name AS stage, m.name AS model_name, p.model_version, p.pred_price, "
+        "p.is_shadow, p.is_selected, p.selected_reason "
+        "FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "JOIN efm_dim_model m ON p.model_id = m.id "
+        "WHERE p.run_id=%s AND p.hour_business=%s AND p.is_shadow=0 ORDER BY s.name",
         (run_id, hour_business),
     )
     shadows = q_all(
         conn,
-        "SELECT stage, model_name, pred_price FROM efm_predictions "
-        "WHERE run_id=%s AND hour_business=%s AND is_shadow=1 ORDER BY stage",
+        "SELECT s.name AS stage, m.name AS model_name, p.pred_price "
+        "FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "JOIN efm_dim_model m ON p.model_id = m.id "
+        "WHERE p.run_id=%s AND p.hour_business=%s AND p.is_shadow=1 ORDER BY s.name",
         (run_id, hour_business),
     )
 
     # 5. router decision
     router = q_one(
         conn,
-        "SELECT policy_name, selected_model, decision_reason, decision_json "
-        "FROM efm_fusion_decisions WHERE run_id=%s AND hour_business=%s LIMIT 1",
+        "SELECT pol.name AS policy_name, sm.name AS selected_model, "
+        "fd.decision_reason, fd.decision_json "
+        "FROM efm_fusion_decisions fd "
+        "JOIN efm_dim_policy pol ON fd.policy_id = pol.id "
+        "JOIN efm_dim_model sm ON fd.selected_model_id = sm.id "
+        "WHERE fd.run_id=%s AND fd.hour_business=%s LIMIT 1",
         (run_id, hour_business),
     )
 
     # 6. selected final
     selected = q_one(
         conn,
-        "SELECT stage, model_name, pred_price, selected_reason, is_shadow FROM efm_predictions "
-        "WHERE run_id=%s AND hour_business=%s AND is_selected=1 LIMIT 1",
+        "SELECT s.name AS stage, m.name AS model_name, p.pred_price, "
+        "p.selected_reason, p.is_shadow "
+        "FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "JOIN efm_dim_model m ON p.model_id = m.id "
+        "WHERE p.run_id=%s AND p.hour_business=%s AND p.is_selected=1 LIMIT 1",
         (run_id, hour_business),
     )
 
     # 7. postflight (run-level)
     postflight = q_all(
-        conn, "SELECT check_name, passed, details FROM efm_postflight_checks WHERE run_id=%s", (run_id,)
+        conn,
+        "SELECT c.name AS check_name, pc.passed, pc.details "
+        "FROM efm_postflight_checks pc JOIN efm_dim_check c ON pc.check_id = c.id "
+        "WHERE pc.run_id=%s", (run_id,)
     )
 
     # 8. delivery (run-level)
     delivery = q_all(
         conn,
-        "SELECT output_type, output_path, row_count, file_hash FROM efm_delivery_outputs WHERE run_id=%s",
+        "SELECT o.name AS output_type, do.output_path, do.row_count, do.file_hash "
+        "FROM efm_delivery_outputs do JOIN efm_dim_output o ON do.output_type_id = o.id "
+        "WHERE do.run_id=%s",
         (run_id,),
     )
 

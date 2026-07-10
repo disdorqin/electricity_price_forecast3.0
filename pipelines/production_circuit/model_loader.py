@@ -74,14 +74,20 @@ def load_model_outputs(
         # MUST read only the canonical ingest runs here — otherwise a stale or
         # the circuit's own write-back copy would be re-loaded and fused, which
         # both contaminates the result and compounds duplicates on every run.
+        #
+        # target_date is no longer stored on efm_predictions (3NF); join efm_runs.
+        # stage/model are foreign keys to efm_dim_* (joined for name filter).
         cur.execute(
             f"""
-            SELECT hour_business, pred_price, model_name, model_version
-            FROM efm_predictions
-            WHERE target_date=%s AND task=%s AND stage=%s
-              AND model_name IN ({placeholders})
-              AND run_id NOT LIKE 'efm3_pc_%%'
-            ORDER BY model_name, hour_business
+            SELECT p.hour_business, p.pred_price, m.name AS model_name, p.model_version
+            FROM efm_predictions p
+            JOIN efm_runs r ON p.run_id = r.run_id
+            JOIN efm_dim_stage s ON p.stage_id = s.id
+            JOIN efm_dim_model m ON p.model_id = m.id
+            WHERE r.target_date=%s AND p.task=%s AND s.name=%s
+              AND m.name IN ({placeholders})
+              AND p.run_id NOT LIKE 'efm3_pc_%%'
+            ORDER BY m.name, p.hour_business
             """,
             (target_date, task.value, stage.value, *model_names),
         )
@@ -110,14 +116,13 @@ def derive_da_aware_selector(
 ) -> list[dict[str, Any]]:
     """Derive the ``da_aware_sgdf_selector`` candidate for real-time.
 
-    Policy (per realtime_da_sgdf_selector.yaml): DEFAULT to DA_anchor; only
-    switch to SGDFNet at high-confidence, non-winter windows. This keeps the
-    selector a *fusion object* that is conservative by construction.
+    Policy (whole-day binary choice): either the entire day uses SGDFNet or
+    the entire day uses DA_anchor. Switch to SGDFNet only when:
+      - Non-winter month
+      - Average |sgdf-da|/da across all 24 hours < SELECTOR_SWITCH_REL_TOL
 
-    The DA anchor normally comes from ``efm_actual_prices.da_anchor``. For a
-    *future* target date that column is not yet published (NULL), so we fall
-    back to the ingested day-ahead prediction (``efm3_raw_%`` dayahead run) so
-    the selector still contributes a conservative DA-proxy candidate.
+    This is more conservative than per-hour mixing and avoids inconsistent
+    intra-day switching between models.
     """
     month = int(target_date.split("-")[1])
     is_winter = month in WINTER_MONTHS
@@ -134,25 +139,52 @@ def derive_da_aware_selector(
     if not da_map:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT hour_business, AVG(pred_price) FROM efm_predictions "
-                "WHERE target_date=%s AND task='dayahead' "
-                "AND stage='dayahead_raw_model' AND run_id NOT LIKE 'efm3_pc_%%' "
-                "GROUP BY hour_business ORDER BY hour_business",
+                "SELECT p.hour_business, AVG(p.pred_price) "
+                "FROM efm_predictions p JOIN efm_runs r ON p.run_id=r.run_id "
+                "JOIN efm_dim_stage s ON p.stage_id=s.id "
+                "WHERE r.target_date=%s AND p.task='dayahead' "
+                "AND s.name='dayahead_raw_model' AND p.run_id NOT LIKE 'efm3_pc_%%' "
+                "GROUP BY p.hour_business ORDER BY p.hour_business",
                 (target_date,),
             )
             da_map = {int(hb): float(v) for hb, v in cur.fetchall()}
+
+    # Compute average relative deviation for whole-day decision
+    rel_devs = []
+    for hb in range(1, 25):
+        da = da_map.get(hb)
+        sg = sgdfnet_by_hour.get(hb)
+        if da is not None and da != 0 and sg is not None:
+            rel_devs.append(abs(sg - da) / abs(da))
+    avg_rel_dev = sum(rel_devs) / len(rel_devs) if rel_devs else 1.0
+
+    # Whole-day decision
+    use_sgdfnet_whole_day = (not is_winter) and (avg_rel_dev < SELECTOR_SWITCH_REL_TOL)
+
+    if use_sgdfnet_whole_day:
+        logger.info(
+            "[da_aware_selector] WHOLE DAY -> SGDFNet (avg_rel_dev=%.3f < %.2f, non-winter)",
+            avg_rel_dev, SELECTOR_SWITCH_REL_TOL,
+        )
+    else:
+        reason = "winter" if is_winter else f"avg_rel_dev={avg_rel_dev:.3f} >= {SELECTOR_SWITCH_REL_TOL}"
+        logger.info("[da_aware_selector] WHOLE DAY -> DA_anchor (%s)", reason)
 
     rows: list[dict[str, Any]] = []
     for hb in range(1, 25):
         da = da_map.get(hb)
         sg = sgdfnet_by_hour.get(hb)
-        use_sg = (
-            (not is_winter)
-            and da is not None and da > 0
-            and sg is not None
-            and abs(sg - da) / da < SELECTOR_SWITCH_REL_TOL
-        )
-        value = sg if use_sg else da
+
+        # Whole-day: either all SGDFNet or all DA
+        if use_sgdfnet_whole_day and sg is not None:
+            value = sg
+            reason_text = "selector -> SGDFNet (whole-day high-confidence)"
+            flag = "rt"
+        else:
+            value = da
+            reason_text = "selector -> DA_anchor (whole-day default/conservative)"
+            flag = "da_default"
+
         if value is None:
             continue
         rows.append({
@@ -162,10 +194,7 @@ def derive_da_aware_selector(
             "model_version": "p2_11_shadow_adapter",
             "is_shadow": False,
             "is_selected": False,
-            "selected_reason": (
-                "selector -> SGDFNet (high-confidence window)"
-                if use_sg else "selector -> DA_anchor (default/conservative)"
-            ),
-            "quality_flags": ["da_aware_selector", "rt" if use_sg else "da_default"],
+            "selected_reason": reason_text,
+            "quality_flags": ["da_aware_selector", flag],
         })
     return rows

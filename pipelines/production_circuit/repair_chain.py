@@ -39,11 +39,13 @@ MAX_PRICE = 2000.0
 def _read_source(conn, run_id: str, target_date: str, task: CircuitTask, stage: CircuitStage):
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, hour_business, pred_price, model_name, model_version "
-            "FROM efm_predictions "
-            "WHERE run_id=%s AND target_date=%s AND task=%s AND stage=%s "
-            "ORDER BY model_name, hour_business",
-            (run_id, target_date, task.value, stage.value),
+            "SELECT p.id, p.hour_business, p.pred_price, m.name, p.model_version "
+            "FROM efm_predictions p "
+            "JOIN efm_dim_stage s ON p.stage_id = s.id "
+            "JOIN efm_dim_model m ON p.model_id = m.id "
+            "WHERE p.run_id=%s AND p.task=%s AND s.name=%s "
+            "ORDER BY m.name, p.hour_business",
+            (run_id, task.value, stage.value),
         )
         return [(int(i), int(hb), float(p), str(m), str(v))
                 for i, hb, p, m, v in cur.fetchall()]

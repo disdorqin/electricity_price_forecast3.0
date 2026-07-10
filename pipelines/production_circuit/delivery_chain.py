@@ -44,8 +44,8 @@ def _read_task_finals(conn, run_id: str, target_date: str, task: str) -> dict[in
     with conn.cursor() as cur:
         cur.execute(
             "SELECT id, hour_business, final_price FROM efm_task_finals "
-            "WHERE run_id=%s AND target_date=%s AND task=%s ORDER BY hour_business",
-            (run_id, target_date, task),
+            "WHERE run_id=%s AND task=%s ORDER BY hour_business",
+            (run_id, task),
         )
         return {int(hb): (int(i), float(p)) for i, hb, p in cur.fetchall()}
 
@@ -124,10 +124,11 @@ def run_cross_task_fusion(ctx: Any) -> CircuitStepResult:
 def _read_separator_repaired(conn, run_id: str, target_date: str):
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, hour_business, pred_price FROM efm_predictions "
-            "WHERE run_id=%s AND target_date=%s AND task='delivery' "
-            "AND stage='separator_repaired' ORDER BY hour_business",
-            (run_id, target_date),
+            "SELECT p.id, p.hour_business, p.pred_price FROM efm_predictions p "
+            "JOIN efm_dim_stage s ON p.stage_id = s.id "
+            "WHERE p.run_id=%s AND p.task='delivery' "
+            "AND s.name='separator_repaired' ORDER BY p.hour_business",
+            (run_id,),
         )
         return [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]
 
@@ -142,10 +143,11 @@ def run_delivery_final(ctx: Any) -> CircuitStepResult:
             # Fallback: read cross_task_fusion directly.
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, hour_business, pred_price FROM efm_predictions "
-                    "WHERE run_id=%s AND target_date=%s AND task='fusion' "
-                    "AND stage='cross_task_fusion' ORDER BY hour_business",
-                    (run_id, target_date),
+                    "SELECT p.id, p.hour_business, p.pred_price FROM efm_predictions p "
+                    "JOIN efm_dim_stage s ON p.stage_id = s.id "
+                    "WHERE p.run_id=%s AND p.task='fusion' "
+                    "AND s.name='cross_task_fusion' ORDER BY p.hour_business",
+                    (run_id,),
                 )
                 sep = [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]
 

@@ -50,10 +50,11 @@ NEG_FLOOR = -500.0  # only clamp absurd negatives; real 山东 negatives are kep
 def _read_fused(conn, run_id: str, target_date: str):
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, hour_business, pred_price FROM efm_predictions "
-            "WHERE run_id=%s AND target_date=%s AND task='realtime' "
-            "AND stage='realtime_fused' ORDER BY hour_business",
-            (run_id, target_date),
+            "SELECT p.id, p.hour_business, p.pred_price FROM efm_predictions p "
+            "JOIN efm_dim_stage s ON p.stage_id = s.id "
+            "WHERE p.run_id=%s AND p.task='realtime' "
+            "AND s.name='realtime_fused' ORDER BY p.hour_business",
+            (run_id,),
         )
         return [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]
 

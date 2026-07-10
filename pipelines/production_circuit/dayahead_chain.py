@@ -143,10 +143,11 @@ TASK_FINAL_NAME = "dayahead_task_final"
 def _read_stage(conn, run_id: str, target_date: str, task: CircuitTask, stage: CircuitStage):
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, hour_business, pred_price FROM efm_predictions "
-            "WHERE run_id=%s AND target_date=%s AND task=%s AND stage=%s "
-            "ORDER BY hour_business",
-            (run_id, target_date, task.value, stage.value),
+            "SELECT p.id, p.hour_business, p.pred_price FROM efm_predictions p "
+            "JOIN efm_dim_stage s ON p.stage_id = s.id "
+            "WHERE p.run_id=%s AND p.task=%s AND s.name=%s "
+            "ORDER BY p.hour_business",
+            (run_id, task.value, stage.value),
         )
         return [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]
 

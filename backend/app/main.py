@@ -29,6 +29,7 @@ from .utils.redaction import redact_db_url  # noqa: E402
 from .routers import (  # noqa: E402
     data_sources,
     datasets,
+    forecast,
     health,
     lineage,
     ops,
@@ -60,6 +61,7 @@ app.include_router(data_sources.router)
 app.include_router(ops.router)
 app.include_router(reports.router)
 app.include_router(lineage.router)
+app.include_router(forecast.router)
 
 
 @app.on_event("startup")
@@ -70,6 +72,21 @@ def _startup() -> None:
         settings.ops_enabled,
         settings.app_env,
     )
+    # DB health check at startup
+    if settings.db_url:
+        try:
+            from common.db.connection import DbConnectionManager
+            mgr = DbConnectionManager(db_url=settings.db_url, connect_timeout=5)
+            conn = mgr.new_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            conn.close()
+            logger.info("DB health check: OK")
+        except Exception as exc:
+            logger.warning("DB health check FAILED: %s", exc)
+            if settings.ops_enabled:
+                logger.warning("  ops endpoints are ENABLED but DB is unreachable -- pipeline triggers will fail")
 
 
 @app.get("/")

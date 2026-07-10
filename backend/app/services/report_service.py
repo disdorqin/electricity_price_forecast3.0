@@ -33,7 +33,9 @@ def shadow_safety(conn: Connection) -> Dict[str, Any]:
     ) or 0
     final_from_shadow = q_scalar(
         conn,
-        "SELECT COUNT(*) FROM efm_predictions WHERE is_selected=1 AND stage IN %s",
+        "SELECT COUNT(*) FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "WHERE p.is_selected=1 AND s.name IN %s",
         (_SHADOW_STAGES,),
     ) or 0
     unsafe = q_scalar(

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import logging
 import urllib.parse
+from pathlib import Path
 from typing import Optional
 
 import pymysql
@@ -19,6 +20,65 @@ logger = logging.getLogger(__name__)
 _DEFAULT_ENV_VAR = "EFM3_DB_URL"
 _DEFAULT_POOL_SIZE = 5
 _DEFAULT_TIMEOUT = 10
+
+# Local default DB URL (used only when no env var or .env.local is present).
+# Password contains '#' which must be URL-encoded as '%23'.
+_LOCAL_DEFAULT_DB_URL = "mysql+pymysql://root:Zlt20060313%23@127.0.0.1:3306/efm3"
+
+
+def get_db_url() -> str:
+    """Single source of truth for the database URL.
+
+    Resolution order:
+      1. ``EFM3_DB_URL`` environment variable
+      2. ``.env.local`` file in the repo root (``EFM3_DB_URL=...``)
+      3. Local development default (hardcoded localhost)
+
+    The returned URL has ``%%23`` already normalised to ``%23`` so that
+    pymysql receives the literal ``#`` after URL-decoding.
+    """
+    # 1. Environment variable
+    url = os.environ.get(_DEFAULT_ENV_VAR, "")
+    if url:
+        return url.replace("%%23", "%23")
+
+    # 2. .env.local (repo root)
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    env_file = repo_root / ".env.local"
+    if env_file.is_file():
+        try:
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith("#") or not line:
+                    continue
+                if "=" in line:
+                    key, _, val = line.partition("=")
+                    if key.strip() == _DEFAULT_ENV_VAR:
+                        return val.strip().replace("%%23", "%23")
+        except Exception:
+            pass
+
+    # 3. Local default
+    return _LOCAL_DEFAULT_DB_URL
+
+
+def db_health_check(db_url: str | None = None) -> dict:
+    """Pipeline-start health check. Returns ``{"ok": True/False, ...}``.
+
+    Connects and executes ``SELECT 1``. On failure returns a clear error
+    message suitable for logging.
+    """
+    url = db_url or get_db_url()
+    mgr = DbConnectionManager(db_url=url, connect_timeout=5)
+    try:
+        conn = mgr.new_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        return {"ok": True, "detail": "DB reachable"}
+    except Exception as exc:
+        return {"ok": False, "detail": f"DB unreachable: {exc}"}
 
 
 class DbConnectionManager:

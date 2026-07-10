@@ -114,8 +114,9 @@ def _load_actual(conn, target_date: str):
 def _load_task_finals(conn, target_date: str, task: str) -> dict[int, float]:
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT hour_business, final_price FROM efm_task_finals "
-            "WHERE target_date=%s AND task=%s ORDER BY hour_business",
+            "SELECT tf.hour_business, tf.final_price FROM efm_task_finals tf "
+            "JOIN efm_runs r ON tf.run_id=r.run_id "
+            "WHERE r.target_date=%s AND tf.task=%s ORDER BY tf.hour_business",
             (target_date, task))
         return {int(hb): float(p) for hb, p in cur.fetchall()}
 

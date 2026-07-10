@@ -56,10 +56,17 @@ for p in [str(MODELS_REPO), str(SGDF_REPO)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-DB_URL = os.environ.get(
-    "EFM3_DB_URL",
-    "mysql+pymysql://root:Zlt20060313%%23@127.0.0.1:3306/efm3",
-).replace("%%23", "%23")
+# Local-first dated output folders (outputs/<date>/): actual/ + predict/<task>/*.csv
+from export_local import (
+    prepare_dated_folder,
+    write_predict_csv,
+    write_circuit_local_outputs,
+)
+
+# Unified DB configuration — single source of truth (no hardcoded passwords here).
+from common.db.connection import get_db_url, db_health_check, DbConnectionManager
+
+DB_URL = get_db_url()
 
 # 候选模型清单（与电路 DEFAULT_*_MODELS 对齐，保证 load_model_outputs 能命中）
 DA_MODELS = ["cfg05", "xgboost_rich", "catboost_rich"]
@@ -141,7 +148,7 @@ def stage_sync(target_date: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 # Stage 2: Day-ahead Prediction (real P1 models)
 # ═══════════════════════════════════════════════════════════════════
-def stage_da_predict(target_date: str) -> dict:
+def stage_da_predict(target_date: str, root: Path | None = None) -> dict:
     """Train + predict day-ahead with P1 engine. Returns {status, preds:{model:{hb:val}}, models}."""
     logger.info("=== Stage 2/5: Day-ahead Prediction (P1: %s) ===", ", ".join(DA_MODELS))
     from scripts.run_dayahead_p1_walkforward import (
@@ -193,6 +200,13 @@ def stage_da_predict(target_date: str) -> dict:
                         Path(tmp.name), model_version="p1_prod")
         os.unlink(tmp.name)
         logger.info("  ingested %s: %d rows", model_name, n)
+
+    # Local-first artifact: outputs/<date>/predict/dayahead/predict.csv
+    if root is not None:
+        try:
+            write_predict_csv(root, "dayahead", preds)
+        except Exception as e:
+            logger.warning("  local dayahead/predict.csv write failed: %s", e)
 
     return {"status": "ok", "preds": preds, "models": list(preds.keys())}
 
@@ -253,7 +267,7 @@ def _run_timesfm(target_date: str) -> dict[int, float] | None:
         return None
 
 
-def stage_rt_predict(target_date: str, da_preds) -> dict:
+def stage_rt_predict(target_date: str, da_preds, root: Path | None = None) -> dict:
     logger.info("=== Stage 3/5: Real-time Prediction (SGDFNet + TimesFM) ===")
     from tools.ingest_model_predictions import ingest_file
     from collections import defaultdict
@@ -316,22 +330,38 @@ def stage_rt_predict(target_date: str, da_preds) -> dict:
     else:
         logger.warning("  TimesFM: no output produced")
 
-    # ── DA-aware SGDF selector (derived 3rd RT candidate) ──
-    # default DA_anchor; switch to SGDFNet only when |sgdf-da|/da < 10% & non-winter
+    # ── DA-aware SGDF selector (whole-day binary choice) ──
+    # Policy: either the whole day uses SGDFNet or the whole day uses DA.
+    # Switch to SGDFNet only when: non-winter AND avg |sgdf-da|/da < threshold.
     # NOTE: use the flattened `flat_da` (avg across DA models), NOT the nested
     # `da_preds` dict — reading da_preds.get(hb) on {model:{hb:val}} always
     # returns 0.0, which previously wrote an all-zero selector into the ledger.
     if sg and flat_da:
         from pipelines.production_circuit.model_loader import SELECTOR_SWITCH_REL_TOL, WINTER_MONTHS
         month = pd.Timestamp(target_date).month
-        sel = {}
+        is_winter = month in WINTER_MONTHS
+
+        # Compute average relative deviation across all hours
+        rel_devs = []
         for hb in range(1, 25):
             da = flat_da.get(hb, 0.0)
             s = sg.get(hb, da)
-            if da and month not in WINTER_MONTHS and abs(s - da) / abs(da) < SELECTOR_SWITCH_REL_TOL:
-                sel[hb] = s
-            else:
-                sel[hb] = da  # DA_anchor fallback (use DA pred as anchor proxy)
+            if da and da != 0:
+                rel_devs.append(abs(s - da) / abs(da))
+        avg_rel_dev = sum(rel_devs) / len(rel_devs) if rel_devs else 1.0
+
+        # Whole-day decision: use SGDFNet only if non-winter + high confidence
+        use_sgdfnet_whole_day = (not is_winter) and (avg_rel_dev < SELECTOR_SWITCH_REL_TOL)
+
+        if use_sgdfnet_whole_day:
+            sel = {hb: sg.get(hb, flat_da.get(hb, 0.0)) for hb in range(1, 25)}
+            logger.info("  da_aware_sgdf_selector: WHOLE DAY -> SGDFNet (avg_rel_dev=%.3f < %.2f, non-winter)",
+                       avg_rel_dev, SELECTOR_SWITCH_REL_TOL)
+        else:
+            sel = {hb: flat_da.get(hb, 0.0) for hb in range(1, 25)}
+            reason = "winter" if is_winter else f"avg_rel_dev={avg_rel_dev:.3f} >= {SELECTOR_SWITCH_REL_TOL}"
+            logger.info("  da_aware_sgdf_selector: WHOLE DAY -> DA_anchor (%s)", reason)
+
         rt_results["da_aware_sgdf_selector"] = sel
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="", encoding="utf-8")
         w = csv.writer(tmp); w.writerow(["hour_business", "y_pred"])
@@ -343,13 +373,21 @@ def stage_rt_predict(target_date: str, da_preds) -> dict:
         logger.info("  da_aware_sgdf_selector: ingested %d rows", n)
 
     status = "ok" if rt_results else "failed"
+
+    # Local-first artifact: outputs/<date>/predict/realtime/predict.csv
+    if root is not None:
+        try:
+            write_predict_csv(root, "realtime", rt_results)
+        except Exception as e:
+            logger.warning("  local realtime/predict.csv write failed: %s", e)
+
     return {"status": status, "models": list(rt_results.keys()), "rt_results": rt_results}
 
 
 # ═══════════════════════════════════════════════════════════════════
 # Stage 4: Production Circuit (repair → fusion → classifier → delivery)
 # ═══════════════════════════════════════════════════════════════════
-def stage_circuit(target_date: str, mode: str = "formal_sim") -> dict:
+def stage_circuit(target_date: str, mode: str = "formal_sim", root: Path | None = None) -> dict:
     logger.info("=== Stage 4/5: Production Circuit ===")
     from pipelines.production_circuit.circuit_orchestrator import run_production_circuit
 
@@ -382,12 +420,28 @@ def stage_circuit(target_date: str, mode: str = "formal_sim") -> dict:
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM efm_delivery_finals WHERE run_id=%s", (rid,))
     delh = cur.fetchone()[0]
-    cur.execute("SELECT check_name,passed FROM efm_postflight_checks WHERE run_id=%s", (rid,))
+    cur.execute(
+        "SELECT c.name AS check_name, pc.passed FROM efm_postflight_checks pc "
+        "JOIN efm_dim_check c ON pc.check_id = c.id WHERE pc.run_id=%s",
+        (rid,))
     checks = {c[0]: c[1] for c in cur.fetchall()}
     conn.close()
 
     logger.info("  Circuit: status=%s delivery=%dh postflight=%d/8",
                 status, delh, sum(1 for v in checks.values() if v))
+
+    # Local-first artifacts: outputs/<date>/predict/<task>/{weight,fuse,final}.csv
+    # + realtime/module_repair.csv  (read back from the committed 3NF ledger).
+    if root is not None and rid:
+        try:
+            da_weights = {m: float(fw.get(m, 0.0)) for m in ALL_DA_MODELS}
+            rt_weights = {m: float(fw.get(m, 0.0)) for m in ALL_RT_MODELS}
+            write_circuit_local_outputs(
+                root, target_date, rid, DB_URL,
+                da_weights=da_weights, rt_weights=rt_weights)
+        except Exception as e:
+            logger.warning("  local circuit CSV write failed: %s", e)
+
     return {"status": status, "run_id": rid, "delivery_hours": delh, "checks": checks}
 
 
@@ -401,16 +455,19 @@ def _read_task_finals(target_date: str, task: str, run_id: str | None = None) ->
         cur = conn.cursor()
         if run_id:
             cur.execute(
-                "SELECT hour_business, final_price FROM efm_task_finals "
-                "WHERE target_date=%s AND task=%s AND run_id=%s ORDER BY hour_business",
+                "SELECT tf.hour_business, tf.final_price FROM efm_task_finals tf "
+                "JOIN efm_runs r ON tf.run_id=r.run_id "
+                "WHERE r.target_date=%s AND tf.task=%s AND tf.run_id=%s ORDER BY tf.hour_business",
                 (target_date, task, run_id))
         else:
             # Fallback: latest run_id for this target_date
             cur.execute(
-                "SELECT hour_business, final_price FROM efm_task_finals "
-                "WHERE target_date=%s AND task=%s "
-                "AND run_id=(SELECT MAX(run_id) FROM efm_task_finals "
-                "WHERE target_date=%s AND task=%s) ORDER BY hour_business",
+                "SELECT tf.hour_business, tf.final_price FROM efm_task_finals tf "
+                "JOIN efm_runs r ON tf.run_id=r.run_id "
+                "WHERE r.target_date=%s AND tf.task=%s "
+                "AND tf.run_id=(SELECT MAX(tf2.run_id) FROM efm_task_finals tf2 "
+                "JOIN efm_runs r2 ON tf2.run_id=r2.run_id "
+                "WHERE r2.target_date=%s AND tf2.task=%s) ORDER BY tf.hour_business",
                 (target_date, task, target_date, task))
         return {int(hb): float(p) for hb, p in cur.fetchall()}
     finally:
@@ -423,24 +480,31 @@ def _read_fused_realtime(target_date: str, run_id: str | None = None) -> dict[in
     conn = DbConnectionManager(db_url=DB_URL).new_connection()
     try:
         cur = conn.cursor()
+        # 3NF: target_date lives on efm_runs; stage is a FK to efm_dim_stage.
+        q = (
+            "SELECT p.hour_business, p.pred_price FROM efm_predictions p "
+            "JOIN efm_runs r ON p.run_id=r.run_id "
+            "JOIN efm_dim_stage s ON p.stage_id=s.id "
+            "WHERE r.target_date=%s AND p.task='realtime' AND s.name='realtime_fused'"
+        )
+        params = [target_date]
         if run_id:
-            cur.execute(
-                "SELECT hour_business, pred_price FROM efm_predictions "
-                "WHERE target_date=%s AND task='realtime' AND stage='realtime_fused' "
-                "AND run_id=%s ORDER BY hour_business", (target_date, run_id))
-        else:
-            cur.execute(
-                "SELECT hour_business, pred_price FROM efm_predictions "
-                "WHERE target_date=%s AND task='realtime' AND stage='realtime_fused' "
-                "ORDER BY hour_business", (target_date,))
+            q += " AND p.run_id=%s"
+            params.append(run_id)
+        q += " ORDER BY p.hour_business"
+        cur.execute(q, params)
         rows = cur.fetchall()
         if rows:
             return {int(hb): float(p) for hb, p in rows}
         # Last resort: average raw_model candidates of this run
-        cur.execute(
-            "SELECT hour_business, pred_price FROM efm_predictions "
-            "WHERE target_date=%s AND task='realtime' AND stage='realtime_raw_model' "
-            "AND run_id=%s ORDER BY hour_business", (target_date, run_id))
+        q2 = (
+            "SELECT p.hour_business, p.pred_price FROM efm_predictions p "
+            "JOIN efm_runs r ON p.run_id=r.run_id "
+            "JOIN efm_dim_stage s ON p.stage_id=s.id "
+            "WHERE r.target_date=%s AND p.task='realtime' AND s.name='realtime_raw_model' "
+            "AND p.run_id=%s ORDER BY p.hour_business"
+        )
+        cur.execute(q2, (target_date, run_id))
         from collections import defaultdict
         acc = defaultdict(list)
         for hb, p in cur.fetchall():
@@ -487,16 +551,36 @@ def stage_export(target_date: str, run_id: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════
-def run_full(target_date: str, mode: str = "formal_sim") -> dict:
+def run_full(target_date: str, mode: str = "formal_sim", force: bool = False) -> dict:
     t0 = time.time()
     manifest = {"target_date": target_date, "pipeline": "efm3_full", "stages": {}}
 
+    # ── 0. Local-first dated folder (unique per date) ──
+    prep = prepare_dated_folder(target_date, force=force)
+    if prep.get("skip"):
+        logger.warning("=== ABORT: outputs/%s already exists (use --force to overwrite) ===",
+                       target_date)
+        manifest["skipped_existing"] = True
+        manifest["existing_files"] = prep.get("existing_files", [])
+        manifest["elapsed_s"] = round(time.time() - t0, 1)
+        return manifest
+    root = prep["root"]
+
+    # ── DB health check gate ──
+    hc = db_health_check(DB_URL)
+    if not hc.get("ok"):
+        logger.error("=== ABORT: %s ===", hc.get("detail", "DB unreachable"))
+        manifest["db_error"] = True
+        manifest["db_detail"] = hc.get("detail", "unknown")
+        manifest["elapsed_s"] = round(time.time() - t0, 1)
+        return manifest
+
     manifest["stages"]["cleanup"] = stage_cleanup(target_date)
     manifest["stages"]["sync"] = stage_sync(target_date)
-    da = stage_da_predict(target_date)
+    da = stage_da_predict(target_date, root)
     manifest["stages"]["da_predict"] = da
-    manifest["stages"]["rt_predict"] = stage_rt_predict(target_date, da.get("preds", {}))
-    manifest["stages"]["circuit"] = stage_circuit(target_date, mode=mode)
+    manifest["stages"]["rt_predict"] = stage_rt_predict(target_date, da.get("preds", {}), root)
+    manifest["stages"]["circuit"] = stage_circuit(target_date, mode=mode, root=root)
 
     rid = manifest["stages"]["circuit"].get("run_id", "")
     if rid:
@@ -512,6 +596,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--date", default=None)
     p.add_argument("--mode", default="formal_sim", choices=["dry_run", "formal_sim", "formal"])
     p.add_argument("--pipeline", default="full", choices=["full", "da_only", "rt_only", "circuit_only"])
+    p.add_argument("--force", action="store_true",
+                   help="overwrite outputs/<date>/ if it already exists")
     return p
 
 
@@ -519,18 +605,35 @@ def main():
     args = build_parser().parse_args()
     td = args.date or args.pos_date or date.today().isoformat()
     logger.info("=" * 60)
-    logger.info("EFM3.0 Production Run: target=%s mode=%s", td, args.mode)
+    logger.info("EFM3.0 Production Run: target=%s mode=%s force=%s", td, args.mode, args.force)
     logger.info("=" * 60)
-    manifest = run_full(td, mode=args.mode)
+    manifest = run_full(td, mode=args.mode, force=args.force)
+
+    if manifest.get("skipped_existing"):
+        print("\n" + "=" * 60)
+        print(f"  [WARN] outputs/{td} already exists -- not overwritten")
+        print("  Use --force to overwrite. Existing files:")
+        for f in manifest.get("existing_files", [])[:50]:
+            print(f"    - {f}")
+        print("=" * 60)
+        return
+
+    if manifest.get("db_error"):
+        print("\n" + "=" * 60)
+        print(f"  [ERROR] Database unavailable: {manifest.get('db_detail', 'unknown')}")
+        print("  Fix the connection and retry. Check EFM3_DB_URL or .env.local.")
+        print("=" * 60)
+        return
+
     print("\n" + "=" * 60)
     print("  DELIVERY MANIFEST")
     print("=" * 60)
     for stage, result in manifest["stages"].items():
-        print(f"  {stage:14s} → {result.get('status', '?')}")
+        print(f"  {stage:14s} -> {result.get('status', '?')}")
     del_info = manifest.get("stages", {}).get("export", {})
     if del_info.get("status") == "ok":
-        print(f"  ✅ delivery: {del_info.get('path')} ({del_info.get('rows')} rows)")
-    print(f"  ⏱  {manifest.get('elapsed_s', 0):.0f}s")
+        print(f"  [OK] delivery: {del_info.get('path')} ({del_info.get('rows')} rows)")
+    print(f"  [TIME] {manifest.get('elapsed_s', 0):.0f}s")
     print("=" * 60)
 
 

@@ -17,18 +17,24 @@ def get_predictions(
     is_selected: Optional[bool] = None,
     limit: int = 2000,
 ) -> List[dict]:
-    sql = "SELECT * FROM efm_predictions WHERE run_id=%s"
+    sql = (
+        "SELECT p.*, s.name AS stage, m.name AS model_name "
+        "FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "JOIN efm_dim_model m ON p.model_id = m.id "
+        "WHERE p.run_id=%s"
+    )
     params: list = [run_id]
     if task:
-        sql += " AND task=%s"
+        sql += " AND p.task=%s"
         params.append(task)
     if stage:
-        sql += " AND stage=%s"
+        sql += " AND s.name=%s"
         params.append(stage)
     if is_selected is not None:
-        sql += " AND is_selected=%s"
+        sql += " AND p.is_selected=%s"
         params.append(1 if is_selected else 0)
-    sql += " ORDER BY hour_business ASC, id ASC LIMIT %s"
+    sql += " ORDER BY p.hour_business ASC, p.id ASC LIMIT %s"
     params.append(int(limit))
     return q_all(conn, sql, params)
 
@@ -51,8 +57,12 @@ def get_compare(conn: Connection, run_id: str, models: List[str]) -> List[dict]:
         return []
     placeholders = ",".join(["%s"] * len(models))
     sql = (
-        f"SELECT * FROM efm_predictions WHERE run_id=%s AND stage IN ({placeholders}) "
-        "ORDER BY hour_business ASC, stage ASC"
+        "SELECT p.*, s.name AS stage, m.name AS model_name "
+        "FROM efm_predictions p "
+        "JOIN efm_dim_stage s ON p.stage_id = s.id "
+        "JOIN efm_dim_model m ON p.model_id = m.id "
+        f"WHERE p.run_id=%s AND s.name IN ({placeholders}) "
+        "ORDER BY p.hour_business ASC, s.name ASC"
     )
     params = [run_id, *models]
     return q_all(conn, sql, params)

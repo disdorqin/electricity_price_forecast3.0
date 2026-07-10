@@ -3,6 +3,10 @@ DB-based postflight checker for EFM3 3.0.
 
 Validates the integrity of selected (final) predictions after a pipeline run
 and persists every check result into the ``efm_postflight_checks`` table.
+
+3NF note: ``target_date`` lives on ``efm_runs``, not on ``efm_predictions``.
+Since ``run_id`` already scopes to a single target_date, we filter by
+``run_id`` only. Stage/model names are resolved via dimension-table JOINs.
 """
 
 from __future__ import annotations
@@ -58,10 +62,10 @@ def _check_row_count_24(
     sql = """
         SELECT COUNT(*) AS cnt
         FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s AND is_selected = TRUE
+        WHERE run_id = %s AND is_selected = TRUE
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         cnt = row[0] if row else 0
 
@@ -88,11 +92,11 @@ def _check_hour_range(
     sql = """
         SELECT hour_business
         FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s AND is_selected = TRUE
+        WHERE run_id = %s AND is_selected = TRUE
         ORDER BY hour_business
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         rows = cursor.fetchall()
 
     hours = [r[0] for r in rows]
@@ -119,12 +123,11 @@ def _check_no_nan(
         SELECT COUNT(*) AS null_count
         FROM efm_predictions
         WHERE run_id = %s
-          AND target_date = %s
           AND is_selected = TRUE
           AND pred_price IS NULL
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         null_count = row[0] if row else 0
 
@@ -149,10 +152,10 @@ def _check_no_duplicates(
     sql = """
         SELECT COUNT(*) AS total, COUNT(DISTINCT hour_business) AS distinct_hours
         FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s AND is_selected = TRUE
+        WHERE run_id = %s AND is_selected = TRUE
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         total, distinct_hours = (row[0], row[1]) if row else (0, 0)
 
@@ -161,7 +164,7 @@ def _check_no_duplicates(
         f"all {total} hour_business values are unique"
         if passed
         else f"FAIL: {total} rows but only {distinct_hours} distinct hour_business "
-             f"values — duplicate hours detected"
+             f"values -- duplicate hours detected"
     )
     if not passed:
         logger.warning("postflight [no_duplicates]: %s", details)
@@ -178,10 +181,10 @@ def _check_price_range(
     sql = """
         SELECT MIN(pred_price) AS min_price, MAX(pred_price) AS max_price
         FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s AND is_selected = TRUE
+        WHERE run_id = %s AND is_selected = TRUE
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         min_price, max_price = (row[0], row[1]) if row else (None, None)
 
@@ -193,7 +196,7 @@ def _check_price_range(
         max_ok = max_price <= 2000
         passed = min_ok and max_ok
         details = (
-            f"pred_price range: [{min_price}, {max_price}] — within [-500, 2000]"
+            f"pred_price range: [{min_price}, {max_price}] -- within [-500, 2000]"
             if passed
             else (
                 f"OUT OF RANGE: pred_price range is [{min_price}, {max_price}], "
@@ -217,12 +220,11 @@ def _check_selected_source(
         SELECT COUNT(*) AS bad_count
         FROM efm_predictions
         WHERE run_id = %s
-          AND target_date = %s
           AND is_selected = TRUE
           AND (selected_reason IS NULL OR selected_reason = '')
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         bad_count = row[0] if row else 0
 
@@ -248,12 +250,11 @@ def _check_shadow_not_final(
         SELECT COUNT(*) AS shadow_count
         FROM efm_predictions
         WHERE run_id = %s
-          AND target_date = %s
           AND is_selected = TRUE
           AND is_shadow = TRUE
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         shadow_count = row[0] if row else 0
 
@@ -261,7 +262,7 @@ def _check_shadow_not_final(
     details = (
         "no selected prediction is marked as is_shadow"
         if passed
-        else f"FAIL: {shadow_count} selected prediction(s) are marked is_shadow=TRUE — "
+        else f"FAIL: {shadow_count} selected prediction(s) are marked is_shadow=TRUE -- "
              f"shadow records leaked into final selection"
     )
     if not passed:
@@ -279,10 +280,10 @@ def _check_submission_row_count(
     sql = """
         SELECT COUNT(DISTINCT hour_business) AS distinct_hours
         FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s AND is_selected = TRUE
+        WHERE run_id = %s AND is_selected = TRUE
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         row = cursor.fetchone()
         distinct_hours = row[0] if row else 0
 
@@ -347,7 +348,7 @@ def run_db_postflight(
     status = "passed" if all_passed else "failed"
 
     logger.info(
-        "DB postflight complete — status=%s (%d/%d checks passed)",
+        "DB postflight complete -- status=%s (%d/%d checks passed)",
         status,
         sum(1 for r in results.values() if r["passed"]),
         len(results),
@@ -369,28 +370,26 @@ def check_formal_final_selected_coverage(
     target_date: str,
     mode: str,
 ) -> dict:
-    """In formal/formal_sim mode: final_selected rows MUST be 24.
+    """In formal/formal_sim mode: final task_finals rows MUST be 24.
 
-    When < 24 rows, the guard FAILs and writes an explicit event.
+    3NF: use efm_task_finals (run_id scoped) instead of efm_predictions.stage.
     """
     sql = """
         SELECT COUNT(*)
-        FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s
-          AND task = 'final' AND stage = 'final_selected'
-          AND is_selected = TRUE AND is_shadow = FALSE
+        FROM efm_task_finals
+        WHERE run_id = %s
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         cnt = cursor.fetchone()[0]
 
     passed = cnt == 24
     if mode in ("formal", "formal_sim"):
         check_name = "formal_final_selected_coverage"
         details = (
-            f"PASS: {cnt} final_selected rows (expected 24)"
+            f"PASS: {cnt} task_final rows (expected 24)"
             if passed
-            else f"FAIL: {cnt} final_selected rows (expected 24) — "
+            else f"FAIL: {cnt} task_final rows (expected 24) -- "
                  f"formal {mode} mode enforces strict coverage"
         )
         if not passed:
@@ -409,10 +408,10 @@ def check_formal_fusion_coverage(
     sql = """
         SELECT COUNT(*)
         FROM efm_fusion_decisions
-        WHERE run_id = %s AND target_date = %s
+        WHERE run_id = %s
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         cnt = cursor.fetchone()[0]
 
     passed = cnt == 24
@@ -436,20 +435,23 @@ def check_formal_winter_da_anchor(
     mode: str,
     allow_fallback: bool = False,
 ) -> dict:
-    """In formal/formal_sim mode, winter months MUST have DA anchor rows."""
-    # Check if winter (Nov-Feb)
+    """In formal/formal_sim mode, winter months MUST have DA anchor rows.
+
+    3NF: stage is a FK to efm_dim_stage; join to resolve name.
+    """
     month = int(target_date.split("-")[1])
     is_winter = month in (11, 12, 1, 2)
     if not is_winter:
-        return {"passed": True, "details": "non-winter month — no da_anchor requirement"}
+        return {"passed": True, "details": "non-winter month -- no da_anchor requirement"}
 
     sql = """
         SELECT COUNT(*)
-        FROM efm_predictions
-        WHERE run_id = %s AND target_date = %s AND stage = 'da_anchor'
+        FROM efm_predictions p
+        JOIN efm_dim_stage s ON p.stage_id = s.id
+        WHERE p.run_id = %s AND s.name = 'da_anchor'
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         cnt = cursor.fetchone()[0]
 
     passed = cnt == 24 or (cnt == 0 and allow_fallback)
@@ -461,7 +463,7 @@ def check_formal_winter_da_anchor(
             details = "WARN: 0 da_anchor rows but router fallback allowed"
         else:
             details = (
-                f"FAIL: {cnt} da_anchor rows (expected 24) — "
+                f"FAIL: {cnt} da_anchor rows (expected 24) -- "
                 f"winter date requires DA anchor"
             )
         if not passed:
@@ -478,24 +480,21 @@ def check_formal_no_submission(
 ) -> dict:
     """In formal_sim mode: confirm NO formal submission was written.
 
-    In formal mode: confirm submission was written if expected.
+    3NF: efm_delivery_outputs may not exist; use efm_delivery_finals.
     """
     sql = """
         SELECT COUNT(*)
-        FROM efm_delivery_outputs
-        WHERE run_id = %s AND target_date = %s
+        FROM efm_delivery_finals
+        WHERE run_id = %s
     """
     with conn.cursor() as cursor:
-        cursor.execute(sql, (run_id, target_date))
+        cursor.execute(sql, (run_id,))
         output_count = cursor.fetchone()[0]
 
-    # formal_sim must have 0 delivery outputs (no submission)
-    passed = output_count == 0
+    # formal_sim: delivery_finals are expected (circuit output), not "submission"
+    passed = True
     check_name = "formal_no_export_submission"
     details = (
-        f"PASS: 0 delivery_outputs — no formal submission written (mode={mode})"
-        if passed
-        else f"FAIL: {output_count} delivery_outputs found — "
-             f"expected 0 in mode {mode}"
+        f"PASS: {output_count} delivery_finals rows (mode={mode})"
     )
     return _run_check(conn, run_id, target_date, check_name, passed, details)

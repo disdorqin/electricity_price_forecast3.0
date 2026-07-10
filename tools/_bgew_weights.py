@@ -79,19 +79,22 @@ def compute_bgew_weights(
         actual_col = "rt_actual"
         actual_table = "efm_actual_prices"
 
-    # Fetch raw model predictions + actuals for the last lookback_days
-    # We need the LATEST run per date that has predictions for this task
+    # Fetch raw model predictions + actuals for the last lookback_days.
+    # 3NF: target_date lives on efm_runs; model/stage are FKs to dim tables.
     cur.execute(f"""
-        SELECT p.target_date, p.hour_business, p.model_name, p.pred_price,
+        SELECT r.target_date, p.hour_business, m.name AS model_name, p.pred_price,
                a.{actual_col}
         FROM efm_predictions p
+        JOIN efm_runs r ON p.run_id = r.run_id
+        JOIN efm_dim_model m ON p.model_id = m.id
+        JOIN efm_dim_stage s ON p.stage_id = s.id
         JOIN {actual_table} a
-          ON p.target_date = a.target_date AND p.hour_business = a.hour_business
-        WHERE p.stage = %s
+          ON r.target_date = a.target_date AND p.hour_business = a.hour_business
+        WHERE s.name = %s
           AND p.task = %s
           AND a.{actual_col} IS NOT NULL
-          AND p.target_date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
-        ORDER BY p.target_date, p.hour_business, p.model_name
+          AND r.target_date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+        ORDER BY r.target_date, p.hour_business, m.name
     """, (pred_stage, task, lookback_days * 2))
 
     rows = cur.fetchall()

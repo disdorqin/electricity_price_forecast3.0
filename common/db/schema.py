@@ -12,7 +12,7 @@ from pymysql.connections import Connection
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_FILE = Path(__file__).resolve().parent.parent.parent / "db" / "schema.sql"
+SCHEMA_FILE = Path(__file__).resolve().parent.parent.parent / "db" / "schema_3nf.sql"
 
 
 def init_schema(conn: Connection, schema_path: Optional[str] = None) -> dict:
