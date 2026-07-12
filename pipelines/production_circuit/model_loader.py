@@ -34,7 +34,8 @@ DEFAULT_REALTIME_MODELS = ["sgdfnet", "timesfm", "da_aware_sgdf_selector"]
 # configs/candidate_registry/realtime_da_sgdf_selector.yaml). The selector
 # DEFAULTS to DA_anchor and only switches to SGDFNet at high-confidence,
 # non-winter windows.
-SELECTOR_SWITCH_REL_TOL = 0.10   # |sgdf - da| / da < 10% considered "confident"
+SELECTOR_SWITCH_REL_TOL = 0.10          # non-winter: |sgdf-da|/da < 10% -> trust SGDFNet
+SELECTOR_SWITCH_REL_TOL_WINTER = 0.20   # winter: relaxed tolerance (keep diversity, don't disable)
 WINTER_MONTHS = {11, 12, 1, 2}
 
 
@@ -116,16 +117,15 @@ def derive_da_aware_selector(
 ) -> list[dict[str, Any]]:
     """Derive the ``da_aware_sgdf_selector`` candidate for real-time.
 
-    Policy (whole-day binary choice): either the entire day uses SGDFNet or
-    the entire day uses DA_anchor. Switch to SGDFNet only when:
-      - Non-winter month
-      - Average |sgdf-da|/da across all 24 hours < SELECTOR_SWITCH_REL_TOL
-
-    This is more conservative than per-hour mixing and avoids inconsistent
-    intra-day switching between models.
+    Policy (PER-HOUR mixing): decide independently for each hour. Use SGDFNet at
+    hour hb when |sgdf-da|/da < tolerance, else fall back to DA_anchor. Winter
+    months use a RELAXED tolerance (SELECTOR_SWITCH_REL_TOL_WINTER) instead of
+    disabling SGDFNet entirely — this preserves RT-chain model diversity in
+    Nov-Feb while staying conservative on low-confidence hours.
     """
     month = int(target_date.split("-")[1])
     is_winter = month in WINTER_MONTHS
+    tol = SELECTOR_SWITCH_REL_TOL_WINTER if is_winter else SELECTOR_SWITCH_REL_TOL
     da_map: dict[int, float] = {}
     with conn.cursor() as cur:
         cur.execute(
@@ -149,40 +149,24 @@ def derive_da_aware_selector(
             )
             da_map = {int(hb): float(v) for hb, v in cur.fetchall()}
 
-    # Compute average relative deviation for whole-day decision
-    rel_devs = []
-    for hb in range(1, 25):
-        da = da_map.get(hb)
-        sg = sgdfnet_by_hour.get(hb)
-        if da is not None and da != 0 and sg is not None:
-            rel_devs.append(abs(sg - da) / abs(da))
-    avg_rel_dev = sum(rel_devs) / len(rel_devs) if rel_devs else 1.0
-
-    # Whole-day decision
-    use_sgdfnet_whole_day = (not is_winter) and (avg_rel_dev < SELECTOR_SWITCH_REL_TOL)
-
-    if use_sgdfnet_whole_day:
-        logger.info(
-            "[da_aware_selector] WHOLE DAY -> SGDFNet (avg_rel_dev=%.3f < %.2f, non-winter)",
-            avg_rel_dev, SELECTOR_SWITCH_REL_TOL,
-        )
-    else:
-        reason = "winter" if is_winter else f"avg_rel_dev={avg_rel_dev:.3f} >= {SELECTOR_SWITCH_REL_TOL}"
-        logger.info("[da_aware_selector] WHOLE DAY -> DA_anchor (%s)", reason)
-
     rows: list[dict[str, Any]] = []
+    n_sg = 0
     for hb in range(1, 25):
         da = da_map.get(hb)
         sg = sgdfnet_by_hour.get(hb)
 
-        # Whole-day: either all SGDFNet or all DA
-        if use_sgdfnet_whole_day and sg is not None:
+        # Per-hour decision: prefer SGDFNet when it is close to the DA anchor.
+        rel_dev = (abs(sg - da) / abs(da)) if (da not in (None, 0) and sg is not None) else None
+        use_sg = (sg is not None) and (rel_dev is not None) and (rel_dev < tol)
+
+        if use_sg:
             value = sg
-            reason_text = "selector -> SGDFNet (whole-day high-confidence)"
+            reason_text = f"selector -> SGDFNet (rel_dev={rel_dev:.3f} < {tol})"
             flag = "rt"
+            n_sg += 1
         else:
             value = da
-            reason_text = "selector -> DA_anchor (whole-day default/conservative)"
+            reason_text = "selector -> DA_anchor (low-confidence / missing sgdf)"
             flag = "da_default"
 
         if value is None:
@@ -197,4 +181,6 @@ def derive_da_aware_selector(
             "selected_reason": reason_text,
             "quality_flags": ["da_aware_selector", flag],
         })
+    logger.info("[da_aware_selector] PER-HOUR -> %d/24h SGDFNet, %d/24h DA (tol=%.2f, %s)",
+                n_sg, len(rows) - n_sg, tol, "winter" if is_winter else "non-winter")
     return rows

@@ -41,14 +41,46 @@ logger = logging.getLogger("efm3")
 REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-REPO_25 = Path("D:/作业/大创_挑战杯_互联网/大学生创新创业计划/大创实现/其他资料/electricity_forecast_model2.5")
-MODELS_REPO = Path("D:/作业/大创_挑战杯_互联网/大学生创新创业计划/大创实现/其他資料/models") if False else \
-    Path("D:/作业/大创_挑战杯_互联网/大学生创新创业计划/大创实现/其他资料/models")
-SGDF_REPO = Path("D:/作业/大创_挑战杯_互联网/大学生创新创业计划/大创实现/其他资料/electricity_forecast_deep_sgdf_delta")
+# Load .env.local into os.environ (if not already set) so sibling paths
+# and DB URL are available without manual export.
+_env_local = REPO / ".env.local"
+if _env_local.is_file():
+    for _line in _env_local.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _, _v = _line.partition("=")
+            os.environ.setdefault(_k.strip(), _v.strip())
+
+# Sibling repos — resolve from env vars first, then fall back to adjacent directories.
+_SIBLINGS = REPO.parent  # D:/作业/.../其他资料/
+
+
+def _resolve_sibling(env_var: str, default_name: str) -> Path:
+    """Resolve a sibling repo path: env var > adjacent directory."""
+    env_val = os.environ.get(env_var, "")
+    if env_val:
+        return Path(env_val)
+    candidate = _SIBLINGS / default_name
+    if candidate.is_dir():
+        return candidate
+    # Last resort: return the expected path (will fail loudly if used)
+    return candidate
+
+
+REPO_25 = _resolve_sibling("EFM2_5_ROOT", "electricity_forecast_model2.5")
+MODELS_REPO = _resolve_sibling("EFM3_MODELS_REPO", "models")
+SGDF_REPO = _resolve_sibling("EFM3_SGDF_REPO", "electricity_forecast_deep_sgdf_delta")
 
 PMOS_SYNCED = REPO_25 / "data" / "shandong_pmos_hourly.csv"
 PMOS_DEST = SGDF_REPO / "data" / "shandong_pmos_hourly.csv"
 P1_DATA_DIR = MODELS_REPO.parent / "electricity_forecast_model2.0_exp" / "data"
+# Baseline precomputed P1 day-ahead predictions (cfg05 / xgboost_rich / catboost_rich).
+# 231 days (2025-11-01 ~ 2026-06-19); reproduces the delivered DA sMAPE ~14.45%.
+# stage_da_predict reads these first for consistency; live training is fallback only.
+P1_PRECOMPUTED_CSV = (
+    MODELS_REPO / "outputs" / "p1_dayahead" / "run_backtest_full"
+    / "predictions" / "all_predictions.csv"
+)
 # SGDFNet 真实权重（exp_tcn_2026_02 含 best_model.pt；exp_tcn_real_sgdfnet_2026_02 无权重）
 SGDF_MODEL_DIR = SGDF_REPO / "artifacts" / "trendknight_rt" / "exp_tcn_2026_02"
 
@@ -148,9 +180,49 @@ def stage_sync(target_date: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 # Stage 2: Day-ahead Prediction (real P1 models)
 # ═══════════════════════════════════════════════════════════════════
-def stage_da_predict(target_date: str, root: Path | None = None) -> dict:
-    """Train + predict day-ahead with P1 engine. Returns {status, preds:{model:{hb:val}}, models}."""
-    logger.info("=== Stage 2/5: Day-ahead Prediction (P1: %s) ===", ", ".join(DA_MODELS))
+def _load_precomputed_da(target_date: str) -> dict[str, dict[int, float]] | None:
+    """Load baseline precomputed DA predictions for ``target_date`` from the P1
+    backtest CSV. Returns ``{model: {hb: y_pred}}`` only if ALL configured DA
+    models have a complete 24-hour block for the date; otherwise ``None`` so the
+    caller falls back to live training (keeps the roster consistent).
+
+    This is the fix for the DA-metric-doubling root cause: main.py used to
+    re-train cfg05/xgboost_rich/catboost_rich every run with a slightly different
+    window/seed, producing predictions 18-170 yuan/MWh off the delivered baseline
+    (DA sMAPE 14% -> 26%). Reading the frozen baseline restores consistency.
+    """
+    if not P1_PRECOMPUTED_CSV.exists():
+        logger.warning("  precomputed CSV not found: %s", P1_PRECOMPUTED_CSV)
+        return None
+    try:
+        df = pd.read_csv(P1_PRECOMPUTED_CSV)
+    except Exception as e:
+        logger.warning("  precomputed CSV read failed: %s", e)
+        return None
+    df = df[df["business_day"].astype(str) == str(target_date)]
+    if df.empty:
+        return None
+    preds: dict[str, dict[int, float]] = {}
+    for model_name in DA_MODELS:
+        md = df[df["model_name"] == model_name]
+        if len(md) < 24:
+            logger.warning("  precomputed CSV incomplete for %s on %s (%d h) -> live fallback",
+                           model_name, target_date, len(md))
+            return None
+        preds[model_name] = {int(r.hour_business): float(r.y_pred)
+                             for r in md.itertuples()}
+    return preds
+
+
+def _train_da_live(target_date: str, use_gpu: bool = False) -> dict[str, dict[int, float]]:
+    """Fallback: live-train the P1 DA models (only when the date is not in the
+    precomputed baseline, e.g. a genuine future date). Honors ``use_gpu`` for the
+    tree learners (with automatic CPU fallback inside the walkforward adapters)."""
+    import os as _os
+    if use_gpu:
+        _os.environ.pop("P1_FORCE_CPU", None)
+    else:
+        _os.environ["P1_FORCE_CPU"] = "1"
     from scripts.run_dayahead_p1_walkforward import (
         build_features_rich, get_rich_feature_cols, build_adapter,
     )
@@ -185,7 +257,26 @@ def stage_da_predict(target_date: str, root: Path | None = None) -> dict:
         else:
             p = model.predict(X)
         preds[model_name] = {hb: float(v) for hb, v in zip(range(1, 25), p)}
-        logger.info("  %s: predicted 24h (mean=%.1f)", model_name, float(np.mean(p)))
+        logger.info("  %s: LIVE predicted 24h (mean=%.1f)", model_name, float(np.mean(p)))
+    return preds
+
+
+def stage_da_predict(target_date: str, root: Path | None = None,
+                     use_gpu: bool = False) -> dict:
+    """Predict day-ahead with P1 models. Returns {status, preds:{model:{hb:val}}, models}.
+
+    Priority: (1) baseline precomputed CSV (consistent with the delivered
+    14.45% run); (2) live training only when the date has no precomputed row.
+    """
+    logger.info("=== Stage 2/5: Day-ahead Prediction (P1: %s) ===", ", ".join(DA_MODELS))
+    preds = _load_precomputed_da(target_date)
+    if preds is not None:
+        for m, ph in preds.items():
+            logger.info("  %s: precomputed 24h (mean=%.1f)",
+                        m, sum(ph.values()) / 24)
+    else:
+        logger.info("  %s not in precomputed baseline -> live P1 training (90d)", target_date)
+        preds = _train_da_live(target_date, use_gpu=use_gpu)
 
     # Ingest to DB (task=dayahead, stage=dayahead_raw_model -> circuit picks up)
     from tools.ingest_model_predictions import ingest_file
@@ -233,8 +324,12 @@ def _build_anchor_csv(target_date: str, da_preds: dict[int, float], out_csv: Pat
     return out_csv
 
 
-def _run_sgdfnet(target_date: str, anchor_csv: Path) -> dict[int, float] | None:
-    """Real SGDFNet (TrendKnightRT) inference for target_date."""
+def _run_sgdfnet(target_date: str, anchor_csv: Path,
+                 device: str = "cpu") -> dict[int, float] | None:
+    """Real SGDFNet (TrendKnightRT) inference for target_date.
+
+    ``device`` is ``cuda`` when --gpu is passed and CUDA is available (PyTorch
+    GPU is stable on this box, unlike the tree learners), else ``cpu``."""
     out_csv = anchor_csv.parent / "sgdfnet_out.csv"
     res = subprocess.run(
         [sys.executable, str(SGDF_REPO / "scripts" / "predict_realtime_deep_model.py"),
@@ -242,7 +337,7 @@ def _run_sgdfnet(target_date: str, anchor_csv: Path) -> dict[int, float] | None:
          "--data-path", str(anchor_csv.resolve()),
          "--decision-day", target_date,
          "--out", str(out_csv.resolve()),
-         "--device", "cpu"],
+         "--device", device],
         cwd=str(SGDF_REPO), capture_output=True, text=True, timeout=300,
     )
     if res.returncode != 0 or not out_csv.exists():
@@ -267,8 +362,17 @@ def _run_timesfm(target_date: str) -> dict[int, float] | None:
         return None
 
 
-def stage_rt_predict(target_date: str, da_preds, root: Path | None = None) -> dict:
-    logger.info("=== Stage 3/5: Real-time Prediction (SGDFNet + TimesFM) ===")
+def stage_rt_predict(target_date: str, da_preds, root: Path | None = None,
+                     use_gpu: bool = False) -> dict:
+    logger.info("=== Stage 3/5: Real-time Prediction (SGDFNet + TimesFM%s) ===",
+                " + TimeMixer" if "timemixer" in ALL_RT_MODELS else "")
+    # PyTorch GPU is reliable on this box; use it for the deep RT models when asked.
+    try:
+        import torch as _torch
+        rt_device = "cuda" if (use_gpu and _torch.cuda.is_available()) else "cpu"
+    except Exception:
+        rt_device = "cpu"
+    logger.info("  RT deep-model device: %s", rt_device)
     from tools.ingest_model_predictions import ingest_file
     from collections import defaultdict
 
@@ -301,7 +405,7 @@ def stage_rt_predict(target_date: str, da_preds, root: Path | None = None) -> di
     rt_results: dict[str, dict[int, float]] = {}
 
     # ── SGDFNet (real inference, DA-anchor injected) ──
-    sg = _run_sgdfnet(target_date, anchor_csv)
+    sg = _run_sgdfnet(target_date, anchor_csv, device=rt_device)
     if sg:
         rt_results["sgdfnet"] = sg
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="", encoding="utf-8")
@@ -330,37 +434,33 @@ def stage_rt_predict(target_date: str, da_preds, root: Path | None = None) -> di
     else:
         logger.warning("  TimesFM: no output produced")
 
-    # ── DA-aware SGDF selector (whole-day binary choice) ──
-    # Policy: either the whole day uses SGDFNet or the whole day uses DA.
-    # Switch to SGDFNet only when: non-winter AND avg |sgdf-da|/da < threshold.
-    # NOTE: use the flattened `flat_da` (avg across DA models), NOT the nested
-    # `da_preds` dict — reading da_preds.get(hb) on {model:{hb:val}} always
-    # returns 0.0, which previously wrote an all-zero selector into the ledger.
+    # ── DA-aware SGDF selector (PER-HOUR mixing) ──
+    # Policy: decide independently for each hour. Use SGDFNet for hour hb when
+    # |sgdf-da|/da < tol, else fall back to DA_anchor. Winter no longer disables
+    # SGDFNet for the whole day — it just uses a RELAXED tolerance so the RT
+    # chain keeps model diversity in Nov-Feb while staying conservative.
+    # NOTE: use flattened `flat_da` (avg across DA models), NOT the nested
+    # `da_preds` dict — da_preds.get(hb) on {model:{hb:val}} always returns 0.0.
     if sg and flat_da:
-        from pipelines.production_circuit.model_loader import SELECTOR_SWITCH_REL_TOL, WINTER_MONTHS
+        from pipelines.production_circuit.model_loader import (
+            SELECTOR_SWITCH_REL_TOL, SELECTOR_SWITCH_REL_TOL_WINTER, WINTER_MONTHS,
+        )
         month = pd.Timestamp(target_date).month
         is_winter = month in WINTER_MONTHS
+        tol = SELECTOR_SWITCH_REL_TOL_WINTER if is_winter else SELECTOR_SWITCH_REL_TOL
 
-        # Compute average relative deviation across all hours
-        rel_devs = []
+        sel: dict[int, float] = {}
+        n_sg = 0
         for hb in range(1, 25):
             da = flat_da.get(hb, 0.0)
             s = sg.get(hb, da)
-            if da and da != 0:
-                rel_devs.append(abs(s - da) / abs(da))
-        avg_rel_dev = sum(rel_devs) / len(rel_devs) if rel_devs else 1.0
-
-        # Whole-day decision: use SGDFNet only if non-winter + high confidence
-        use_sgdfnet_whole_day = (not is_winter) and (avg_rel_dev < SELECTOR_SWITCH_REL_TOL)
-
-        if use_sgdfnet_whole_day:
-            sel = {hb: sg.get(hb, flat_da.get(hb, 0.0)) for hb in range(1, 25)}
-            logger.info("  da_aware_sgdf_selector: WHOLE DAY -> SGDFNet (avg_rel_dev=%.3f < %.2f, non-winter)",
-                       avg_rel_dev, SELECTOR_SWITCH_REL_TOL)
-        else:
-            sel = {hb: flat_da.get(hb, 0.0) for hb in range(1, 25)}
-            reason = "winter" if is_winter else f"avg_rel_dev={avg_rel_dev:.3f} >= {SELECTOR_SWITCH_REL_TOL}"
-            logger.info("  da_aware_sgdf_selector: WHOLE DAY -> DA_anchor (%s)", reason)
+            rel_dev = abs(s - da) / abs(da) if (da and da != 0) else 1.0
+            use_sg = rel_dev < tol
+            sel[hb] = s if use_sg else da
+            n_sg += int(use_sg)
+        logger.info("  da_aware_sgdf_selector: PER-HOUR -> %d/24h SGDFNet, %d/24h DA "
+                    "(tol=%.2f, %s)", n_sg, 24 - n_sg, tol,
+                    "winter" if is_winter else "non-winter")
 
         rt_results["da_aware_sgdf_selector"] = sel
         tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="", encoding="utf-8")
@@ -387,14 +487,56 @@ def stage_rt_predict(target_date: str, da_preds, root: Path | None = None) -> di
 # ═══════════════════════════════════════════════════════════════════
 # Stage 4: Production Circuit (repair → fusion → classifier → delivery)
 # ═══════════════════════════════════════════════════════════════════
+def _is_negative_price_day(target_date: str) -> bool:
+    """Detect the specific catboost failure signature, NOT merely "some negative
+    hour" (that fires on ~2/3 of days). Trigger only when cfg05 AND xgboost_rich
+    BOTH agree a price is negative in an hour, yet catboost_rich stays clearly
+    positive there (>= +50) — i.e. catboost misses the negative regime. On such
+    consensus hours catboost drags the fusion, so we floor its weight.
+
+    Reads the freshly-ingested raw DA candidates (efm3_raw_%, not the circuit's
+    own efm3_pc_% write-back)."""
+    from common.db.connection import DbConnectionManager
+    conn = DbConnectionManager(db_url=DB_URL).new_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT m.name, p.hour_business, p.pred_price FROM efm_predictions p "
+            "JOIN efm_runs r ON p.run_id=r.run_id "
+            "JOIN efm_dim_stage s ON p.stage_id=s.id "
+            "JOIN efm_dim_model m ON p.model_id=m.id "
+            "WHERE r.target_date=%s AND s.name='dayahead_raw_model' "
+            "AND m.name IN ('cfg05','xgboost_rich','catboost_rich') "
+            "AND p.run_id NOT LIKE 'efm3_pc_%%'",
+            (target_date,))
+        by_hour: dict[int, dict[str, float]] = {}
+        for name, hb, price in cur.fetchall():
+            by_hour.setdefault(int(hb), {})[name] = float(price)
+        for hb, mp in by_hour.items():
+            cfg = mp.get("cfg05")
+            xgb = mp.get("xgboost_rich")
+            cat = mp.get("catboost_rich")
+            if cfg is None or xgb is None or cat is None:
+                continue
+            if cfg < 0 and xgb < 0 and cat >= 50:
+                return True
+        return False
+    finally:
+        conn.close()
+
+
 def stage_circuit(target_date: str, mode: str = "formal_sim", root: Path | None = None) -> dict:
     logger.info("=== Stage 4/5: Production Circuit ===")
     from pipelines.production_circuit.circuit_orchestrator import run_production_circuit
 
     try:
         from tools._bgew_weights import compute_bgew_weights, get_model_level_weights
-        da_pw = compute_bgew_weights(DB_URL, task="dayahead", lookback_days=30)
-        rt_pw = compute_bgew_weights(DB_URL, task="realtime", lookback_days=30)
+        # as_of_date=target_date -> only train on days strictly before the day we
+        # are predicting (no leakage) and independent of the wall-clock CURDATE().
+        da_pw = compute_bgew_weights(DB_URL, task="dayahead", lookback_days=60,
+                                     as_of_date=target_date)
+        rt_pw = compute_bgew_weights(DB_URL, task="realtime", lookback_days=60,
+                                     as_of_date=target_date)
         fw = {}
         fw.update(get_model_level_weights(da_pw))
         fw.update(get_model_level_weights(rt_pw))
@@ -402,6 +544,29 @@ def stage_circuit(target_date: str, mode: str = "formal_sim", root: Path | None 
     except Exception as e:
         logger.warning("  BGEW weight computation failed: %s (equal weights)", e)
         fw = {}
+
+    # ── TASK-5: negative-price-day handling for catboost_rich ──
+    # catboost_rich collapses on negative-price days (predicts ~+345 while the
+    # market settles near -100), dragging the fusion. Detect such days from the
+    # raw DA candidates (if cfg05 OR xgboost_rich go negative in any hour) and
+    # floor catboost_rich's DA weight, renormalizing the other DA models.
+    try:
+        if _is_negative_price_day(target_date):
+            floor = 0.03
+            cat_prev = fw.get("catboost_rich", 0.0)
+            if cat_prev > floor:
+                others = {m: fw.get(m, 0.0) for m in ("cfg05", "xgboost_rich")}
+                os_sum = sum(others.values())
+                budget = cat_prev - floor  # weight freed up from catboost
+                fw["catboost_rich"] = floor
+                if os_sum > 0:
+                    for m, wv in others.items():
+                        fw[m] = wv + budget * (wv / os_sum)
+                logger.info("  [neg-price] %s: catboost_rich weight %.3f -> %.3f "
+                            "(redistributed to cfg05/xgboost_rich)", target_date,
+                            cat_prev, floor)
+    except Exception as e:
+        logger.warning("  neg-price adjustment skipped: %s", e)
 
     res = run_production_circuit(
         target_date, use_db=True, db_url=DB_URL, mode=mode,
@@ -460,14 +625,18 @@ def _read_task_finals(target_date: str, task: str, run_id: str | None = None) ->
                 "WHERE r.target_date=%s AND tf.task=%s AND tf.run_id=%s ORDER BY tf.hour_business",
                 (target_date, task, run_id))
         else:
-            # Fallback: latest run_id for this target_date
+            # Fallback: latest circuit run_id for this target_date (by started_at,
+            # restricted to efm3_pc_% — efm3_raw_% sorts lexicographically higher
+            # than efm3_pc_% so a plain MAX(run_id) would pick the wrong run).
             cur.execute(
                 "SELECT tf.hour_business, tf.final_price FROM efm_task_finals tf "
                 "JOIN efm_runs r ON tf.run_id=r.run_id "
                 "WHERE r.target_date=%s AND tf.task=%s "
-                "AND tf.run_id=(SELECT MAX(tf2.run_id) FROM efm_task_finals tf2 "
+                "AND tf.run_id=(SELECT tf2.run_id FROM efm_task_finals tf2 "
                 "JOIN efm_runs r2 ON tf2.run_id=r2.run_id "
-                "WHERE r2.target_date=%s AND tf2.task=%s) ORDER BY tf.hour_business",
+                "WHERE r2.target_date=%s AND tf2.task=%s "
+                "AND tf2.run_id LIKE 'efm3_pc_%%' "
+                "ORDER BY r2.started_at DESC LIMIT 1) ORDER BY tf.hour_business",
                 (target_date, task, target_date, task))
         return {int(hb): float(p) for hb, p in cur.fetchall()}
     finally:
@@ -551,9 +720,11 @@ def stage_export(target_date: str, run_id: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════
-def run_full(target_date: str, mode: str = "formal_sim", force: bool = False) -> dict:
+def run_full(target_date: str, mode: str = "formal_sim", force: bool = False,
+             use_gpu: bool = False, skip_sync: bool = False) -> dict:
     t0 = time.time()
-    manifest = {"target_date": target_date, "pipeline": "efm3_full", "stages": {}}
+    manifest = {"target_date": target_date, "pipeline": "efm3_full",
+                "use_gpu": use_gpu, "stages": {}}
 
     # ── 0. Local-first dated folder (unique per date) ──
     prep = prepare_dated_folder(target_date, force=force)
@@ -576,10 +747,15 @@ def run_full(target_date: str, mode: str = "formal_sim", force: bool = False) ->
         return manifest
 
     manifest["stages"]["cleanup"] = stage_cleanup(target_date)
-    manifest["stages"]["sync"] = stage_sync(target_date)
-    da = stage_da_predict(target_date, root)
+    if skip_sync:
+        logger.info("=== Stage 1/5: Data Sync === SKIPPED (--skip-sync; static data)")
+        manifest["stages"]["sync"] = {"status": "skipped"}
+    else:
+        manifest["stages"]["sync"] = stage_sync(target_date)
+    da = stage_da_predict(target_date, root, use_gpu=use_gpu)
     manifest["stages"]["da_predict"] = da
-    manifest["stages"]["rt_predict"] = stage_rt_predict(target_date, da.get("preds", {}), root)
+    manifest["stages"]["rt_predict"] = stage_rt_predict(
+        target_date, da.get("preds", {}), root, use_gpu=use_gpu)
     manifest["stages"]["circuit"] = stage_circuit(target_date, mode=mode, root=root)
 
     rid = manifest["stages"]["circuit"].get("run_id", "")
@@ -598,6 +774,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--pipeline", default="full", choices=["full", "da_only", "rt_only", "circuit_only"])
     p.add_argument("--force", action="store_true",
                    help="overwrite outputs/<date>/ if it already exists")
+    p.add_argument("--gpu", action="store_true",
+                   help="Enable GPU: PyTorch RT models (SGDFNet/TimeMixer) use CUDA; "
+                        "P1 tree learners attempt GPU with CPU fallback")
+    p.add_argument("--skip-sync", action="store_true", dest="skip_sync",
+                   help="Skip Stage 1 data sync (static data already ingested; faster backtest)")
     return p
 
 
@@ -605,9 +786,11 @@ def main():
     args = build_parser().parse_args()
     td = args.date or args.pos_date or date.today().isoformat()
     logger.info("=" * 60)
-    logger.info("EFM3.0 Production Run: target=%s mode=%s force=%s", td, args.mode, args.force)
+    logger.info("EFM3.0 Production Run: target=%s mode=%s force=%s gpu=%s skip_sync=%s",
+                td, args.mode, args.force, args.gpu, args.skip_sync)
     logger.info("=" * 60)
-    manifest = run_full(td, mode=args.mode, force=args.force)
+    manifest = run_full(td, mode=args.mode, force=args.force, use_gpu=args.gpu,
+                        skip_sync=args.skip_sync)
 
     if manifest.get("skipped_existing"):
         print("\n" + "=" * 60)

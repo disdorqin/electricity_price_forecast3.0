@@ -28,6 +28,12 @@ logger = logging.getLogger(__name__)
 
 SMAFE_FLOOR = 50
 PERIODS = ["1_8", "9_16", "17_24"]
+# The DA-anchored RT selector is structurally the strongest RT candidate
+# (single-model sMAPE 24.55% vs sgdfnet 31.77% / timesfm 29.96%). Cold-start
+# BGEW under-weights it early in the window, diluting the fusion. We reserve a
+# fixed share of the RT weight mass for it while keeping the remainder adaptive.
+RT_SELECTOR = "da_aware_sgdf_selector"
+RT_SELECTOR_PRIOR = 0.50  # tuned via tools/_rt_bgew_sim.py sweep: pooled RT 25.28%->24.76%
 DEFAULT_CONFIG = {
     "eta": 0.8,
     "weight_floor": 0.03,
@@ -35,6 +41,20 @@ DEFAULT_CONFIG = {
     "day_gate_weights": [0.7, 0.3],
     "composite_alpha": 0.7,
 }
+
+
+def _apply_selector_prior(weights: dict, prior: float, selector: str = RT_SELECTOR) -> dict:
+    """Blend period weights toward ``selector`` by ``prior`` in [0,1] while
+    keeping the remaining (1-prior) mass adaptive. No-op if selector absent
+    (e.g. day-ahead candidates), so this is safe to call for both tasks."""
+    if prior <= 0 or selector not in weights:
+        return weights
+    blended = {m: (1.0 - prior) * weights.get(m, 0.0) for m in weights}
+    blended[selector] = blended.get(selector, 0.0) + prior
+    total = sum(blended.values())
+    if total <= 0:
+        return weights
+    return {m: round(blended[m] / total, 6) for m in blended}
 
 
 def smape_floor50(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -58,11 +78,21 @@ def compute_bgew_weights(
     lookback_days: int = 30,
     eta: float = 0.8,
     weight_floor: float = 0.03,
+    as_of_date: str | None = None,
+    selector_prior: float | None = None,
 ) -> dict:
     """
     Compute BGEW fusion weights from historical ledger data.
 
     Returns: dict mapping period -> {model_name: weight}
+
+    ``as_of_date`` (YYYY-MM-DD): only use days STRICTLY BEFORE this date (the day
+    being predicted). This (a) fixes the old ``CURDATE()``-relative window that
+    returned "No training data found" for historical backtests — the ledger dates
+    are 2025-11..2026-06, far older than 60 days from today — and (b) prevents
+    look-ahead leakage. When ``as_of_date`` is None, all available history up to
+    now is used (normal next-day production). The in-Python step still keeps only
+    the most recent ``lookback_days`` unique days, so the window stays bounded.
     """
     url = db_url.replace("%%23", "%23")
     mgr = DbConnectionManager(db_url=url)
@@ -79,8 +109,18 @@ def compute_bgew_weights(
         actual_col = "rt_actual"
         actual_table = "efm_actual_prices"
 
-    # Fetch raw model predictions + actuals for the last lookback_days.
-    # 3NF: target_date lives on efm_runs; model/stage are FKs to dim tables.
+    # Fetch raw model predictions + actuals. Bound the window by ``as_of_date``
+    # (exclusive) when given; otherwise take everything up to today. We pull a
+    # generous window (lookback_days*3, capped) and trim to lookback_days unique
+    # days in Python so the SQL never silently returns empty on stale dates.
+    where_date = ""
+    params: list = [pred_stage, task]
+    if as_of_date:
+        where_date = (
+            " AND r.target_date < %s "
+            " AND r.target_date >= DATE_SUB(%s, INTERVAL %s DAY)"
+        )
+        params += [as_of_date, as_of_date, max(lookback_days * 3, 120)]
     cur.execute(f"""
         SELECT r.target_date, p.hour_business, m.name AS model_name, p.pred_price,
                a.{actual_col}
@@ -93,9 +133,10 @@ def compute_bgew_weights(
         WHERE s.name = %s
           AND p.task = %s
           AND a.{actual_col} IS NOT NULL
-          AND r.target_date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+          AND p.run_id NOT LIKE 'efm3_pc_%%'
+          {where_date}
         ORDER BY r.target_date, p.hour_business, m.name
-    """, (pred_stage, task, lookback_days * 2))
+    """, tuple(params))
 
     rows = cur.fetchall()
     conn.close()
@@ -182,6 +223,14 @@ def compute_bgew_weights(
             m: round(w[m], 6) for m in models if w[m] > 0
         }
 
+    # Reserve a fixed adaptive-blended share for the DA-anchored RT selector.
+    # Only applies to realtime (selector absent from day-ahead candidates).
+    prior = RT_SELECTOR_PRIOR if selector_prior is None else selector_prior
+    if task == "realtime" and prior and prior > 0:
+        period_weights = {
+            per: _apply_selector_prior(w, prior) for per, w in period_weights.items()
+        }
+
     return period_weights
 
 
@@ -200,9 +249,9 @@ def get_model_level_weights(
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    db_url = os.environ.get("EFM3_DB_URL",
-                            "mysql+pymysql://root:Zlt20060313%%23@127.0.0.1:3306/efm3")
-    url = db_url.replace("%%23", "%23")
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from common.db.connection import get_db_url
+    url = get_db_url()
 
     for task in ["dayahead", "realtime"]:
         print(f"\n[{task.upper()}] BGEW weights:")

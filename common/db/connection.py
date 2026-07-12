@@ -21,9 +21,7 @@ _DEFAULT_ENV_VAR = "EFM3_DB_URL"
 _DEFAULT_POOL_SIZE = 5
 _DEFAULT_TIMEOUT = 10
 
-# Local default DB URL (used only when no env var or .env.local is present).
-# Password contains '#' which must be URL-encoded as '%23'.
-_LOCAL_DEFAULT_DB_URL = "mysql+pymysql://root:Zlt20060313%23@127.0.0.1:3306/efm3"
+# No hardcoded credentials. DB URL must come from env var or .env.local.
 
 
 def get_db_url() -> str:
@@ -32,8 +30,8 @@ def get_db_url() -> str:
     Resolution order:
       1. ``EFM3_DB_URL`` environment variable
       2. ``.env.local`` file in the repo root (``EFM3_DB_URL=...``)
-      3. Local development default (hardcoded localhost)
 
+    Raises ``RuntimeError`` if neither is configured.
     The returned URL has ``%%23`` already normalised to ``%23`` so that
     pymysql receives the literal ``#`` after URL-decoding.
     """
@@ -58,8 +56,11 @@ def get_db_url() -> str:
         except Exception:
             pass
 
-    # 3. Local default
-    return _LOCAL_DEFAULT_DB_URL
+    # 3. No fallback — require explicit configuration
+    raise RuntimeError(
+        "DB URL not configured. Set EFM3_DB_URL env var or add it to .env.local. "
+        "Example: EFM3_DB_URL=mysql+pymysql://user:pass%23@host:3306/db"
+    )
 
 
 def db_health_check(db_url: str | None = None) -> dict:
