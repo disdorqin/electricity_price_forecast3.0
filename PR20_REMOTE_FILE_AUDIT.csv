@@ -1,0 +1,13 @@
+file,before_size_kb,before_in_pr,before_sha,after_in_pr,after_hash,reason
+data_audit/FULL_HISTORY_CANONICAL_PANEL.parquet,9065,TRACKED,sha256:3a1b...,REMOVED,artifacts-only-repo-external
+data_audit/FULL_HISTORY_CANONICAL_VERDICT.json,2,TRACKED,sha256:d4f...,REMOVED,contained-absolute-path
+data_audit/FH_CALIB_COMMON_MASK_RANKING.csv,0.2,TRACKED,REMOVED,derived-result-manifest-excluded
+data_audit/FH_CALIB_METRIC_AUDIT.csv,0.7,TRACKED,REMOVED,derived-result-manifest-excluded
+data_audit/FH_CALIB_ORACLE_AUDIT.json,0.6,TRACKED,REMOVED,derived-result-manifest-excluded
+data_audit/FH_NEW_COMMON_MASK_RANKING.csv,0.4,TRACKED,REMOVED,derived-result-manifest-excluded
+data_audit/FH_NEW_METRIC_AUDIT.csv,1.5,TRACKED,REMOVED,derived-result-manifest-excluded
+data_audit/FH_NEW_ORACLE_AUDIT.json,0.7,TRACKED,REMOVED,derived-result-manifest-excluded
+data_audit/V31_R1_RESULTS.json,0.6,TRACKED,KEPT,small-summary
+fusion/metrics.py,1.7,TRACKED-KEPT,REVERTED-TO-ORIGIN/MAIN,reverted-imports-moved-to-metrics_contract
+tools/research/metrics_contract.py,2,NEW,KEPT,research-metric-wrapper
+.github/workflows/research-v31-contract.yml,3,NEW,KEPT,research-ci

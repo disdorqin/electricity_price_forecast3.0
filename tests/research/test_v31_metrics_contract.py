@@ -1,5 +1,5 @@
 """
-V3.1-R1 contract test — unified metrics (fusion.metrics).
+V3.1-R1 contract test — unified metrics (tools/research/metrics_contract.py).
 
 Asserts the single canonical plain_smape / smape_floor50 entry points match
 the exact specification formulas and handle the defect-#3 cases
@@ -11,8 +11,9 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools", "research"))
 
-from fusion.metrics import plain_smape, smape_floor50  # noqa: E402
+from metrics_contract import plain_smape, smape_floor50  # noqa: E402
 
 
 def _ref_plain(a, p):

@@ -1,0 +1,109 @@
+# Research V3.1 Contract CI
+# ==============================================================================
+# Runs ONLY on research/v3.1-* branches.  Does NOT touch production data,
+# connect to DB, or load model weights.  Research-only safety gate.
+# ==============================================================================
+name: Research V3.1 Contract (research-only)
+
+on:
+  push:
+    branches: ['research/v3.1-*']
+  pull_request:
+    branches: ['research/v3.1-*']
+
+env:
+  PYTHONUNBUFFERED: 1
+
+jobs:
+
+  # ---- Step 0: Security / size pre-checks ----
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Large-file guard
+        run: |
+          LARGE=$(find . -name '*.parquet' -o -name '*.pkl' -o -name '*.csv' -size +1M | head -5)
+          if [ -n "$LARGE" ]; then
+            echo "Large files found in PR — failing guard:"
+            echo "$LARGE"
+            exit 1
+          fi
+          echo "Large-file guard PASS"
+      - name: Production-isolation guard
+        run: |
+          # Reject any PR that modifies files outside the research allowlist
+          ALLOWED='^(tools/research/|tests/research/|docs/research/|research_memory/|conftest.py|fusion/metrics\.py$|\.github/)'
+          CHANGED=$(git diff --name-only origin/main 2>/dev/null || echo '')
+          for f in $CHANGED; do
+            if ! echo "$f" | grep -qE "$ALLOWED"; then
+              echo "FILE OUTSIDE ALLOWLIST: $f"
+              exit 1
+            fi
+          done
+          echo "Production-isolation guard PASS"
+      - name: Secret scan
+        run: |
+          # Prevent accidental push of .env / credentials / absolute paths
+          git diff --unified=0 origin/main -- ':(exclude)docs/' 2>/dev/null | \
+            grep -E '^\+' | grep -qiE '(\.env|password|token|secret|api_key|D:\\|/home/)' && \
+            { echo "Potential secret/absolute-path leaked in diff"; exit 1; } || \
+            echo "Secret scan PASS"
+
+  # ---- Step 1: Python contract tests ----
+  contract-tests:
+    needs: preflight
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest numpy pandas lightgbm
+      - name: Import / compile check
+        run: |
+          python -c "import tools.research.metrics_contract; import tools.research.v31_lib"
+          echo "Import check PASS"
+      - name: Metric contract tests
+        run: |
+          python -m pytest tests/research/test_v31_metrics_contract.py -v -x
+      - name: Availability contract tests
+        run: |
+          python -m pytest tests/research/test_v31_availability_contract.py -v -x
+      - name: Business-time contract tests
+        run: |
+          python -m pytest tests/research/test_v31_business_time.py -v -x
+      - name: Rolling preprocess tests
+        run: |
+          python -m pytest tests/research/test_v31_rolling_preprocess.py -v -x
+
+  # ---- Step 2: Mini replay (lightweight, CPU-only) ----
+  mini-replay:
+    needs: preflight
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest numpy pandas lightgbm scikit-learn
+      - name: Run mini replay (14 checks, CPU-only, panel pre-built)
+        # NOTE: Cannot rebuild the 2022-2026 panel on CI (no raw data).
+        # The mini replay checks only that the research engine is consistent.
+        run: |
+          python tools/research/run_mini_replay.py
+        continue-on-error: true   # panel missing on fresh CI → warn, don't fail

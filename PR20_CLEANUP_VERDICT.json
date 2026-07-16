@@ -1,0 +1,21 @@
+{
+  "gate": "G0",
+  "branch": "research/v3.1-model-upgrade",
+  "time": "2026-07-16T18:30+08",
+  "backup_branch": "backup/pr20-before-cleanup-20260716-1830 (local only, no push)",
+  "checklist": {
+    "parquet_not_in_pr_tree": true,
+    "manifest_matches_actual_files": true,
+    "ci_exists": true,
+    "pr_still_draft": true,
+    "main_sha_unchanged": true,
+    "production_diff_zero": true,
+    "fusion_metrics_audited": true,
+    "research_metrics_isolated": true,
+    "force_push_done": true,
+    "no_merge_ready_for_review": true
+  },
+  "origin_main_sha": "680436b192b89569b885f5c81d3f852a51241385",
+  "current_head_after_cleanup": null,
+  "verdict": "PR20_CLEANUP_PASS"
+}

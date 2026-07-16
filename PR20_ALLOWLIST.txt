@@ -1,0 +1,35 @@
+# PR #20 Allowlist (research/v3.1-model-upgrade)
+# Only these files/directories are allowed in the PR tree.
+# Any file outside this list must be removed or fail CI.
+
+include:
+  - tools/research/metrics_contract.py
+  - tools/research/v31_lib.py
+  - tools/research/run_mini_replay.py
+  - tools/research/build_full_history_panel.py
+  - tools/research/full_history_replay.py
+  - tools/research/new_candidates_replay.py
+  - tools/research/historical_data_discovery.py
+  - tools/research/md_to_doc.py
+  - tools/research/generate_v31_report.py
+  - docs/research/V31_RESEARCH_REPORT.md
+  - docs/research/V31_RESEARCH_REPORT.docx
+  - docs/research/V31_RESEARCH_REPORT.pdf
+  - docs/research/V31_PATCH_MANIFEST.md
+  - research_memory/CURRENT_STATE.yaml
+  - tests/research/conftest.py
+  - tests/research/test_v31_*.py  (8 test files)
+  - fusion/metrics.py            # reverted to origin/main, no net diff against production
+  - .github/workflows/research-v31-contract.yml
+  - PR20_CLEANUP_REPORT.md
+  - PR20_ALLOWLIST.txt
+  - PR20_REMOTE_FILE_AUDIT.csv
+  - PR20_CLEANUP_VERDICT.json
+
+# Files NOT allowed in PR tree:
+#   data_audit/*                  — derived results (parquet/CSV/JSON), V31_R1_RESULTS.json is small summary kept
+#   research_runs/*               — experiment outputs
+#   outputs/*                     — production outputs
+#   *.parquet *.pkl *.pt *.h5     — model weights, large binaries
+#   .env .env.local               — secrets
+#   *absolute/paths*              — user-identifying paths

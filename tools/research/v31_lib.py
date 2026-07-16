@@ -5,7 +5,7 @@ Single source of truth for:
   - panel loading (business_day consistent via utils.business_day)
   - rolling-origin OOS day-ahead (DA) model  -> legal DA proxy `da_oos_pred`
   - RT candidate tracks A-F with all V3.1-R1 defects fixed
-  - unified metrics imported from fusion.metrics (no hand-rolled copies)
+  - unified metrics from tools/research/metrics_contract.py (research-isolated)
   - unified evaluation support (coverage / common mask / improvement_vs_DD)
   - legal Oracle (same-coverage, EX_POST_ACTUAL_AWARE_UPPER_BOUND, invariants)
 
@@ -33,7 +33,7 @@ import lightgbm as lgb
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 from utils.business_day import timestamp_from_business  # noqa: E402
-from fusion.metrics import plain_smape, smape_floor50  # noqa: E402
+from metrics_contract import plain_smape, smape_floor50  # noqa: E402
 
 PANEL = os.path.join(REPO_ROOT, "data_audit", "FULL_HISTORY_CANONICAL_PANEL.parquet")
 OUTDIR = os.path.join(REPO_ROOT, "data_audit")
