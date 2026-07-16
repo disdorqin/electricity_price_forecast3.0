@@ -1,0 +1,50 @@
+# NegCorr Production Configuration (V3.1)
+# Applied when circuit config sets negcorr_mode=production.
+# This config is separate from configs/shadow_negcorr.yaml (which governs
+# the research shadow integration). This file defines production-specific
+# parameters for the in-line pipeline step.
+
+production_id: negcorr_v31_production
+display_name: "NegCorr V3.1 Production Correction"
+
+# Modes (defined in circuit config / env):
+#   off (DEFAULT)  -> passthrough, no modification
+#   shadow         -> compute but do not modify, log only
+#   production     -> apply to fused real-time output
+
+# Gate: production mode requires explicit env/config setting
+#   negcorr_mode=production  (in circuit config) OR
+#   EFM3_ENABLE_NEGCORR=production (in env)
+requires_approval: true
+
+# Artifact path (shared with shadow module)
+artifact_path: artifacts/negcorr/negcorr_w120_w180.pkl
+
+# Correction limits
+max_correction_pct: 50     # cap correction at 50% of fusion value
+neg_floor: -500            # absolute negative price floor
+
+# Variants
+variants:
+  w120:
+    protocol: "Logistic P(neg) + Huber magnitude"
+    retrain_cadence_days: 14
+  w180:
+    protocol: "Logistic P(neg) + Huber magnitude"
+    retrain_cadence_days: 14
+
+# Shadow logging (production also logs shadow for monitoring)
+shadow_log:
+  enabled: true
+  path: logs/shadow/negcorr_production_{date}.jsonl
+  fields:
+    - business_day
+    - hour_business
+    - fusion_pred
+    - negcorr_pred
+    - delta
+    - variant
+
+# Safety
+fail_closed: true           # any error -> return fusion output unchanged
+nan_on_error: false         # never produce NaN
