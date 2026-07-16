@@ -16,6 +16,6 @@
     "no_merge_ready_for_review": true
   },
   "origin_main_sha": "680436b192b89569b885f5c81d3f852a51241385",
-  "current_head_after_cleanup": null,
+  "current_head_after_cleanup": "14dcf7e04a8665e439ddf2c8e716ef9256d6a24b",
   "verdict": "PR20_CLEANUP_PASS"
 }
