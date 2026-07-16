@@ -40,6 +40,7 @@ from pipelines.production_circuit.repair_chain import run_repair
 from pipelines.production_circuit.fusion_chain import run_fusion
 from pipelines.production_circuit.classifier_chain import run_classifier
 from pipelines.production_circuit.negative_price_fixer import run_negative_price_fixer
+from pipelines.production_circuit.negcorr_chain import run_negcorr_correction
 from pipelines.production_circuit.separator_chain import run_separator_repair
 from pipelines.production_circuit.delivery_chain import (
     run_cross_task_fusion, run_delivery_final,
@@ -47,7 +48,7 @@ from pipelines.production_circuit.delivery_chain import (
 
 logger = logging.getLogger(__name__)
 
-CHAIN_VERSION = "3.0-production-circuit-v1"
+CHAIN_VERSION = "3.1-production-circuit-v1"
 
 
 @dataclass
@@ -244,51 +245,53 @@ def run_production_circuit(
                        is_placeholder=False); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_day_ahead_task_final(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
 
-    # 8-13. Real-time sub-chain
+    # 8-14. Real-time sub-chain
     r = run_real_time_chain(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     rt_model_available = r.artifacts.get("model_available", False)
     r = run_repair(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_RAW_MODEL,
                    CircuitStage.REALTIME_MODULE_REPAIRED, 9, "realtime_repair"); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_fusion(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_MODULE_REPAIRED,
                    CircuitStage.REALTIME_FUSED, 10, "realtime_fusion"); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
+    # 10.5 (order=11). NegCorr correction (NEW V3.1)
+    r = run_negcorr_correction(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     # 11. Negative-price / spike-residual fixer (the real-time "负电价修整器").
     r = run_negative_price_fixer(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_classifier(ctx, CircuitTask.REALTIME, CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED,
-                       CircuitStage.REALTIME_CLASSIFIER_ADJUSTED, 12, "realtime_classifier",
+                       CircuitStage.REALTIME_CLASSIFIER_ADJUSTED, 13, "realtime_classifier",
                        is_placeholder=True); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_real_time_task_final(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     rt_final_present = r.artifacts.get("realtime_final_present", False)
 
-    # 13-15. Cross-task tail
+    # 15-17. Cross-task tail
     r = run_cross_task_fusion(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_separator_repair(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
     r = run_delivery_final(ctx); steps.append(r.step_name); results[r.step_name] = _as_dict(r)
 
-    # 16. postflight (reuse existing DB postflight on the delivery finals? minimal)
+    # 18. postflight (reuse existing DB postflight on the delivery finals? minimal)
     try:
         from pipelines.db_postflight import run_db_postflight
         conn = db_mgr.new_connection()
         pf = run_db_postflight(conn, run_id, target_date, mode)
         conn.close()
-        _rec("postflight", 16, "COMPLETE",
+        _rec("postflight", 18, "COMPLETE",
              f"postflight status={pf.get('status')}", 0, 0,
              {"status": pf.get("status")})
     except Exception as exc:
         logger.exception("postflight error")
-        _rec("postflight", 16, "FAIL", f"postflight exception: {exc}")
+        _rec("postflight", 18, "FAIL", f"postflight exception: {exc}")
     steps.append("postflight")
     results["postflight"] = results.get("postflight", {"status": "COMPLETE"})
 
-    # 17. metrics
+    # 19. metrics
     _run_metrics(ctx, da_model_available, rt_final_present)
-    _rec("metrics", 17, "COMPLETE",
+    _rec("metrics", 19, "COMPLETE",
          "metrics step executed; benchmark scope persisted; "
          "production dayahead/realtime scopes computed only when real model "
          "outputs exist (otherwise UNCLEAR / skipped).")
     steps.append("metrics")
     results["metrics"] = {"status": "COMPLETE"}
 
-    # 18. finish_run
+    # 20. finish_run
     runtime_s = round(time.monotonic() - overall_start, 3)
     if da_model_available and rt_model_available:
         overall = "COMPLETE"
@@ -308,7 +311,7 @@ def run_production_circuit(
         conn.close()
     except Exception:
         logger.exception("finish_run status update failed")
-    _rec("finish_run", 18, "COMPLETE", f"circuit finished in {runtime_s}s", 0, 0,
+    _rec("finish_run", 20, "COMPLETE", f"circuit finished in {runtime_s}s", 0, 0,
          {"overall": overall, "recommendation": recommendation})
     steps.append("finish_run")
     results["finish_run"] = {"status": "COMPLETE"}

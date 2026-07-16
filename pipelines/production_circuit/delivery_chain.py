@@ -33,9 +33,9 @@ from pipelines.production_circuit.step_recorder import (
 
 logger = logging.getLogger(__name__)
 
-CROSS_FUSION_ORDER = 13
+CROSS_FUSION_ORDER = 15
 CROSS_FUSION_NAME = "cross_task_fusion"
-DELIVERY_ORDER = 15
+DELIVERY_ORDER = 17
 DELIVERY_NAME = "delivery_final"
 
 

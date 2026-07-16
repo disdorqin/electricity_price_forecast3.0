@@ -52,7 +52,7 @@ def _read_fused(conn, run_id: str, target_date: str):
         cur.execute(
             "SELECT id, hour_business, pred_price FROM efm_predictions "
             "WHERE run_id=%s AND target_date=%s AND task='realtime' "
-            "AND stage='realtime_fused' ORDER BY hour_business",
+            "AND stage='realtime_negcorr_corrected' ORDER BY hour_business",
             (run_id, target_date),
         )
         return [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]

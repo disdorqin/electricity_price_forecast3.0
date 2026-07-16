@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # OUR 3.0 models (overridable via config["dayahead_models"] / config["realtime_models"]).
 DEFAULT_DAYAHEAD_MODELS = ["cfg05", "xgboost_rich", "catboost_rich"]
-DEFAULT_REALTIME_MODELS = ["sgdfnet", "timesfm", "da_aware_sgdf_selector"]
+DEFAULT_REALTIME_MODELS = ["sgdfnet", "timesfm", "da_aware_sgdf_selector", "a05_composite"]
 
 # Conservative gate thresholds for the DA-aware SGDFNet selector (see
 # configs/candidate_registry/realtime_da_sgdf_selector.yaml). The selector

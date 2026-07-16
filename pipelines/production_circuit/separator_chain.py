@@ -31,7 +31,7 @@ from pipelines.production_circuit.step_recorder import (
 
 logger = logging.getLogger(__name__)
 
-STEP_ORDER = 14
+STEP_ORDER = 16
 STEP_NAME = "separator_repair"
 
 MIN_PRICE = -500.0
