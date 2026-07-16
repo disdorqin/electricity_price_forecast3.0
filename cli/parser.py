@@ -236,12 +236,12 @@ def build_parser() -> argparse.ArgumentParser:
              "Can also set EFM3_DB_URL env var. Required for --mode formal.")
     parser.add_argument("--init-db", action="store_true", default=False,
         help="Initialize EFM3 database schema and exit.")
-    parser.add_argument("--mode", default="dry_run", choices=["dry_run", "shadow", "formal", "formal_sim"],
+    parser.add_argument("--mode", default=None, choices=["dry_run", "shadow", "formal", "formal_sim"],
         help="Run mode: dry_run (file ledger, no submission), "
              "shadow (DB with diagnostics), formal (DB + submission export), "
              "formal_sim (formal strict guards, no submission export). "
              "Default: dry_run.")
-    parser.add_argument("--chain", default="official",
+    parser.add_argument("--chain", default=None,
         choices=["official", "seasonal_da_router", "production_circuit"],
         help="Prediction chain to use. 'official' = 3.0 default, "
              "'seasonal_da_router' = seasonal DA policy router, "
