@@ -1,0 +1,165 @@
+# CURRENT_STATE.yaml
+# ============================================================================
+# EFM3.0 研究记忆 — 当前固化状态 (永久基线)
+# 本文件是所有新 AI 窗口的"真理基准"。修改生产逻辑或启动实验前必须先读它。
+# 最后固化: 2026-07-16  (CA-TRIDENT V4.1 / CA-FAILMODE V5 / V5.1 / V5.2 / V5.3 / V5.4)
+# V5.4 核心结论: ORACLE CEILING → CURRENT_POOL_INSUFFICIENT
+#   即使完美Oracle+误差上限5, P95仍为4.75(目标≤2)
+#   需要新候选预测模型, 不是继续调门控
+# Forward-OOS: READY_NOT_RUNNING
+# UnderCorr: COLD_START_UNSAFE + PREWARM_POTENTIAL 双重状态
+# NegCorr: RETAINED_RESEARCH_COMPONENT (非生产候选)
+# V5.4 交付 (2026-07-16 真实补齐): Track F 9 契约 / Track G 报告 .md+.docx+.pdf / Track H 15 handoff 文件 00-14
+#   早前 COORDINATOR_REPORT 虚假声称已完成 -> 已重写为诚实版 (11 节 + Q1-Q15)
+# ============================================================================
+
+schema_version: 1
+last_updated: "2026-07-16"
+owner_experiment_line: "CA-FAILMODE"
+source_experiments:
+  - ca_trident_v41
+  - ca_failmode_v5
+  - ca_failmode_v51
+
+# ----------------------------------------------------------------------------
+# 受信任基线 (生产对照, 来自 231 天验收回测, 不可被未过门槛的实验覆盖)
+# ----------------------------------------------------------------------------
+trusted_baselines:
+  DD:                       # Day-ahead 朴素扩散基线
+    overall: 23.233
+    p9_16: 31.922           # 午间 9-16 时段 sMAPE
+  A05:                      # 当前生产主模型 (anchor + 5 候选)
+    overall: 21.689
+    p9_16: 29.678
+    maxDeg: 17.47           # 最大单时退化 (sMAPE), 门槛 <=5
+    P95: 5.31               # 95 分位退化, 门槛 <=2
+    negMAE: 62.6            # 负价时段 MAE
+    negSA: 0.737            # 负价时段符号准确率
+
+# ----------------------------------------------------------------------------
+# 保留组件
+# ----------------------------------------------------------------------------
+retained_components:
+  NegCorr:                  # 负价校正 (Negative-price Correction)
+    status: RETAINED_RESEARCH_COMPONENT
+    evidence:
+      - "negative-price improvement vs A05 (negMAE / negSA 改善)"
+      - "significant paired bootstrap under adaptive prewarm (day-block p=0.0046/0.011, neg-event p=0.0, win_rate 99%+)"
+    notes: "仅作为研究组件保留, 禁止标为生产候选或 PRIMARY_ACCURACY。"
+
+  UnderCorr:                # 欠预测校正 (Under-prediction Correction)
+    status: HISTORY_DEPENDENT_RESEARCH_COMPONENT
+    cold_start: "UNSAFE (0/4 disaster days, monthly gain negative)"
+    prewarm_potential: "p9_16=28.424 in V5.1 warmup; 3/4 disaster days repaired"
+    cannot_write: SHADOW_SAFE
+    cannot_write: REJECTED_FOREVER
+    evidence:
+      - "p9_16 around 28.424 in adaptive prewarm (A05 p9_16 = 29.678 -> 改善)"
+      - "repaired 3/4 historical disaster days (2026-01-16->6.90, 02-24->11.61, 03-22->5.80)"
+      - "V5.2 25 safety variants ALL FAIL maxDeg≤12; best safety maxDeg=19.83"
+      - "simple scaling (x0.25, negProbShrink, OODshrink) cannot suppress maxDeg below 17.47"
+    risks:
+      - "negative-tail degradation (negMAE 78.0 > A05 62.6)"
+      - "maxDeg cannot be reduced below 19.83 by safety scaling alone"
+      - "maxDeg gate (≤5) will require structural change, not just cap/budget"
+      - "CORRECTED 2026-07-16: full 2022-2026 history DOES exist (deep_model preprocessed_data.csv, 39135 rows). V3.1 replay used it. But it is a single-weak-model stress panel, NOT production-grade."
+    notes: "候选但需要真实历史预热 + 结构性安全设计 (非简单缩放)。V5.2 证明安全预算不足以单独修复。建议与 OOD abstention + HighRegime 联合。"
+
+# ----------------------------------------------------------------------------
+# 已否决路径 (不再尝试)
+# ----------------------------------------------------------------------------
+rejected_paths:
+  - non_nested_primary
+  - ordinary_gain_classifier
+  - strict_oos_central_expert
+  - current_positive_spike_expert
+  - original_trident
+  - wide_deep_rlinear_flinear
+  - unconditional_residual_ar
+  - pc1_curve_correction
+  - undercorr_simple_scale_safety
+  - plain_under_scaling_budget       # V5.4: Oracle shows pool can't pass P95≤2
+  - gating_only_no_new_models        # V5.4: need new candidates, not more gates
+
+# ----------------------------------------------------------------------------
+# 阻塞项 (需要外部条件/数据才能解锁)
+# ----------------------------------------------------------------------------
+blocked:
+  - true_2022_2025_oos_history      # RESOLVED 2026-07-16: full 2022-2026 history found (preprocessed_data.csv). Available for replay; but MySQL production DB still unreachable for true ledger-backed prewarm.
+  - high_regime_expert              # HighRegime AUC=0.836(绝对值) AUC=0.691(DA-RT) 需专业设计
+  - curve_expert                    # PC1 曲线 22.7% 解释率 + 破坏性, 需更复杂曲线模型
+  - ood_policy                      # OOD 有 3-4pp 潜力, 但动作集尚未完全实现
+  - correction_budget               # V5.2 证明仅 cap/缩放不够, 需结构性安全
+  - safe_action_policy              # 安全动作策略未定 (CVaR/regret 未评估)
+  - undercorr_structural_safety     # 需要负价尾结构性安全, 非仅预算缩放
+
+# ----------------------------------------------------------------------------
+# 生产状态
+# ----------------------------------------------------------------------------
+production:
+  promotion_allowed: false
+  reason:
+    - "maxDeg gate failed (best observed 29.26 >> 5; best safety variant 19.83 >> 5)"
+    - "P95 gate failed (observed 5.31 >> 2)"
+    - "true historical prewarm unavailable (only 231-day panel; MySQL unreachable)"
+    - "V5.2: 25 UnderCorr safety variants ALL FAIL maxDeg≤12"
+  current_production_model: "A05 (anchor + 5 candidates, BGEW fusion)"
+  note: "生产预测结果未被本任务修改。安全预算实验在 PANEL_MODE 完成, 标 RESEARCH_ONLY_NOT_PRODUCTION_ELIGIBLE。"
+
+# ----------------------------------------------------------------------------
+# 当前候选 (固化于 2026-07-16)
+# ----------------------------------------------------------------------------
+current_candidates:
+  NegCorr: RETAINED_RESEARCH_COMPONENT
+  UnderCorr: RESEARCH_CANDIDATE_REQUIRES_TRUE_PREWARM
+  PRIMARY_ACCURACY: NONE
+  SAFE_TAIL: NONE
+  PRODUCTION_CANDIDATE: NONE
+
+# ----------------------------------------------------------------------------
+# V3.1 RESEARCH PATCH (2026-07-16) — full-history replay + 6 new tracks
+# ----------------------------------------------------------------------------
+v3_1_research_patch:
+  status: COMPLETED_REPLAY_NEGATIVE_VERDICT
+  data_discovery:
+    found: true
+    source: "deep_model_for_electricity/data/preprocessed_data.csv"
+    coverage: "2022-01-01..2026-06-19, 39135 rows (1631 days x 24h)"
+    note: "CURRENT_STATE prior claim 'no 2022-2025 history' was WRONG; corrected 2026-07-16."
+  panel: "FULL_HISTORY_CANONICAL_PANEL.parquet (da_actual/rt_actual + exogenous forecasts/actuals + legal_oos_da_prediction)"
+  leakage_correction:
+    bug: "full_history_replay.py originally used da_actual as DD baseline (TARGET-DAY LEAKAGE); oracle included DD -> fake 'victory'."
+    fix: "DD now = legal_oos_da_prediction (0% NaN, corr 0.841 with rt). Oracle never touches actuals."
+    impact: "Prior FH oracle=163.88 'win' was selection of leaked DD. INVALIDATED."
+  full_history_results_plain_smape:
+    DD_legal_proxy: 64.84
+    A05_med: 80.54
+    NEGW: 80.45
+    QRA: 87.99
+    best_new_track_A_q50: 68.88
+    note: "ALL candidates LOSE to legal DD baseline. Single weak LightGBM stress test on hard full history (2022 energy crisis + 2023+ negative prices)."
+  oracle_legal:
+    plain: 41.39
+    floor50: 145.71
+    note: "Per-hour unrealizable upper bound (selection only). Still DD-dominated on plain sMAPE."
+  verdict: NO_SAFE_CANDIDATE_AFTER_FULL_HISTORY_EVALUATION
+  reason: "None of 6 new tracks (A-F) beats legal DD baseline on full-history rolling-origin eval. Production A05 (~21-24%) remains far superior. Pool still insufficient for promotion."
+  production_untouched: true
+  next: "Tech Report V2 + GitHub Draft PR (research/v3.1-model-upgrade, RESEARCH ONLY, promotion_allowed=false)."
+
+# ----------------------------------------------------------------------------
+# 12 个已知 Bug (详见 FAILED_PATHS_REGISTRY.md, 每个都有回归测试守卫)
+# ----------------------------------------------------------------------------
+known_bug_ids:
+  - BP-01-target-day-da-leak
+  - BP-02-non-nested-metamodel
+  - BP-03-t05-all-missing-overall-zero
+  - BP-04-state-label-multi-assigned
+  - BP-05-negative-metric-misnamed
+  - BP-06-under-over-double-correction
+  - BP-07-lightgbm-regressor-as-classifier
+  - BP-08-rare-label-empty-list-crash
+  - BP-09-ramp-key-mismatch
+  - BP-10-w120-dict-key-mismatch
+  - BP-11-warmup-180-cold-start
+  - BP-12-catastrophic-base-rate-zero
