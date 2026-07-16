@@ -96,6 +96,24 @@ blocked:
 # ----------------------------------------------------------------------------
 # 生产状态
 # ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+# V3.1-R2 FINAL CONVERGENCE (2026-07-16)
+# ----------------------------------------------------------------------------
+v3_1_r2_convergence:
+  status: NO_SAFE_CANDIDATE_FINAL
+  g0_pr20_cleanup: PASS
+  g1_baseline_parity: R2_BASELINE_PARITY_FAIL
+  reason: 'Production baseline parity cannot be reproduced from on-disk outputs.
+    Data source (CSV vs MySQL), metric definition (buggy vs corrected smape_floor50),
+    and aggregation all differ.  Without G1 pass, no candidate can be ranked
+    against production A05, and no safe candidate can be declared.'
+  pr20_clean_head: 275fcbb
+  fix_metric_pr: 'https://github.com/disdorqin/electricity_price_forecast3.0/pull/21'
+  verdict: NO_SAFE_CANDIDATE_FINAL
+  production_untouched: true
+  promotion_allowed: false
+
 production:
   promotion_allowed: false
   reason:
