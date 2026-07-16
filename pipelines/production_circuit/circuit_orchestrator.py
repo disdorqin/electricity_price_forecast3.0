@@ -1,5 +1,5 @@
 """
-circuit_orchestrator.py — Production Circuit orchestrator (19 ordered steps).
+circuit_orchestrator.py — Production Circuit orchestrator (20 ordered steps).
 
 Public entry point: ``run_production_circuit(target_date, ...)``.
 

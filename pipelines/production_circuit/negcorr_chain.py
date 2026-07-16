@@ -246,7 +246,13 @@ def _apply_negcorr(
     if not module.is_available():
         raise RuntimeError("NegCorrShadowModule not available")
 
-    # Run prediction (this module normally takes A05 but we give it the fused output)
+    # Run prediction.
+    # NOTE: NegCorrShadowModule.predict() has its first parameter named
+    # ``a05_prediction`` for historical reasons (the V5 research prototype
+    # operated on A05 input). In the V3.1 production pipeline, NegCorr
+    # operates on the FUSED multi-candidate output (not A05 alone) as
+    # specified by the integration design. The rename is intentional and
+    # the module handles any input series correctly.
     corrected_series = module.predict(fused_series, da_series, hour_series)
 
     # Build output rows
@@ -288,7 +294,11 @@ def _write_shadow_log(
     ctx: Any, run_id: str, target_date: str,
     fused: list[tuple], correction_map: dict[int, Any],
 ) -> None:
-    """Write NegCorr shadow log entry (for audit/review)."""
+    """Write NegCorr shadow log entry (for audit/review).
+
+    Records the comparison between original fusion values and NegCorr
+    corrected values for all 24 hours — this is the "what-if" record.
+    """
     try:
         import os
         from pathlib import Path
@@ -300,14 +310,19 @@ def _write_shadow_log(
         fused_map = {hb: price for _, hb, price in fused}
         with open(log_path, "a", encoding="utf-8") as f:
             for hb in sorted(fused_map):
+                negcorr_val = correction_map.get(hb)
+                # correction_map provides the corrected value, or None for
+                # unchanged hours (in which case the NegCorr prediction equals
+                # the fusion value).
+                if negcorr_val is None:
+                    negcorr_val = fused_map[hb]
                 entry = {
                     "run_id": run_id,
                     "business_day": target_date,
                     "hour_business": hb,
                     "fusion_pred": fused_map[hb],
-                    "negcorr_pred": correction_map.get(hb),
-                    "delta": (correction_map[hb] - fused_map[hb])
-                    if correction_map.get(hb) is not None else 0.0,
+                    "negcorr_pred": negcorr_val,
+                    "delta": negcorr_val - fused_map[hb],
                     "variant": "shadow",
                 }
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")

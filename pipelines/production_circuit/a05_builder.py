@@ -69,7 +69,7 @@ def build_a05_candidate(
     ihmae_source = config.get("ihmae_source")
     if ihmae_source:
         try:
-            ihmae_map = _load_ihmae(ihmae_source, target_date)
+            ihmae_map = _load_ihmae(ihmae_source, target_date, conn=conn)
             if ihmae_map:
                 ihmae_status = "RECONSTRUCTED"
                 logger.info("[a05_builder] IHMAE loaded from %s for %s (%d hours)",
@@ -124,7 +124,7 @@ def build_a05_candidate(
     return rows, metadata
 
 
-def _load_ihmae(source: str, target_date: str) -> dict[int, float]:
+def _load_ihmae(source: str, target_date: str, conn=None) -> dict[int, float]:
     """Load IHMAE values for ``target_date`` from the configured source.
 
     Supported source types (auto-detected by extension):
@@ -132,6 +132,7 @@ def _load_ihmae(source: str, target_date: str) -> dict[int, float]:
       - ``.csv``: CSV file with same columns
       - ``.pkl``: Pickle DataFrame with same columns
       - Otherwise: treated as DB table name (columns ``target_date``, ``hour_business``, ``ihmae_pred``)
+        Requires ``conn`` (DB connection or SQLAlchemy engine) for the DB path.
     """
     path = Path(source)
 
@@ -145,11 +146,17 @@ def _load_ihmae(source: str, target_date: str) -> dict[int, float]:
         import pandas as pd
         df = pd.read_pickle(source)
     else:
-        # Assume it's a DB table reference: read from DB
+        # Assume it's a DB table reference: read from DB using the provided conn.
         import pandas as pd
+        if conn is None:
+            raise ValueError(
+                f"IHMAE source '{source}' is a DB table name but no conn provided. "
+                "Pass a DB connection or use a file-based source instead."
+            )
         df = pd.read_sql_query(
-            "SELECT target_date, hour_business, ihmae_pred AS IHMAE "
-            f"FROM {source} WHERE target_date=%s",
+            f"SELECT target_date, hour_business, ihmae_pred AS IHMAE "
+            f"FROM {source} WHERE target_date = %s",
+            con=conn,
             params=(target_date,),
         )
 

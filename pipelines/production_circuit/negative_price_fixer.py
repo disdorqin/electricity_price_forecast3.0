@@ -41,7 +41,7 @@ from pipelines.production_circuit.step_recorder import (
 
 logger = logging.getLogger(__name__)
 
-STEP_ORDER = 11
+STEP_ORDER = 12
 STEP_NAME = "realtime_negative_price_fixer"
 
 NEG_FLOOR = -500.0  # only clamp absurd negatives; real 山东 negatives are kept.

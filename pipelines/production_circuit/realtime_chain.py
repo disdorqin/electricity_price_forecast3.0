@@ -44,7 +44,8 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
     run_id = ctx.run_id
     target_date = ctx.target_date
     rt_models: list[str] = ctx.config.get("realtime_models") or DEFAULT_REALTIME_MODELS
-    # The selector and A05 are derived/built, not ingested; strip from DB load list.
+    # The selector is derived, not ingested; strip from DB load list.
+    # (a05_composite is also built dynamically by a05_builder if present.)
     db_models = [m for m in rt_models
                  if m not in ("da_aware_sgdf_selector", "a05_composite")]
     conn = ctx.db_mgr.new_connection()
@@ -64,9 +65,9 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
         # A05 is always available (DD = da_anchor from efm_actual_prices)
         # and provides a guaranteed-fallback real-time candidate.
         a05_rows, a05_meta = build_a05_candidate(conn, target_date, ctx.config)
+        ihmae_status = a05_meta.get("ihmae_status", "UNKNOWN") if a05_rows else "N/A"
         if a05_rows:
             model_rows = model_rows + a05_rows
-            ihmae_status = a05_meta.get("ihmae_status", "UNKNOWN")
 
         if model_rows:
             ids = write_stage_predictions(
@@ -83,7 +84,6 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
             msg = (f"realtime model outputs loaded ({len(ids)} rows from "
                    f"{len(present)} candidate(s): {present})")
             if a05_rows:
-                ihmae_status = a05_meta.get("ihmae_status", "UNKNOWN")
                 msg += f"  [A05 ihmae_status={ihmae_status}]"
         else:
             # DO NOT fabricate. Record PARTIAL / NEEDS_MODEL_OUTPUT.
@@ -143,6 +143,14 @@ def run_real_time_task_final(ctx: Any) -> CircuitStepResult:
         rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
                            CircuitStage.REALTIME_CLASSIFIER_ADJUSTED)
         src_stage = CircuitStage.REALTIME_CLASSIFIER_ADJUSTED
+        if not rows:
+            rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
+                               CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED)
+            src_stage = CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED
+        if not rows:
+            rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
+                               CircuitStage.REALTIME_NEGCORR_CORRECTED)
+            src_stage = CircuitStage.REALTIME_NEGCORR_CORRECTED
         if not rows:
             rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
                                CircuitStage.REALTIME_FUSED)

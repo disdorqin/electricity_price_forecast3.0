@@ -27,8 +27,10 @@ from pipelines.production_circuit.contracts import CircuitStage, CircuitTask
 logger = logging.getLogger(__name__)
 
 # OUR 3.0 models (overridable via config["dayahead_models"] / config["realtime_models"]).
+# NOTE: a05_composite is NOT listed here — it is dynamically built by
+# a05_builder.py and appended in realtime_chain.py (not loaded from DB).
 DEFAULT_DAYAHEAD_MODELS = ["cfg05", "xgboost_rich", "catboost_rich"]
-DEFAULT_REALTIME_MODELS = ["sgdfnet", "timesfm", "da_aware_sgdf_selector", "a05_composite"]
+DEFAULT_REALTIME_MODELS = ["sgdfnet", "timesfm", "da_aware_sgdf_selector"]
 
 # Conservative gate thresholds for the DA-aware SGDFNet selector (see
 # configs/candidate_registry/realtime_da_sgdf_selector.yaml). The selector
