@@ -1,0 +1,177 @@
+# EFM3 V3.1-FINAL — Complete Model Registry
+
+DD:
+  model_id: DD
+  display_name: Day-ahead (DA price as RT)
+  source_experiment: production
+  source_branch: main
+  source_commit: 680436b
+  classification: UNCHANGED_PRODUCTION_BASELINE
+  integration_role: FALLBACK_MODEL
+  change_type: UNCHANGED
+  standalone_24h: true
+  metrics: {overall: 23.233, p9_16: 31.922, negMAE: 78.43, negSA: 0.718}
+  risk_metrics: {maxDeg: 0.00, P95: 0.00}
+  status: active
+  promotion_allowed: true
+  default_enabled: true
+  fallback: is_fallback
+
+IHMAE:
+  model_id: IHMAE
+  display_name: Intra-hour MAE model
+  source_experiment: production
+  classification: UNCHANGED_PRODUCTION_BASELINE
+  integration_role: SECONDARY_CANDIDATE
+  change_type: UNCHANGED
+  standalone_24h: true
+  metrics: {overall: 21.744, p9_16: 29.842, negMAE: 54.30, negSA: 0.788}
+  risk_metrics: {maxDeg: 35.02, P95: 13.32}
+  status: active
+  promotion_allowed: true
+  default_enabled: true
+
+A05:
+  model_id: A05
+  display_name: Current production main (0.5*DD + 0.5*IHMAE)
+  source_experiment: production
+  classification: UNCHANGED_PRODUCTION_BASELINE
+  integration_role: PRIMARY
+  change_type: UNCHANGED
+  depends_on: [DD, IHMAE]
+  standalone_24h: true
+  metrics: {overall: 21.689, p9_16: 29.678, negMAE: 62.64, negSA: 0.737}
+  risk_metrics: {maxDeg: 17.47, P95: 5.31}
+  status: active
+  promotion_allowed: true
+  default_enabled: true
+  integration_notes: "Current production RT model. DO NOT modify."
+
+NegCorr_w120_V5_CANONICAL:
+  model_id: NEGCORR_W120_V5
+  display_name: Negative-price correction (window=120, V5 canonical)
+  source_experiment: ca_failmode_v5
+  classification: UNCHANGED_RETAINED_RESEARCH_COMPONENT
+  integration_role: CORRECTION_ON_A05
+  change_type: UNCHANGED
+  depends_on: [A05, legal_oos_da_pred]
+  standalone_24h: false
+  target_hours: negative-price hours
+  training_window: 120
+  retrain_cadence: 14
+  protocol: "Logistic P(neg) + Huber magnitude, cold-start rolling origin"
+  cold_start: true
+  artifact_hash: "EFM3-Artifacts/ca_failmode_v5/negcorr_w120_w180.pkl"
+  metrics: {overall: 21.385, p9_16: 29.731, negMAE: 48.30, negSA: 0.809}
+  risk_metrics: {maxDeg: 19.66, P95: 8.19}
+  status: research_only
+  promotion_allowed: false
+  default_enabled: false
+  fallback: A05
+  integration_eligibility: "SHADOW only. Best negMAE. Not standalone."
+
+NegCorr_w180_V5_CANONICAL:
+  model_id: NEGCORR_W180_V5
+  display_name: Negative-price correction (window=180, V5 canonical)
+  source_experiment: ca_failmode_v5
+  classification: UNCHANGED_RETAINED_RESEARCH_COMPONENT
+  integration_role: CORRECTION_ON_A05
+  change_type: UNCHANGED
+  depends_on: [A05, legal_oos_da_pred]
+  standalone_24h: false
+  target_hours: negative-price hours
+  training_window: 180
+  retrain_cadence: 14
+  protocol: "Logistic P(neg) + Huber magnitude, cold-start rolling origin"
+  cold_start: true
+  artifact_hash: "EFM3-Artifacts/ca_failmode_v5/negcorr_w120_w180.pkl"
+  metrics: {overall: 21.593, p9_16: 29.660, negMAE: 55.28, negSA: 0.771}
+  risk_metrics: {maxDeg: 17.47, P95: 7.47}
+  status: research_only
+  promotion_allowed: false
+  default_enabled: false
+  fallback: A05
+  integration_eligibility: "SHADOW only. Comparable to A05 maxDeg. Not standalone."
+
+NegCorr_w120_V51_ADAPTIVE_PREWARM:
+  model_id: NEGCORR_W120_V51
+  display_name: Negative-price correction (window=120, V5.1 adaptive prewarm)
+  source_experiment: ca_failmode_v51
+  classification: RESEARCH_ONLY
+  integration_role: DO_NOT_ENABLE
+  change_type: UNCHANGED
+  depends_on: [A05, legal_oos_da_pred]
+  standalone_24h: false
+  training_window: 120
+  protocol: "Logistic P(neg) + Huber magnitude, adaptive prewarm WARMUP=0"
+  cold_start: false
+  warmup: true
+  metrics: {p9_16_warmup: 28.424, disaster_days_repaired: "3/4"}
+  status: research_only
+  promotion_allowed: false
+  default_enabled: false
+  integration_eligibility: "RESEARCH reference only. V5.1 experiment. DO NOT INTEGRATE."
+
+NegCorr_w270:
+  model_id: NEGCORR_W270
+  display_name: Negative-price correction (window=270) — INFRA_BLOCKED
+  source_experiment: v3.1-final
+  classification: RESEARCH_ONLY
+  integration_role: DO_NOT_ENABLE
+  change_type: NEW_CORRECTION_MODULE
+  status: blocked
+  promotion_allowed: false
+  default_enabled: false
+  block_reason: "Requires full-history training panel (2022+). Not evaluated."
+  integration_notes: "INFRA_BLOCKED, not REJECTED. Requires proper evaluation."
+
+NegCorr_w360:
+  model_id: NEGCORR_W360
+  display_name: Negative-price correction (window=360) — INFRA_BLOCKED
+  source_experiment: v3.1-final
+  classification: RESEARCH_ONLY
+  integration_role: DO_NOT_ENABLE
+  change_type: NEW_CORRECTION_MODULE
+  status: blocked
+  promotion_allowed: false
+  default_enabled: false
+  block_reason: "Requires full-history training panel (2022+). Not evaluated."
+  integration_notes: "INFRA_BLOCKED, not REJECTED. Requires proper evaluation."
+
+UnderCorr_reference:
+  model_id: UNDERCORR_REFERENCE
+  display_name: Under-prediction correction (research reference)
+  source_experiment: ca_failmode_v51
+  classification: RESEARCH_ONLY
+  integration_role: DO_NOT_ENABLE
+  change_type: UNCHANGED
+  status: research_only
+  promotion_allowed: false
+  default_enabled: false
+  integration_notes: "V5.1 warmup repaired 3/4 disaster days but cold-start unsafe. Requires 180-day warmup. DO NOT ENABLE."
+
+# ===== DEPRECATED / REJECTED =====
+PC1_curve_correction:
+  classification: REJECTED
+  integration_role: DO_NOT_INTEGRATE
+  change_type: DEPRECATED
+  status: deprecated
+  integration_notes: "PC1 22.7% variance, destructive on overall. DO NOT USE."
+
+Central_expert:
+  classification: REJECTED
+  integration_role: DO_NOT_INTEGRATE
+  change_type: DEPRECATED
+  status: deprecated
+
+Spike_expert:
+  classification: REJECTED
+  integration_role: DO_NOT_INTEGRATE
+  change_type: DEPRECATED
+  status: deprecated
+
+Original_trident:
+  classification: REJECTED
+  integration_role: DO_NOT_INTEGRATE
+  change_type: DEPRECATED
+  status: deprecated

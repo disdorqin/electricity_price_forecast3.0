@@ -1,0 +1,78 @@
+# EFM3 V3.1-FINAL — Model Registry (Production Mirror)
+# Source: EFM3_V31_FINAL_PATCH_BUNDLE/model_registry/MODEL_REGISTRY.yaml
+# Integration date: 2026-07-16
+# WARNING: This is a READONLY reference. Do NOT modify without maintainer approval.
+
+DD:
+  model_id: DD
+  display_name: Day-ahead (DA price as RT)
+  classification: UNCHANGED_PRODUCTION_BASELINE
+  integration_role: FALLBACK_MODEL
+  change_type: UNCHANGED
+  standalone_24h: true
+  status: active
+  promotion_allowed: true
+  default_enabled: true
+  fallback: is_fallback
+
+IHMAE:
+  model_id: IHMAE
+  display_name: Intra-hour MAE model
+  classification: UNCHANGED_PRODUCTION_BASELINE
+  integration_role: SECONDARY_CANDIDATE
+  change_type: UNCHANGED
+  standalone_24h: true
+  status: active
+  promotion_allowed: true
+  default_enabled: true
+
+A05:
+  model_id: A05
+  display_name: Current production main (0.5*DD + 0.5*IHMAE)
+  classification: UNCHANGED_PRODUCTION_BASELINE
+  integration_role: PRIMARY
+  change_type: UNCHANGED
+  depends_on: [DD, IHMAE]
+  standalone_24h: true
+  status: active
+  promotion_allowed: true
+  default_enabled: true
+  integration_notes: "Current production RT model. DO NOT modify."
+
+NegCorr_w120_V5_CANONICAL:
+  model_id: NEGCORR_W120_V5
+  display_name: Negative-price correction (window=120, V5 canonical)
+  classification: UNCHANGED_RETAINED_RESEARCH_COMPONENT
+  integration_role: CORRECTION_ON_A05
+  change_type: UNCHANGED
+  depends_on: [A05, legal_oos_da_pred]
+  standalone_24h: false
+  target_hours: negative-price hours
+  training_window: 120
+  retrain_cadence: 14
+  artifact_path: artifacts/negcorr/negcorr_w120_w180.pkl
+  status: research_only
+  promotion_allowed: false
+  default_enabled: false
+  fallback: A05
+  feature_flag: EFM3_ENABLE_NEGCORR
+  integration_eligibility: "SHADOW only. Best negMAE. Not standalone."
+
+NegCorr_w180_V5_CANONICAL:
+  model_id: NEGCORR_W180_V5
+  display_name: Negative-price correction (window=180, V5 canonical)
+  classification: UNCHANGED_RETAINED_RESEARCH_COMPONENT
+  integration_role: CORRECTION_ON_A05
+  change_type: UNCHANGED
+  depends_on: [A05, legal_oos_da_pred]
+  standalone_24h: false
+  target_hours: negative-price hours
+  training_window: 180
+  retrain_cadence: 14
+  artifact_path: artifacts/negcorr/negcorr_w120_w180.pkl
+  status: research_only
+  promotion_allowed: false
+  default_enabled: false
+  fallback: A05
+  feature_flag: EFM3_ENABLE_NEGCORR
+  integration_eligibility: "SHADOW only. Comparable to A05 maxDeg. Not standalone."

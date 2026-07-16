@@ -1,0 +1,20 @@
+DO NOT INTEGRATE (REJECTED MODELS)
+====================================
+
+The following models are REJECTED / DEPRECATED and must NEVER be loaded,
+enabled, or integrated into production:
+
+1. PC1_curve_correction - destructive overall metric (38.46 vs 21.69)
+2. Central_expert - failed V5 screening
+3. Spike_expert - failed V5 screening
+4. Original_trident - replaced by A05
+5. UnderCorr_reference - cold-start unsafe; RESEARCH ONLY
+6. NegCorr_w120_V51_ADAPTIVE_PREWARM - V5.1 research variant; RESEARCH ONLY
+7. NegCorr_w270 - INFRA_BLOCKED (not evaluated)
+8. NegCorr_w360 - INFRA_BLOCKED (not evaluated)
+9. NegCorr_expanding - INFRA_BLOCKED (not evaluated)
+10. Robust Direct Delta - INFRA_BLOCKED (not evaluated)
+11. Joint Midday Curve - INFRA_BLOCKED (not evaluated)
+
+Items 7-11 were NOT evaluated. They are BLOCKED by infrastructure,
+not REJECTED on their merits. DO NOT enable without proper evaluation.

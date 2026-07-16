@@ -1,0 +1,22 @@
+{
+  "artifacts": [
+    {
+      "name": "FAILMODE_V5_CANONICAL_PANEL.parquet",
+      "source": "EFM3-Artifacts/ca_failmode_v5/FAILMODE_V5_CANONICAL_PANEL.parquet",
+      "sha256": null,
+      "size_kb": 430,
+      "format": "parquet",
+      "rows": 5544,
+      "columns": ["business_day","hour_business","rt_actual","DD","IHMAE","A05","NegCorr_w120","NegCorr_w180","legal_oos_da_pred"]
+    },
+    {
+      "name": "negcorr_w120_w180.pkl",
+      "source": "EFM3-Artifacts/ca_failmode_v5/negcorr_w120_w180.pkl",
+      "sha256": null,
+      "size_kb": 262,
+      "format": "pkl",
+      "models": ["NegCorr_w120", "NegCorr_w180"]
+    }
+  ],
+  "note": "SHA256 values to be filled by verify_bundle.py. Large artifacts (parquet, pkl) stored in EFM3-Artifacts/, not in git."
+}
