@@ -76,6 +76,7 @@ def load_model_outputs(
             FROM efm_predictions
             WHERE target_date=%s AND task=%s AND stage=%s
               AND model_name IN ({placeholders})
+              AND run_id NOT LIKE 'efm3_pc_%%'
             ORDER BY model_name, hour_business
             """,
             (target_date, task.value, stage.value, *model_names),

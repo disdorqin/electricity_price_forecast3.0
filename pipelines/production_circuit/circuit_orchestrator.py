@@ -42,6 +42,7 @@ from pipelines.production_circuit.classifier_chain import run_classifier
 from pipelines.production_circuit.negative_price_fixer import run_negative_price_fixer
 from pipelines.production_circuit.negcorr_chain import run_negcorr_correction
 from pipelines.production_circuit.separator_chain import run_separator_repair
+from common.db.dim_resolver import DimResolver
 from pipelines.production_circuit.delivery_chain import (
     run_cross_task_fusion, run_delivery_final,
 )
@@ -180,6 +181,22 @@ def run_production_circuit(
     db_mgr = DbConnectionManager(db_url=db_url) if (use_db and db_url) else None
     if db_mgr is None:
         raise RuntimeError("production_circuit requires --use-db and --db-url")
+
+    # Create DimResolver for 3NF FK column resolution.
+    # Attach it to db_mgr and patch new_connection() so every connection
+    # (including those created by chain modules) carries the resolver.
+    _init_conn = db_mgr.new_connection()
+    dim_resolver = DimResolver(_init_conn)
+    _init_conn.close()
+    db_mgr._dim_resolver = dim_resolver
+    _orig_new_conn = db_mgr.new_connection
+
+    def _resolved_conn() -> Any:
+        c = _orig_new_conn()
+        c._dim_resolver = dim_resolver
+        return c
+
+    db_mgr.new_connection = _resolved_conn
 
     store = None  # DB-ledger only for this chain.
     run_id = _generate_run_id(target_date)
