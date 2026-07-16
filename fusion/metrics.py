@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 
 
-def smape_floor50(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-6) -> float:
-    true_clip = np.where(y_true < 50.0, 50.0, y_true)
-    pred_clip = np.where(y_pred < 50.0, 50.0, y_pred)
+def smape_floor50(y_true: np.ndarray, y_pred: np.ndarray, floor: float = 50.0, eps: float = 1e-6) -> float:
+    true_clip = np.where(np.abs(y_true) < floor, np.sign(y_true) * floor, y_true)
+    pred_clip = np.where(np.abs(y_pred) < floor, np.sign(y_pred) * floor, y_pred)
     denom = (np.abs(true_clip) + np.abs(pred_clip)) / 2.0
     denom = np.where(denom < eps, eps, denom)
     return float(np.mean(np.abs(pred_clip - true_clip) / denom) * 100.0)
