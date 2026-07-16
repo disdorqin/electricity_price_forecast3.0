@@ -1,0 +1,17 @@
+{
+  "generated": "2026-07-16T17:04:15.500604",
+  "invalidated_old_numbers": [
+    64.84,
+    41.39,
+    145.71
+  ],
+  "DD_legal_proxy_plain_smape": 43.817,
+  "best_full_coverage_track": "A_q50",
+  "best_full_coverage_common_plain": 41.9596,
+  "new_oracle_plain_smape": 13.335,
+  "new_oracle_floor50_smape": 10.6101,
+  "new_oracle_9_16_plain": 19.3538,
+  "new_oracle_invariant_pass": true,
+  "calib_oracle_plain_smape": 16.3968,
+  "verdict": "NO_SAFE_CANDIDATE_AFTER_V3_1_R1_CORRECTED_REPLAY"
+}

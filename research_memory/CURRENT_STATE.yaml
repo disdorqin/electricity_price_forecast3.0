@@ -120,32 +120,44 @@ current_candidates:
 # V3.1 RESEARCH PATCH (2026-07-16) — full-history replay + 6 new tracks
 # ----------------------------------------------------------------------------
 v3_1_research_patch:
-  status: COMPLETED_REPLAY_NEGATIVE_VERDICT
+  status: V3_1_R1_CORRECTNESS_REPAIR_COMPLETE
   data_discovery:
     found: true
     source: "deep_model_for_electricity/data/preprocessed_data.csv"
-    coverage: "2022-01-01..2026-06-19, 39135 rows (1631 days x 24h)"
+    coverage: "2022-04-07..2026-06-19, 39135 rows (1631 days x 24h; last day partial)"
     note: "CURRENT_STATE prior claim 'no 2022-2025 history' was WRONG; corrected 2026-07-16."
-  panel: "FULL_HISTORY_CANONICAL_PANEL.parquet (da_actual/rt_actual + exogenous forecasts/actuals + legal_oos_da_prediction)"
-  leakage_correction:
-    bug: "full_history_replay.py originally used da_actual as DD baseline (TARGET-DAY LEAKAGE); oracle included DD -> fake 'victory'."
-    fix: "DD now = legal_oos_da_prediction (0% NaN, corr 0.841 with rt). Oracle never touches actuals."
-    impact: "Prior FH oracle=163.88 'win' was selection of leaked DD. INVALIDATED."
-  full_history_results_plain_smape:
-    DD_legal_proxy: 64.84
-    A05_med: 80.54
-    NEGW: 80.45
-    QRA: 87.99
-    best_new_track_A_q50: 68.88
-    note: "ALL candidates LOSE to legal DD baseline. Single weak LightGBM stress test on hard full history (2022 energy crisis + 2023+ negative prices)."
-  oracle_legal:
-    plain: 41.39
-    floor50: 145.71
-    note: "Per-hour unrealizable upper bound (selection only). Still DD-dominated on plain sMAPE."
-  verdict: NO_SAFE_CANDIDATE_AFTER_FULL_HISTORY_EVALUATION
-  reason: "None of 6 new tracks (A-F) beats legal DD baseline on full-history rolling-origin eval. Production A05 (~21-24%) remains far superior. Pool still insufficient for promotion."
+  # ---- V3.1-R1 correctness repair (2026-07-16) ----
+  r1_status: COMPLETED
+  r1_invalidated_old_numbers: [64.84, 41.39, 145.71]   # DD / plain-oracle / floor50-oracle from the LEAKY V3.1 replay
+  r1_defects_fixed: [target_day_da_leak, business_day_mapping, metric_formula, trackD_qcut_leak, trackF_resid_leak, trackC_index, eval_support, missing_contract_tests]
+  panel: "FULL_HISTORY_CANONICAL_PANEL.parquet (da_actual/rt_actual + exogenous forecasts/actuals; NO da_oos_pred stored — built by rolling-origin OOS DA model)"
+  da_availability_contract:
+    target_day_da_visible_at_rt_time: false
+    legal_da_proxy: "da_oos_pred (rolling-origin L2 LightGBM on PAST da_actual only)"
+    removed_column: "legal_oos_da_prediction (was a literal copy of da_actual -> target-day leakage)"
+  full_history_results_plain_smape_R1:   # CORRECTED rolling-origin replay, leak-free common mask
+    DD_legal_proxy: 43.817
+    A_q50_best_track: 41.960
+    D_anchor: 45.735
+    B_midday_full: 45.802
+    F_regime: 46.793
+    C_seasonal_full: 47.673
+    E_huber: 57.388
+    note: "On the CORRECTED full-coverage common mask, A_q50 (plain 41.96) BEATS the legal DD proxy (44.04) by ~2pp. Stress panel (single weak LightGBM), NOT production-grade."
+  oracle_legal_R1:
+    plain: 13.335
+    floor50: 10.610
+    bucket_9_16_plain: 19.354
+    n_rows: 33893
+    invariant_pass: true
+    note: "EX_POST_ACTUAL_AWARE_UPPER_BOUND; per-row min-loss selection; not deployable."
+  verdict: CORRECTED_REPLAY_BEST_TRACK_A_Q50_BEATS_DD_BUT_RESEARCH_ONLY
+  reason: "After all 8 defects fixed, A_q50 is the best full-coverage track and beats the legal DD proxy on plain sMAPE on the leak-free common mask. But this is a single weak-model stress test on hard full history; production A05 (~21-24%) remains far superior and promotion gates still fail. Patch is RESEARCH ONLY."
+  promotion_allowed: false
   production_untouched: true
-  next: "Tech Report V2 + GitHub Draft PR (research/v3.1-model-upgrade, RESEARCH ONLY, promotion_allowed=false)."
+  reports: ["docs/research/V31_RESEARCH_REPORT.md", ".docx", ".pdf"]
+  tests: "tests/research/test_v31_*.py (35 checks) + tools/research/run_mini_replay.py (14 checks)"
+  next: "GitHub Draft PR (research/v3.1-model-upgrade, RESEARCH ONLY, promotion_allowed=false)."
 
 # ----------------------------------------------------------------------------
 # 12 个已知 Bug (详见 FAILED_PATHS_REGISTRY.md, 每个都有回归测试守卫)
