@@ -1,0 +1,27 @@
+# EFM3 V3.1-FINAL — Model Changelog
+
+## 2026-07-16 — V3.1-FINAL acceptance
+
+| Model | Change | Reason |
+|-------|--------|--------|
+| A05 | UNCHANGED | Production baseline. Not modified. |
+| DD | UNCHANGED | Production baseline. Not modified. |
+| IHMAE | UNCHANGED | Production baseline. Not modified. |
+| NegCorr_w120_V5_CANONICAL | UNCHANGED | Retained research component from V5. training_window=120, retrain_every=14. |
+| NegCorr_w180_V5_CANONICAL | UNCHANGED | Retained research component from V5. training_window=180, retrain_every=14. |
+| NegCorr_w120_V51_ADAPTIVE_PREWARM | DEPRECATED (research reference) | V5.1 warmup variant. REJECTED for production. |
+| UnderCorr_reference | DEPRECATED | V5.1 warmup repaired 3/4 disaster days but cold-start unsafe. RESEARCH_ONLY. |
+| PC1_curve_correction | DEPRECATED | Destructive on overall (38.46 vs 21.69). REJECTED. |
+| Central_expert | DEPRECATED | Failed V5 screening. REJECTED. |
+| Spike_expert | DEPRECATED | Failed V5 screening. REJECTED. |
+| Original_trident | DEPRECATED | Replaced by A05. REJECTED. |
+
+## Models NOT evaluated in this round
+
+| Model | Status | Reason |
+|-------|--------|--------|
+| NegCorr_w270 | INFRA_BLOCKED | Full-history training panel (2022+) required. |
+| NegCorr_w360 | INFRA_BLOCKED | Full-history training panel (2022+) required. |
+| NegCorr_expanding | INFRA_BLOCKED | Full-history training panel (2022+) required. |
+| Robust Direct Delta (all variants) | INFRA_BLOCKED | Window-cost infra not available. |
+| Joint Midday Curve (all variants) | INFRA_BLOCKED | Window-cost infra not available. |

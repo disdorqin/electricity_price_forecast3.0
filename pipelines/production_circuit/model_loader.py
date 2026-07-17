@@ -27,6 +27,8 @@ from pipelines.production_circuit.contracts import CircuitStage, CircuitTask
 logger = logging.getLogger(__name__)
 
 # OUR 3.0 models (overridable via config["dayahead_models"] / config["realtime_models"]).
+# NOTE: a05_composite is NOT listed here — it is dynamically built by
+# a05_builder.py and appended in realtime_chain.py (not loaded from DB).
 DEFAULT_DAYAHEAD_MODELS = ["cfg05", "xgboost_rich", "catboost_rich"]
 DEFAULT_REALTIME_MODELS = ["sgdfnet", "timesfm", "da_aware_sgdf_selector"]
 
@@ -74,6 +76,7 @@ def load_model_outputs(
             FROM efm_predictions
             WHERE target_date=%s AND task=%s AND stage=%s
               AND model_name IN ({placeholders})
+              AND run_id NOT LIKE 'efm3_pc_%%'
             ORDER BY model_name, hour_business
             """,
             (target_date, task.value, stage.value, *model_names),

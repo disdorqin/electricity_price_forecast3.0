@@ -41,10 +41,10 @@ from pipelines.production_circuit.step_recorder import (
 
 logger = logging.getLogger(__name__)
 
-STEP_ORDER = 11
+STEP_ORDER = 12
 STEP_NAME = "realtime_negative_price_fixer"
 
-NEG_FLOOR = -500.0  # only clamp absurd negatives; real 山东 negatives are kept.
+NEG_FLOOR = 0.0  # clamp any negative fused prediction to 0; real 山东 negative prices are handled at the model level, not post-fusion.
 
 
 def _read_fused(conn, run_id: str, target_date: str):
@@ -52,7 +52,7 @@ def _read_fused(conn, run_id: str, target_date: str):
         cur.execute(
             "SELECT id, hour_business, pred_price FROM efm_predictions "
             "WHERE run_id=%s AND target_date=%s AND task='realtime' "
-            "AND stage='realtime_fused' ORDER BY hour_business",
+            "AND stage='realtime_negcorr_corrected' ORDER BY hour_business",
             (run_id, target_date),
         )
         return [(int(i), int(hb), float(p)) for i, hb, p in cur.fetchall()]

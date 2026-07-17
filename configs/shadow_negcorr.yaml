@@ -1,0 +1,65 @@
+# NegCorr Shadow Configuration
+# Feature flag: EFM3_ENABLE_NEGCORR (default: off)
+# Modes: off | shadow | production
+#
+# Shadow mode: compute correction, log alongside A05, do NOT modify output
+# Production mode: REQUIRES maintainer approval
+#
+# This config does NOT enable NegCorr. It only defines the shadow parameters.
+
+shadow_id: negcorr_v5_canonical
+display_name: "NegCorr V5 Canonical (w120/w180)"
+
+# Feature flag gate
+feature_flag: EFM3_ENABLE_NEGCORR
+default_mode: off
+
+# Artifact
+artifact_path: artifacts/negcorr/negcorr_w120_w180.pkl
+artifact_format: pkl
+
+# Dependencies
+depends_on:
+  - A05  # primary production model
+  - legal_oos_da_pred  # day-ahead out-of-sample prediction
+
+# Correction parameters
+variants:
+  w120:
+    training_window: 120
+    retrain_cadence: 14
+    protocol: "Logistic P(neg) + Huber magnitude"
+    cold_start: true
+  w180:
+    training_window: 180
+    retrain_cadence: 14
+    protocol: "Logistic P(neg) + Huber magnitude"
+    cold_start: true
+
+# Shadow logging
+shadow_log:
+  enabled: true
+  path: logs/shadow/negcorr_shadow_{date}.jsonl
+  fields:
+    - business_day
+    - hour_business
+    - a05_pred
+    - negcorr_pred
+    - delta
+    - variant
+
+# Safety
+fail_closed: true  # any error → return A05 unchanged
+max_correction_pct: 50  # cap correction at 50% of A05 value
+nan_on_error: false  # never return NaN, always return A05
+
+# Monitoring metrics (shadow only)
+monitoring:
+  - smape_floor50
+  - negMAE
+  - negSA
+  - maxDeg
+  - P95
+
+# Rollback
+rollback: "Set EFM3_ENABLE_NEGCORR=off and restart circuit"

@@ -90,22 +90,41 @@ def run_fusion(
 
         for hb in sorted(by_hour):
             cands = by_hour[hb]
-            raw_w = [float(weights_cfg.get(mname, 1.0)) for (_, _, mname, _) in cands]
+
+            # Guard: exclude negative-prediction candidates from fusion.
+            # Models that predict negative prices (a05/timesfm in midday hours)
+            # would drag the weighted average far below reality. By filtering
+            # them out, only non-negative candidates participate.
+            non_neg_cands = [(pid, price, mname, mver) for pid, price, mname, mver in cands if price >= 0]
+            if non_neg_cands:
+                fusion_cands = non_neg_cands
+            else:
+                # All negative — keep the least-negative one to avoid fabricating
+                fusion_cands = [max(cands, key=lambda x: x[1])]
+
+            raw_w = [float(weights_cfg.get(mname, 1.0)) for (_, _, mname, _) in fusion_cands]
             s = sum(raw_w) or 1.0
             norm = [w / s for w in raw_w]
-            fused_val = sum(w * price for w, (_, price, _, _) in zip(norm, cands))
+            fused_val = sum(w * price for w, (_, price, _, _) in zip(norm, fusion_cands))
 
-            for (pid, price, mname, mver), w in zip(cands, norm):
+            for (pid, price, mname, mver), w in zip(cands, [float(weights_cfg.get(m, 1.0)) for (_, _, m, _) in cands]):
+                # Normalise weight against ALL candidates for audit, but mark
+                # excluded ones with effective_weight=0.
+                eff_w = float(weights_cfg.get(mname, 1.0)) / s if (pid, price, mname, mver) in fusion_cands else 0.0
                 cand = FusionCandidate(
                     run_id=run_id, target_date=target_date, task=task,
                     hour_business=hb, candidate_model=mname,
                     candidate_stage=source_stage, candidate_prediction_id=pid,
-                    weight_value=round(w, 6), rank_value=None,
+                    weight_value=round(eff_w, 6), rank_value=None,
                     score_json={"mode": "multi_model_weighted_fusion" if multi_model
                                 else "single_candidate_fusion",
                                 "n_candidates": len(cands),
-                                "raw_weight": round(float(weights_cfg.get(mname, 1.0)), 6)},
-                    selected=True, rejected_reason=None)
+                                "raw_weight": round(float(weights_cfg.get(mname, 1.0)), 6),
+                                "excluded_negative": (pid, price, mname, mver) not in fusion_cands},
+                    selected=(pid, price, mname, mver) in fusion_cands,
+                    rejected_reason=("negative_prediction_excluded"
+                                     if (pid, price, mname, mver) not in fusion_cands
+                                     else None))
                 insert_fusion_candidate(conn, cand)
                 candidates_written += 1
 

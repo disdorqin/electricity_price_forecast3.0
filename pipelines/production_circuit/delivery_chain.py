@@ -33,21 +33,26 @@ from pipelines.production_circuit.step_recorder import (
 
 logger = logging.getLogger(__name__)
 
-CROSS_FUSION_ORDER = 13
+CROSS_FUSION_ORDER = 15
 CROSS_FUSION_NAME = "cross_task_fusion"
-DELIVERY_ORDER = 15
+DELIVERY_ORDER = 17
 DELIVERY_NAME = "delivery_final"
 
 
-def _read_task_finals(conn, run_id: str, target_date: str, task: str) -> dict[int, tuple[int, float]]:
-    """Return {hour: (final_id, price)} from efm_task_finals."""
+def _read_task_finals(conn, run_id: str, target_date: str, task: str) -> dict[int, tuple[int, int, float]]:
+    """Return {hour: (final_prediction_id, task_final_id, price)} from efm_task_finals.
+
+    final_prediction_id → efm_predictions.id (for lineage edges)
+    task_final_id       → efm_task_finals.id (for delivery_finals FK)
+    """
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, hour_business, final_price FROM efm_task_finals "
+            "SELECT final_prediction_id, id, hour_business, final_price FROM efm_task_finals "
             "WHERE run_id=%s AND target_date=%s AND task=%s ORDER BY hour_business",
             (run_id, target_date, task),
         )
-        return {int(hb): (int(i), float(p)) for i, hb, p in cur.fetchall()}
+        return {int(hb): (int(fp) if fp else None, int(tid), float(p))
+                for fp, tid, hb, p in cur.fetchall()}
 
 
 def run_cross_task_fusion(ctx: Any) -> CircuitStepResult:
@@ -69,9 +74,9 @@ def run_cross_task_fusion(ctx: Any) -> CircuitStepResult:
         rows: list[dict[str, Any]] = []
         rt_present = bool(rt)
         for hb in sorted(da.keys()):
-            da_id, da_price = da[hb]
+            da_pred_id, _da_tf_id, da_price = da[hb]
             if rt_present and hb in rt:
-                rt_id, rt_price = rt[hb]
+                _rtpred_id, _rt_tf_id, rt_price = rt[hb]
                 # 2.5 policy: real-time uses UNCORRECTED fusion; here we take
                 # realtime final when available. (Skeleton: both present path.)
                 combined = rt_price
@@ -92,12 +97,14 @@ def run_cross_task_fusion(ctx: Any) -> CircuitStepResult:
                                       source_step=CROSS_FUSION_NAME,
                                       is_final_candidate=True)
 
-        # Lineage: each day-ahead final -> combined child.
+        # Lineage: each day-ahead final prediction -> combined child.
         da_map = da
         for row, xid in zip(rows, ids):
-            src_id = da_map.get(int(row["hour_business"]), (None,))[0]
-            insert_lineage_edge(conn, run_id, target_date, "fuse", src_id, xid,
-                                {"policy": policy if not rt_present else "realtime_final"})
+            entry = da_map.get(int(row["hour_business"]))
+            src_id = entry[0] if entry else None  # final_prediction_id → efm_predictions.id
+            if src_id is not None:
+                insert_lineage_edge(conn, run_id, target_date, "fuse", src_id, xid,
+                                    {"policy": policy if not rt_present else "realtime_final"})
 
         status = StepStatus.COMPLETE if rt_present else StepStatus.PARTIAL
         msg = (f"cross-task fusion complete: {len(ids)} hours, "
@@ -165,13 +172,15 @@ def run_delivery_final(ctx: Any) -> CircuitStepResult:
         delivery_ids: list[int] = []
         sep_map = {hb: pid for pid, hb, _ in sep}
         for pid, hb, price in sep:
-            da_id = da.get(hb, (None,))[0] if da else None
-            rt_id = rt.get(hb, (None,))[0] if rt else None
+            da_entry = da.get(hb) if da else None
+            rt_entry = rt.get(hb) if rt else None
+            da_tf_id = da_entry[1] if da_entry else None  # task_final_id → efm_task_finals.id
+            rt_tf_id = rt_entry[1] if rt_entry else None  # task_final_id → efm_task_finals.id
             policy = "dayahead_only_fallback" if not rt_present else "full_delivery"
             df = DeliveryFinal(
                 run_id=run_id, target_date=target_date, hour_business=hb,
                 delivery_price=price, delivery_policy=policy,
-                dayahead_final_id=da_id, realtime_final_id=rt_id,
+                dayahead_final_id=da_tf_id, realtime_final_id=rt_tf_id,
                 delivery_prediction_id=pid,
                 separator_rule="separator_repaired" if any(
                     s[1] == hb for s in sep) else None,

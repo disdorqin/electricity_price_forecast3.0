@@ -26,6 +26,7 @@ from pipelines.production_circuit.contracts import (
     StepStatus,
     TaskFinal,
 )
+from pipelines.production_circuit.a05_builder import build_a05_candidate
 from pipelines.production_circuit.model_loader import (
     DEFAULT_REALTIME_MODELS,
     derive_da_aware_selector,
@@ -43,8 +44,10 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
     run_id = ctx.run_id
     target_date = ctx.target_date
     rt_models: list[str] = ctx.config.get("realtime_models") or DEFAULT_REALTIME_MODELS
-    # The selector is derived, not ingested; strip it from the DB load list.
-    db_models = [m for m in rt_models if m != "da_aware_sgdf_selector"]
+    # The selector is derived, not ingested; strip from DB load list.
+    # (a05_composite is also built dynamically by a05_builder if present.)
+    db_models = [m for m in rt_models
+                 if m not in ("da_aware_sgdf_selector", "a05_composite")]
     conn = ctx.db_mgr.new_connection()
     try:
         model_rows = load_model_outputs(conn, run_id, target_date,
@@ -58,6 +61,14 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
             selector_rows = derive_da_aware_selector(conn, target_date, sgdfnet_by_hour)
             model_rows = model_rows + selector_rows
 
+        # V3.1: Append A05 composite candidate (fail-closed to DD).
+        # A05 is always available (DD = da_anchor from efm_actual_prices)
+        # and provides a guaranteed-fallback real-time candidate.
+        a05_rows, a05_meta = build_a05_candidate(conn, target_date, ctx.config)
+        ihmae_status = a05_meta.get("ihmae_status", "UNKNOWN") if a05_rows else "N/A"
+        if a05_rows:
+            model_rows = model_rows + a05_rows
+
         if model_rows:
             ids = write_stage_predictions(
                 conn, run_id, target_date, CircuitTask.REALTIME,
@@ -66,9 +77,14 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
             )
             status = StepStatus.COMPLETE
             present = sorted(set(r["model_name"] for r in model_rows))
+            # model_available: true if any real model OR A05 composite is present
+            a05_present = "a05_composite" in present
+            any_real_model = any(m for m in present if m != "a05_composite")
+            model_available = bool(any_real_model or a05_present)
             msg = (f"realtime model outputs loaded ({len(ids)} rows from "
                    f"{len(present)} candidate(s): {present})")
-            model_available = True
+            if a05_rows:
+                msg += f"  [A05 ihmae_status={ihmae_status}]"
         else:
             # DO NOT fabricate. Record PARTIAL / NEEDS_MODEL_OUTPUT.
             ids = []
@@ -84,7 +100,8 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
             run_id, target_date, "realtime", STEP_NAME, STEP_ORDER, status.value,
             input_count=24, output_count=len(ids), message=msg,
             metrics_json={"stage": "realtime_raw_model", "model_available": model_available,
-                          "n_models": len(set(r["model_name"] for r in model_rows))},
+                          "n_models": len(set(r["model_name"] for r in model_rows))
+                          if model_rows else 0},
         )
         return CircuitStepResult(
             STEP_NAME, status, msg, input_count=24, output_count=len(ids),
@@ -103,7 +120,7 @@ def run_real_time_chain(ctx: Any) -> CircuitStepResult:
 
 # ── Real-time TASK FINAL (Circuit step 12) ─────────────────────────────
 
-TASK_FINAL_ORDER = 13
+TASK_FINAL_ORDER = 14
 TASK_FINAL_NAME = "realtime_task_final"
 
 
@@ -126,6 +143,14 @@ def run_real_time_task_final(ctx: Any) -> CircuitStepResult:
         rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
                            CircuitStage.REALTIME_CLASSIFIER_ADJUSTED)
         src_stage = CircuitStage.REALTIME_CLASSIFIER_ADJUSTED
+        if not rows:
+            rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
+                               CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED)
+            src_stage = CircuitStage.REALTIME_NEGATIVE_PRICE_FIXED
+        if not rows:
+            rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
+                               CircuitStage.REALTIME_NEGCORR_CORRECTED)
+            src_stage = CircuitStage.REALTIME_NEGCORR_CORRECTED
         if not rows:
             rows = _read_stage(conn, run_id, target_date, CircuitTask.REALTIME,
                                CircuitStage.REALTIME_FUSED)

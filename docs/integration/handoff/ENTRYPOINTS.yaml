@@ -1,0 +1,14 @@
+entrypoints:
+  primary_prediction:
+    script: fusion/run_fixed_window_fusion.py
+    function: main
+    env_required: [efm3-mysql, epf-2 conda]
+  shadow_negcorr:
+    script: candidate_module/predict.py
+    function: predict
+    config: configs/final_candidate.yaml
+    feature_flag: EFM3_ENABLE_NEGCORR
+  research_tools:
+    metrics: tools/research/metrics_contract.py
+    daily_risk: tools/research/daily_risk_golden_tests.py
+    mini_replay: tools/research/run_mini_replay.py

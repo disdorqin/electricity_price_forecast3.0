@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 
 logging.basicConfig(
     level=logging.INFO,
@@ -87,11 +88,25 @@ def main() -> int:
 
     set_global_seed(args.seed, args.deterministic)
 
+    # --- Auto-detect production circuit mode ---
+    # When EFM3_DB_URL is set and no --chain was explicitly given, route to
+    # the DB production circuit for a simplified CLI experience:
+    #   python main.py 2026-02-01  →  production_circuit (mode=formal)
+    # To explicitly use the legacy file chain:
+    #   python main.py 2026-02-01 --chain official
+    if not getattr(args, "chain", None):
+        db_url = getattr(args, "db_url", None) or os.environ.get("EFM3_DB_URL", "")
+        if db_url:
+            args.use_db = True
+            args.chain = "production_circuit"
+            args.mode = getattr(args, "mode", None) or "formal"
+            print(f"[auto] EFM3_DB_URL detected, routing to production_circuit (mode={args.mode})", flush=True)
+
     # --- Production Circuit (DB Ledger V2) dedicated entry point ---
     # When --chain production_circuit is requested we MUST NOT run the legacy
     # ledger_full pipeline first (it trains/predicts models and would hang or
     # overlap with the circuit). Route straight to the circuit and return.
-    chain = getattr(args, "chain", "official")
+    chain = getattr(args, "chain", None) or "official"
     if chain == "production_circuit":
         use_db = getattr(args, "use_db", False)
         mode = getattr(args, "mode", "dry_run")

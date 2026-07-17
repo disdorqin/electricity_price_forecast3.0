@@ -1,0 +1,30 @@
+# EFM3 V3.1-FINAL — Integration Roles
+
+role:
+  PRIMARY:
+    description: Main production model. Always enabled. Do NOT disable.
+  FALLBACK_MODEL:
+    description: Unconditional fallback when primary fails. Always available.
+  SECONDARY_CANDIDATE:
+    description: Alternative model. Can replace primary if needed.
+  CORRECTION_ON_A05:
+    description: Post-processing correction on A05 output. Default disabled.
+    requires_primary: true
+    standalone_24h: false
+  RESEARCH_ONLY:
+    description: Reference implementation only. NOT eligible for production.
+    default_enabled: false
+    promotion_allowed: false
+  DO_NOT_ENABLE:
+    description: Explicitly prohibited from enabling. Guarded by feature flag check.
+    default_enabled: false
+    promotion_allowed: false
+  DO_NOT_INTEGRATE:
+    description: Rejected model. Must never be loaded or referenced.
+
+default_roles_by_classification:
+  UNCHANGED_PRODUCTION_BASELINE: PRIMARY or SECONDARY or FALLBACK
+  UNCHANGED_RETAINED_RESEARCH_COMPONENT: CORRECTION_ON_A05
+  RESEARCH_ONLY: DO_NOT_ENABLE
+  REJECTED: DO_NOT_INTEGRATE
+  DEPRECATED: DO_NOT_INTEGRATE

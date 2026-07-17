@@ -1,0 +1,7 @@
+source_relative_path,destination_relative_path,sha256_expected,file_type,note
+research_memory/promotion/failmode_v51/candidate_module/,candidate_module/,,code,NegCorr reference implementation
+tools/research/metrics_contract.py,tools/research/metrics_contract.py,,code,Research metric wrapper
+docs/research/BUSINESS_METRIC_CONTRACT.md,contracts/BUSINESS_METRIC_CONTRACT.md,,doc,Finalized
+docs/research/DAILY_RISK_CONTRACT.md,contracts/DAILY_RISK_CONTRACT.md,,doc,Finalized
+EFM3-Artifacts/ca_failmode_v5/FAILMODE_V5_CANONICAL_PANEL.parquet,artifacts/canonical_panel/FAILMODE_V5_CANONICAL_PANEL.parquet,,data,Reference panel (5544*20)
+EFM3-Artifacts/ca_failmode_v5/negcorr_w120_w180.pkl,artifacts/negcorr/negcorr_w120_w180.pkl,,model,NegCorr w120/w180 trained models

@@ -1,0 +1,53 @@
+# EFM3 V3.1-FINAL — Final State
+
+Verdict: FINAL_BLOCKED_EVIDENCE_PACKAGED
+Date: 2026-07-16
+Production: UNCHANGED
+promotion_allowed: false
+
+## Sub-verdicts
+- NO_SAFE_CANDIDATE_AMONG_EXECUTED_MODELS
+- PLANNED_TRACKS_NOT_EVALUATED_INFRA_BLOCKED
+- RESEARCH_LINE_FROZEN_FOR_HANDOFF
+
+## Lifecycle
+PR20_HOLD → R1_CORRECTNESS_REPAIR_PASS → R2_BASELINE_PARITY_REQUIRED → BASELINE_PARITY_FINAL_PASS → FINAL_BLOCKED_EVIDENCE_PACKAGED
+
+## Gates
+- G0 (PR20 cleanup): PASS
+- G1 (baseline parity): PASS — V5 artifact recovery confirmed (DD=23.233, A05=21.689)
+- DAILY_RISK: PASS — 6 golden tests all green
+- WINDOW_COST: NOT_RUN — full history training panel required
+- TRACK_A NegCorr: w120/w180 retained as UNCHANGED_RETAINED_RESEARCH_COMPONENT; w270/w360/expanding INFRA_BLOCKED
+- TRACK_B Robust Direct Delta: NOT_EVALUATED — INFRA_BLOCKED
+- TRACK_C Joint Midday: NOT_EVALUATED — INFRA_BLOCKED
+- R3_REGRESSION: NOT_EVALUATED — no candidate passed screening
+
+## Models not evaluated (INFRA_BLOCKED, not REJECTED)
+- NegCorr_w270 — full-history training panel (2022+) required
+- NegCorr_w360 — full-history training panel (2022+) required
+- NegCorr_expanding — full-history training panel (2022+) required
+- Robust Direct Delta (all variants) — window-cost infra not available
+- Joint Midday Curve (all variants) — window-cost infra not available
+- 1/7/14 day retrain cost comparison — no experiment runner available
+- Bootstrap — no base candidate to evaluate
+- Cost Pareto — no base candidate to evaluate
+
+## Final model frontier
+| Model | Classification | Role | Overall | 9-16 | maxDeg | P95 | negMAE | negSA |
+|-------|---------------|------|---------|------|--------|-----|--------|-------|
+| DD | UNCHANGED_PRODUCTION_BASELINE | FALLBACK_MODEL | 23.233 | 31.922 | 0.00 | 0.00 | 78.43 | 0.718 |
+| IHMAE | UNCHANGED_PRODUCTION_BASELINE | SECONDARY_CANDIDATE | 21.744 | 29.842 | 35.02 | 13.32 | 54.30 | 0.788 |
+| A05 | UNCHANGED_PRODUCTION_BASELINE | PRIMARY | 21.689 | 29.678 | 17.47 | 5.31 | 62.64 | 0.737 |
+| NegCorr_w120_V5_CANONICAL | UNCHANGED_RETAINED_RESEARCH_COMPONENT | CORRECTION_ON_A05 | 21.385 | 29.731 | 19.66 | 8.19 | 48.30 | 0.809 |
+| NegCorr_w180_V5_CANONICAL | UNCHANGED_RETAINED_RESEARCH_COMPONENT | CORRECTION_ON_A05 | 21.593 | 29.660 | 17.47 | 7.47 | 55.28 | 0.771 |
+| NegCorr_w120_V51_ADAPTIVE_PREWARM | RESEARCH_ONLY | DO_NOT_ENABLE | — | — | — | — | — | — |
+| UnderCorr_reference | RESEARCH_ONLY | DO_NOT_ENABLE | — | — | — | — | — | — |
+
+## Key references
+- origin/main SHA: 680436b
+- PR #20 HEAD: 275fcbb (cleaned, DRAFT. DO NOT MERGE)
+- PR #21: CLOSED (business metric unchanged)
+- V5 canonical panel: EFM3-Artifacts/ca_failmode_v5/FAILMODE_V5_CANONICAL_PANEL.parquet
+- Business metric: fusion/metrics.py::smape_floor50 (production, origin/main)
+- Final bundle: EFM3-Artifacts/final_packages/EFM3_V31_FINAL_PATCH_BUNDLE/
