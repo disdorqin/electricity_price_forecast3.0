@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 STEP_ORDER = 12
 STEP_NAME = "realtime_negative_price_fixer"
 
-NEG_FLOOR = -500.0  # only clamp absurd negatives; real 山东 negatives are kept.
+NEG_FLOOR = 0.0  # clamp any negative fused prediction to 0; real 山东 negative prices are handled at the model level, not post-fusion.
 
 
 def _read_fused(conn, run_id: str, target_date: str):

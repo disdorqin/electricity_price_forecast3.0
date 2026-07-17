@@ -335,11 +335,11 @@ class TestDefaultConfigUnchanged:
         assert "source_stage" in params
 
     def test_negative_price_fixer_unchanged_logic(self):
-        """negative_price_fixer import works."""
+        """negative_price_fixer import works; NEG_FLOOR=0 clamps negatives."""
         from pipelines.production_circuit.negative_price_fixer import (
             run_negative_price_fixer, NEG_FLOOR, _load_p3_corrections,
         )
-        assert NEG_FLOOR == -500.0
+        assert NEG_FLOOR == 0.0
 
     def test_step_order_no_conflict(self):
         """BUG-3: negcorr_chain and negative_price_fixer must have distinct STEP_ORDER."""
