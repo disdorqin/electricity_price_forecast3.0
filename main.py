@@ -96,7 +96,7 @@ def main() -> int:
     #   python main.py 2026-02-01 --chain official
     if not getattr(args, "chain", None):
         db_url = getattr(args, "db_url", None) or os.environ.get("EFM3_DB_URL", "")
-        if db_url and not getattr(args, "use_db", False):
+        if db_url:
             args.use_db = True
             args.chain = "production_circuit"
             args.mode = getattr(args, "mode", None) or "formal"
