@@ -74,3 +74,19 @@ outputs/db_monthly_dry_run/
 outputs/db_failure_drill/
 outputs/db_yearly_formal_sim/
 outputs/db_backfill_preview/
+
+# --- WorkBuddy auto-backup appended ---
+.env.*
+!.env.example
+**/.git/
+**/.git
+*.egg-info/
+node_modules/
+dist/
+build/
+env/
+desktop.ini
+*.safetensors
+*.pkl
+*.bin
+*.zip
