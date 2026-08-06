@@ -90,3 +90,9 @@ desktop.ini
 *.pkl
 *.bin
 *.zip
+# === Base excludes for all auto-backup repos (WorkBuddy) ===
+# Secrets / nested repos (CRITICAL - never push these)
+# Node / JS
+# Venvs
+# OS / editor junk
+# Logs
